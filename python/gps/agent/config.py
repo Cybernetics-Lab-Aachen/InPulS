@@ -45,13 +45,13 @@ try:
         #TODO: Actually pass in low gains and high gains and use both
         #      for the position controller.
         'pid_params': np.array([
-            2400.0, 0.0, 18.0, 4.0,
-            1200.0, 0.0, 20.0, 4.0,
+	    2400.0, 0.0, 18.0, 4.0,
+            1000.0, 0.0, 200.0, 4.0,
             1000.0, 0.0, 6.0, 4.0,
             700.0, 0.0, 4.0, 4.0,
             300.0, 0.0, 6.0, 2.0,
             300.0, 0.0, 4.0, 2.0,
-            300.0, 0.0, 2.0, 2.0
+	    10.0, 0.1, 1.0, 2.0
         ]),
     }
 except ImportError as e:
