@@ -4,11 +4,6 @@ try:
 except ImportError:
     construct_fc_network = None
 
-try:
-    from gps.algorithm.policy_opt.tf_model_example import example_tf_network
-except ImportError:
-    example_tf_network = None
-
 import os
 
 # config options shared by both caffe and tf.
@@ -17,7 +12,7 @@ GENERIC_CONFIG = {
     'init_var': 0.1,  # Initial policy variance.
     'ent_reg': 0.0,  # Entropy regularizer.
     # Solver hyperparameters.
-    'iterations': 20000,  # Number of iterations per inner iteration.
+    'iterations': 5000,  # Number of iterations per inner iteration.
     'batch_size': 25,
     'lr': 0.001,  # Base learning rate (by default it's fixed).
     'lr_policy': 'fixed',  # Learning rate policy.
@@ -37,6 +32,7 @@ POLICY_OPT_CAFFE = {
                                             # create NetParameter.
     'network_arch_params': {},  # Arguments to pass to method above.
     'weights_file_prefix': '',
+    'random_seed': 1,
 }
 
 POLICY_OPT_CAFFE.update(GENERIC_CONFIG)
@@ -46,7 +42,6 @@ checkpoint_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                                '..', 'policy_opt/tf_checkpoint/policy_checkpoint.ckpt'))
 POLICY_OPT_TF = {
     # Other hyperparameters.
-    'network_model': example_tf_network,  # should return TfMap object from tf_utils. See example.
     'checkpoint_prefix': checkpoint_path
 }
 
