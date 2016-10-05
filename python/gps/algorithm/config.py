@@ -1,7 +1,4 @@
 """ Default configuration and hyperparameter values for algorithms. """
-from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.dynamics.dynamics_lr import DynamicsLR
-
 
 # Algorithm
 ALG = {
@@ -11,20 +8,18 @@ ALG = {
     'kl_step':0.2,
     'min_step_mult':0.01,
     'max_step_mult':10.0,
-    'sample_decrease_var':0.5,
-    'sample_increase_var':1.0,
     # Trajectory settings.
     'initial_state_var':1e-6,
     'init_traj_distr': None,  # A list of initial LinearGaussianPolicy
                               # objects for each condition.
     # Trajectory optimization.
-    'traj_opt': TrajOptLQRPython({}),
+    'traj_opt': None,
     # Dynamics hyperaparams.
-    'dynamics': {
-        'type': DynamicsLR
-    },
+    'dynamics': None,
     # Costs.
     'cost': None,  # A list of Cost objects for each condition.
+    # Whether or not to sample with neural net policy (only for badmm/mdgps).
+    'sample_on_policy': False,
 }
 
 
@@ -38,9 +33,17 @@ ALG_BADMM = {
     'ent_reg_schedule': 0.0,
     'init_pol_wt': 0.01,
     'policy_sample_mode': 'add',
-    'max_policy_samples': 20,
     'exp_step_increase': 2.0,
     'exp_step_decrease': 0.5,
     'exp_step_upper': 0.5,
     'exp_step_lower': 1.0,
+}
+
+# AlgorithmMD
+ALG_MDGPS = {
+    # TODO: remove need for init_pol_wt in MDGPS
+    'init_pol_wt': 0.01,
+    'policy_sample_mode': 'add',
+    # Whether to use 'laplace' or 'mc' cost in step adjusment
+    'step_rule': 'laplace',
 }
