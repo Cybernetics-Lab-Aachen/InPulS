@@ -11,6 +11,10 @@ CMakeFiles
 Makefile
 cmake_install.cmake
 
+#Catkin
+src/gps_agent_pkg/catkin*
+src/gps_agent_pkg/devel*
+
 #ROS
 build/
 bin/
