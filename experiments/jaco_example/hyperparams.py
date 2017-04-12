@@ -27,6 +27,7 @@ from gps.utility.general_utils import get_ee_points
 
 #EE_POINTS = np.array([[0.02, -0.02, 0.035], [0.02, 0.02, 0.035], [-0.02, 0.0, 0.005]])
 EE_POINTS = np.array([[-0.04, -0.04, 0.182], [-0.04, 0.04, 0.182], [0.04, 0.0, 0.142]])
+#EE_POINTS = np.array([[-0.06, -0.06, 0.182], [-0.06, 0.06, 0.182], [0.06, 0.0, 0.142]])
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 6,
@@ -38,7 +39,7 @@ SENSOR_DIMS = {
 
 #PR2_GAINS = np.array([3.09, 1.08, 0.393, 0.674, 0.111, 0.152, 0.098])
 
-PR2_GAINS = np.array([7.09, 2.3, 1.5, 1.2, 1.8, 1.3])
+PR2_GAINS = np.array([7.09, 2.3, 1.5, 1.2, 1.8, 0.1])
 
 BASE_DIR = '/'.join(str.split(gps_filepath, '/')[:-2])
 EXP_DIR = BASE_DIR + '/../experiments/jaco_example/'
@@ -91,7 +92,7 @@ for i in xrange(common['conditions']):
 
     pi = 3.14159265359
     #reset_jointpos = [0,0,0,0,0,0,0]
-    reset_jointpos = [pi/2,pi+pi/8,pi/2,pi+pi/8,pi/8,pi+pi/4]
+    #reset_jointpos = [pi/2,pi+pi/8,pi/2,pi+pi/8,pi/8,pi+pi/4]
     reset_condition = {
         TRIAL_ARM: {
             'mode': JOINT_SPACE,
@@ -150,8 +151,8 @@ algorithm = {
 
 algorithm['init_traj_distr'] = {
     'type': init_lqr,
-    'init_gains': 1.0 / np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01]),
-    #'init_gains':  1.0 / np.array([7.09, 3.1, 3.1, 1.2, 1.8, 1.3]),
+    #'init_gains': 1.0 / 0.1*np.array([1.0,1.0,1.0,1.0,1.0,1.0]),
+    'init_gains':  1.0 / PR2_GAINS,
     'init_acc': np.zeros(SENSOR_DIMS[ACTION]),
     'init_var': 1.0,
     'stiffness': 1.0,
@@ -200,7 +201,7 @@ algorithm['cost'] = {
 
 torque_cost = {
     'type': CostAction,
-    'wu': 5e-4 / PR2_GAINS,
+    'wu': 5e-3 / PR2_GAINS,
 }
 
 fk_cost1 = {
