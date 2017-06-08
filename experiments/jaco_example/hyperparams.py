@@ -25,9 +25,7 @@ from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
 from gps.utility.general_utils import get_ee_points
 
 
-#EE_POINTS = np.array([[0.02, -0.02, 0.035], [0.02, 0.02, 0.035], [-0.02, 0.0, 0.005]])
-EE_POINTS = np.array([[-0.04, -0.04, 0.182], [-0.04, 0.04, 0.182], [0.04, 0.0, 0.142]])
-#EE_POINTS = np.array([[-0.06, -0.06, 0.182], [-0.06, 0.06, 0.182], [0.06, 0.0, 0.142]])
+EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 6,
