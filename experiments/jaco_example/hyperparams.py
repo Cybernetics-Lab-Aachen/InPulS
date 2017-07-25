@@ -35,16 +35,10 @@ SENSOR_DIMS = {
     ACTION: 6,
 }
 
-#PR2_GAINS = np.array([3.09, 1.08, 0.393, 0.674, 0.111, 0.152, 0.098])
-
 PR2_GAINS = np.array([7.09, 2.3, 1.5, 1.2, 1.8, 0.1])
 
 BASE_DIR = '/'.join(str.split(gps_filepath, '/')[:-2])
 EXP_DIR = BASE_DIR + '/../experiments/jaco_example/'
-
-x0s = []
-ee_tgts = []
-reset_conditions = []
 
 common = {
     'experiment_name': 'my_experiment' + '_' + \
@@ -58,9 +52,10 @@ common = {
     'experiment_ID': '1' + time.ctime(),
 }
 
-# TODO(chelsea/zoe) : Move this code to a utility function
 # Set up each condition.
-
+x0s = []
+ee_tgts = []
+reset_conditions = []
 for i in xrange(common['conditions']):
 
     ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
@@ -75,22 +70,11 @@ for i in xrange(common['conditions']):
     x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
         get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
     )
-    print "ja_x0"
-    print ja_x0
-    print "ee_pos_x0"
-    print ee_pos_x0
-    print "ee_rot_x0"
-    print ee_rot_x0
-    print "x0"
-    print x0
 
     ee_tgt = np.ndarray.flatten(
         get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
     )
 
-    pi = 3.14159265359
-    #reset_jointpos = [0,0,0,0,0,0,0]
-    #reset_jointpos = [pi/2,pi+pi/8,pi/2,pi+pi/8,pi/8,pi+pi/4]
     reset_condition = {
         TRIAL_ARM: {
             'mode': JOINT_SPACE,
@@ -101,7 +85,6 @@ for i in xrange(common['conditions']):
     x0s.append(x0)
     ee_tgts.append(ee_tgt)
     reset_conditions.append(reset_condition)
-    #raw_input(np.ones(SENSOR_DIMS[END_EFFECTOR_POINTS]))
 
 if not os.path.exists(common['data_files_dir']):
     os.makedirs(common['data_files_dir'])
@@ -121,26 +104,6 @@ agent = {
     'obs_include': [],
 }
 
-'''
-agent = {
-    'type': AgentROSIIWA,
-    'x0': np.concatenate([np.array([0.1, 0.1, -1.54, -1.7, 1.54, -0.2, 0]),
-                          np.zeros(7)]),
-    'dt': 0.05,
-    'substeps': 5,
-    'conditions': common['conditions'],
-    'pos_body_idx': np.array([1]),
-    'pos_body_offset': [np.array([0, 0.2, 0]), np.array([0, 0.1, 0]),
-                        np.array([0, -0.1, 0]), np.array([0, -0.2, 0])],
-    'T': 100,
-    'sensor_dims': SENSOR_DIMS,
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS,
-                      END_EFFECTOR_POINT_VELOCITIES],
-    'obs_include': [],
-    'camera_pos': np.array([0., 0., 2., 0., 0.2, 0.5]),
-}
-'''
-
 algorithm = {
     'type': AlgorithmTrajOpt,
     'conditions': common['conditions'],
@@ -149,7 +112,6 @@ algorithm = {
 
 algorithm['init_traj_distr'] = {
     'type': init_lqr,
-    #'init_gains': 1.0 / 0.1*np.array([1.0,1.0,1.0,1.0,1.0,1.0]),
     'init_gains':  1.0 / PR2_GAINS,
     'init_acc': np.zeros(SENSOR_DIMS[ACTION]),
     'init_var': 1.0,
@@ -159,43 +121,6 @@ algorithm['init_traj_distr'] = {
     'dt': agent['dt'],
     'T': agent['T'],
 }
-
-'''
-torque_cost = {
-    'type': CostAction,
-    'wu': 5e-5 / PR2_GAINS,
-}
-
-fk_cost1 = {
-    'type': CostFK,
-    # Target end effector is subtracted out of EE_POINTS in ROS so goal
-    # is 0.
-    'target_end_effector': np.zeros(3 * EE_POINTS.shape[0]),
-    'wp': np.ones(SENSOR_DIMS[END_EFFECTOR_POINTS]),
-    'l1': 0.1,
-    'l2': 10.0,
-    'alpha': 1e-5,
-    #'evalnorm': evallogl2term,
-    #'ramp_option': RAMP_LINEAR,
-}
-
-fk_cost2 = {
-    'type': CostFK,
-    'target_end_effector': np.zeros(3 * EE_POINTS.shape[0]),
-    'wp': np.ones(SENSOR_DIMS[END_EFFECTOR_POINTS]),
-    'l1': 1.0,
-    'l2': 2.0,
-    'wp_final_multiplier': 10.0,  # Weight multiplier on final timestep.
-    'ramp_option': RAMP_FINAL_ONLY,
-}
-
-algorithm['cost'] = {
-    'type': CostSum,
-    'costs': [torque_cost, fk_cost1, fk_cost2],
-    'weights': [1.0, 1.0, 1.0],
-}
-
-'''
 
 torque_cost = {
     'type': CostAction,
@@ -208,15 +133,11 @@ fk_cost1 = {
     # is 0.
     'target_end_effector': np.zeros(3 * EE_POINTS.shape[0]),
     'wp': np.ones(SENSOR_DIMS[END_EFFECTOR_POINTS]),
-#    'l1': 0.005,
     'l1': 0.1,
     'l2': 10.0,
     'alpha': 1e-6,
     'experiment_ID': common['experiment_ID'],
     'dir':common['cost_log_dir'],
-#    'alpha': 1e-10,
-    #'evalnorm': evallogl2term,
-    #'ramp_option': RAMP_LINEAR,
 }
 
 fk_cost2 = {
@@ -237,8 +158,6 @@ algorithm['cost'] = {
     'costs': [torque_cost, fk_cost1, fk_cost2],
     'weights': [1.0, 1.0, 1.0],
 }
-
-
 
 algorithm['dynamics'] = {
     'type': DynamicsLRPrior,
