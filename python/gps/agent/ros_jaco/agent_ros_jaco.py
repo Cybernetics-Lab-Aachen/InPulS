@@ -8,7 +8,7 @@ import rospy
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
-from gps.agent.ros.ros_utils import ServiceEmulator, msg_to_sample, \
+from gps.agent.ros_jaco.ros_utils import ServiceEmulator, msg_to_sample, \
         policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 from gps_agent_pkg.msg import TrialCommand, SampleResult, PositionCommand, \
@@ -157,10 +157,6 @@ class AgentROSJACO(Agent):
             noise = generate_noise(self.T, self.dU, self._hyperparams)
         else:
             noise = np.zeros((self.T, self.dU))
-        print "policy.dU"
-        print policy.dU
-        print "self.dU"
-        print self.dU
 
         # Execute trial.
         trial_command = TrialCommand()
@@ -181,10 +177,6 @@ class AgentROSJACO(Agent):
                 trial_command, timeout=self._hyperparams['trial_timeout']
             )
             sample = msg_to_sample(sample_msg, self)
-            print "sample.dU"
-            print sample.dU
-            print "sample.U"
-            print sample.get_U()
             if save:
                 self._samples[condition].append(sample)
             return sample

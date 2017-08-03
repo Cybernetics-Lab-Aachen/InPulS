@@ -24,7 +24,6 @@ class AlgorithmTrajOpt(object):
         self._hyperparams = config
 
         traj_opt_config = copy.deepcopy(TRAJ_OPT_LQR)
-        traj_opt_config.update(hyperparams['traj_opt'])
         self.traj_opt_hyperparams = traj_opt_config
 
         if 'train_conditions' in hyperparams:
@@ -360,13 +359,13 @@ class AlgorithmTrajOpt(object):
         """
         # Constants.
         T = prev_traj_distr.T
-        dU = prev_traj_distr.dU
-        dX = prev_traj_distr.dX
+        dimU = prev_traj_distr.dU
+        dimX = prev_traj_distr.dX
 
         traj_distr = prev_traj_distr.nans_like()
 
-        idx_x = slice(dX)
-        idx_u = slice(dX, dX+dU)
+        idx_x = slice(dimX)
+        idx_u = slice(dimX, dimX + dimU)
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -382,33 +381,29 @@ class AlgorithmTrajOpt(object):
             fail = False  # Flip to true on non-symmetric PD.
 
             # Allocate.
-            Vxx = np.zeros((T, dX, dX))
-            Vx = np.zeros((T, dX))
+            Vm = np.zeros((T, dimX, dimX))
+            vv = np.zeros((T, dimX))
 
-            fCm, fcv = self.compute_costs(m, eta)
+            Cm_ext, cv_ext = self.compute_extended_costs(m, eta)
 
             # Compute state-action-state function at each time step.
             for t in range(T - 1, -1, -1):
                 # Add in the cost.
-                Qtt = fCm[t, :, :]  # (X+U) x (X+U)
-                Qt = fcv[t, :]  # (X+U) x 1
+                Qm = Cm_ext[t, :, :]  # (X+U) x (X+U)
+                qv = cv_ext[t, :]  # (X+U) x 1
 
                 # Add in the value function from the next time step.
                 if t < T - 1:
-                    multiplier = 1.0
-                    Qtt = Qtt + multiplier * \
-                            Fm[t, :, :].T.dot(Vxx[t+1, :, :]).dot(Fm[t, :, :])
-                    Qt = Qt + multiplier * \
-                            Fm[t, :, :].T.dot(Vx[t+1, :] +
-                                            Vxx[t+1, :, :].dot(fv[t, :]))
+                    Qm += Fm[t, :, :].T.dot(Vm[t+1, :, :]).dot(Fm[t, :, :])
+                    qv += Fm[t, :, :].T.dot(vv[t+1, :] + Vm[t+1, :, :].dot(fv[t, :]))
 
                 # Symmetrize quadratic component.
-                Qtt = 0.5 * (Qtt + Qtt.T)
+                Qm = 0.5 * (Qm + Qm.T)
 
                 # Compute Cholesky decomposition of Q function action
                 # component.
                 try:
-                    U = sp.linalg.cholesky(Qtt[idx_u, idx_u])
+                    U = sp.linalg.cholesky(Qm[idx_u, idx_u])
                     L = U.T
                 except LinAlgError as e:
                     # Error thrown when Qtt[idx_u, idx_u] is not
@@ -418,28 +413,28 @@ class AlgorithmTrajOpt(object):
                     break
 
                 # Store conditional covariance, inverse, and Cholesky.
-                traj_distr.inv_pol_covar[t, :, :] = Qtt[idx_u, idx_u]
+                traj_distr.inv_pol_covar[t, :, :] = Qm[idx_u, idx_u]
                 traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, np.eye(dU), lower=True)
+                    U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
                 )
                 traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
                     traj_distr.pol_covar[t, :, :]
                 )
 
                 # Compute mean terms.
-                traj_distr.k[t, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, Qt[idx_u], lower=True)
-                )
                 traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, Qtt[idx_u, idx_x],
+                    U, sp.linalg.solve_triangular(L, Qm[idx_u, idx_x],
                                                   lower=True)
+                )
+                traj_distr.k[t, :] = -sp.linalg.solve_triangular(
+                    U, sp.linalg.solve_triangular(L, qv[idx_u], lower=True)
                 )
 
                 # Compute value function.
-                Vxx[t, :, :] = Qtt[idx_x, idx_x] + \
-                        Qtt[idx_x, idx_u].dot(traj_distr.K[t, :, :])
-                Vx[t, :] = Qt[idx_x] + Qtt[idx_x, idx_u].dot(traj_distr.k[t, :])
-                Vxx[t, :, :] = 0.5 * (Vxx[t, :, :] + Vxx[t, :, :].T)
+                Vm[t, :, :] = Qm[idx_x, idx_x] + \
+                        Qm[idx_x, idx_u].dot(traj_distr.K[t, :, :])
+                vv[t, :] = qv[idx_x] + Qm[idx_x, idx_u].dot(traj_distr.k[t, :])
+                Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
 
             # Increment eta on non-SPD Q-function.
             if fail:
@@ -455,15 +450,17 @@ class AlgorithmTrajOpt(object):
                             reasonably well conditioned)!')
         return traj_distr, eta
 
-    def compute_costs(self, m, eta):
-        """ Compute cost estimates used in the LQR backward pass. """
-        traj_info, traj_distr = self.cur[m].traj_info, self.cur[m].traj_distr
-        fCm, fcv = traj_info.Cm / eta, traj_info.cv / eta
+    def compute_extended_costs(self, cond, eta):
+        """ Compute expansions of extended cost used in the LQR backward pass.
+            The extended cost function is 1/eta * c(x, u) - log p(u | x)
+        """
+        traj_info, traj_distr = self.cur[cond].traj_info, self.cur[cond].traj_distr
+        Cm_ext, cv_ext = traj_info.Cm / eta, traj_info.cv / eta
         K, ipc, k = traj_distr.K, traj_distr.inv_pol_covar, traj_distr.k
 
         # Add in the trajectory divergence term.
         for t in range(self.T - 1, -1, -1):
-            fCm[t, :, :] += np.vstack([
+            Cm_ext[t, :, :] += np.vstack([
                 np.hstack([
                     K[t, :, :].T.dot(ipc[t, :, :]).dot(K[t, :, :]),
                     -K[t, :, :].T.dot(ipc[t, :, :])
@@ -472,12 +469,12 @@ class AlgorithmTrajOpt(object):
                     -ipc[t, :, :].dot(K[t, :, :]), ipc[t, :, :]
                 ])
             ])
-            fcv[t, :] += np.hstack([
+            cv_ext[t, :] += np.hstack([
                 K[t, :, :].T.dot(ipc[t, :, :]).dot(k[t, :]),
                 -ipc[t, :, :].dot(k[t, :])
             ])
 
-        return fCm, fcv
+        return Cm_ext, cv_ext
 
     def forward(self, traj_distr, traj_info):
         """
@@ -487,21 +484,21 @@ class AlgorithmTrajOpt(object):
             traj_distr: A linear Gaussian policy object.
             traj_info: A TrajectoryInfo object.
         Returns:
-            mu: A T x dX mean action vector.
-            sigma: A T x dX x dX covariance matrix.
+            mu: T x (dX + dU) mean action vector.
+            sigma: T x (dX + dU) x (dX + dU) covariance matrix.
         """
         # Compute state-action marginals from specified conditional
         # parameters and current traj_info.
         T = traj_distr.T
-        dU = traj_distr.dU
-        dX = traj_distr.dX
+        dimU = traj_distr.dU
+        dimX = traj_distr.dX
 
         # Constants.
-        idx_x = slice(dX)
+        idx_x = slice(dimX)
 
         # Allocate space.
-        sigma = np.zeros((T, dX+dU, dX+dU))
-        mu = np.zeros((T, dX+dU))
+        sigma = np.zeros((T, dimX + dimU, dimX + dimU))
+        mu = np.zeros((T, dimX + dimU))
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm

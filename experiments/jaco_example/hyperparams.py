@@ -16,7 +16,6 @@ from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.cost.cost_utils import RAMP_LINEAR, RAMP_FINAL_ONLY
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
-from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
 from gps.algorithm.policy.lin_gauss_init import init_lqr
 from gps.gui.target_setup_gui import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
@@ -169,12 +168,6 @@ algorithm['dynamics'] = {
         'max_samples': 30,
     },
 }
-
-algorithm['traj_opt'] = {
-    'type': TrajOptLQRPython,
-}
-
-algorithm['policy_opt'] = {}
 
 config = {
     'iterations': algorithm['iterations'],
