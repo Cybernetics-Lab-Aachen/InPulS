@@ -11,12 +11,9 @@ from gps.algorithm.traj_opt.traj_opt import TrajOpt
 from gps.algorithm.traj_opt.traj_opt_utils import \
         traj_distr_kl, DGD_MAX_ITER
 
-from gps.algorithm.algorithm_badmm import AlgorithmBADMM
-from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
-
 LOGGER = logging.getLogger(__name__)
 
-class TrajOptLQRPython(TrajOpt):
+class TrajOptLQRPython(object):
     """ LQR trajectory optimization, Python implementation. """
     def __init__(self, hyperparams):
         config = copy.deepcopy(TRAJ_OPT_LQR)
