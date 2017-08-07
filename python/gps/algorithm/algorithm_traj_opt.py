@@ -342,7 +342,7 @@ class AlgorithmTrajOpt(object):
 
         return traj_distr, eta
 
-    def backward(self, prev_traj_distr, traj_info, eta, m):
+    def backward(self, prev_traj_distr, traj_info, eta, cond):
         """
         Perform LQR backward pass. This computes a new linear Gaussian
         policy object.
@@ -350,8 +350,8 @@ class AlgorithmTrajOpt(object):
             prev_traj_distr: A linear Gaussian policy object from
                 previous iteration.
             traj_info: A TrajectoryInfo object.
-            eta: Dual variable.
-            m: Condition number.
+            eta: Lagrange dual variable.
+            cond: Condition number.
         Returns:
             traj_distr: A new linear Gaussian policy.
             new_eta: The updated dual variable. Updates happen if the
@@ -364,95 +364,70 @@ class AlgorithmTrajOpt(object):
 
         traj_distr = prev_traj_distr.nans_like()
 
-        idx_x = slice(dimX)
-        idx_u = slice(dimX, dimX + dimU)
+        index_x = slice(dimX)
+        index_u = slice(dimX, dimX + dimU)
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
         fv = traj_info.dynamics.fv
 
-        # Non-SPD correction terms.
-        del_ = self.traj_opt_hyperparams['del0']
-        eta0 = eta
+        # Allocate.
+        Vm = np.zeros((T, dimX, dimX))
+        vv = np.zeros((T, dimX))
 
-        # Run dynamic programming.
-        fail = True
-        while fail:
-            fail = False  # Flip to true on non-symmetric PD.
+        Cm_ext, cv_ext = self.compute_extended_costs(cond, eta)
 
-            # Allocate.
-            Vm = np.zeros((T, dimX, dimX))
-            vv = np.zeros((T, dimX))
+        # Compute state-action-state function at each time step.
+        for t in range(T - 1, -1, -1):
+            # Add in the cost.
+            Qm = Cm_ext[t, :, :]  # (X+U) x (X+U)
+            qv = cv_ext[t, :]  # (X+U) x 1
 
-            Cm_ext, cv_ext = self.compute_extended_costs(m, eta)
+            # Add in the value function from the next time step.
+            if t < T - 1:
+                Qm += Fm[t, :, :].T.dot(Vm[t+1, :, :]).dot(Fm[t, :, :])
+                qv += Fm[t, :, :].T.dot(vv[t+1, :] + Vm[t+1, :, :].dot(fv[t, :]))
 
-            # Compute state-action-state function at each time step.
-            for t in range(T - 1, -1, -1):
-                # Add in the cost.
-                Qm = Cm_ext[t, :, :]  # (X+U) x (X+U)
-                qv = cv_ext[t, :]  # (X+U) x 1
+            # Symmetrize quadratic component to counter numerical errors.
+            Qm = 0.5 * (Qm + Qm.T)
 
-                # Add in the value function from the next time step.
-                if t < T - 1:
-                    Qm += Fm[t, :, :].T.dot(Vm[t+1, :, :]).dot(Fm[t, :, :])
-                    qv += Fm[t, :, :].T.dot(vv[t+1, :] + Vm[t+1, :, :].dot(fv[t, :]))
+            # Compute Cholesky decomposition of Q function action
+            # component.
+            U = sp.linalg.cholesky(Qm[index_u, index_u])
+            L = U.T
 
-                # Symmetrize quadratic component.
-                Qm = 0.5 * (Qm + Qm.T)
+            # Store conditional covariance, inverse, and Cholesky.
+            traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
+            traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
+                U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
+            )
+            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
+                traj_distr.pol_covar[t, :, :]
+            )
 
-                # Compute Cholesky decomposition of Q function action
-                # component.
-                try:
-                    U = sp.linalg.cholesky(Qm[idx_u, idx_u])
-                    L = U.T
-                except LinAlgError as e:
-                    # Error thrown when Qtt[idx_u, idx_u] is not
-                    # symmetric positive definite.
-                    LOGGER.debug('LinAlgError: %s', e)
-                    fail = True
-                    break
+            # Compute mean terms.
+            traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
+                U, sp.linalg.solve_triangular(L, Qm[index_u, index_x],
+                                              lower=True)
+            )
+            traj_distr.k[t, :] = -sp.linalg.solve_triangular(
+                U, sp.linalg.solve_triangular(L, qv[index_u], lower=True)
+            )
 
-                # Store conditional covariance, inverse, and Cholesky.
-                traj_distr.inv_pol_covar[t, :, :] = Qm[idx_u, idx_u]
-                traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
-                )
-                traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
-                    traj_distr.pol_covar[t, :, :]
-                )
+            # Compute value function.
+            Vm[t, :, :] = Qm[index_x, index_x] + \
+                    Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
+            # Symmetrize quadratic component to counter numerical errors.
+            Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
+            vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
 
-                # Compute mean terms.
-                traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, Qm[idx_u, idx_x],
-                                                  lower=True)
-                )
-                traj_distr.k[t, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, qv[idx_u], lower=True)
-                )
-
-                # Compute value function.
-                Vm[t, :, :] = Qm[idx_x, idx_x] + \
-                        Qm[idx_x, idx_u].dot(traj_distr.K[t, :, :])
-                vv[t, :] = qv[idx_x] + Qm[idx_x, idx_u].dot(traj_distr.k[t, :])
-                Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
-
-            # Increment eta on non-SPD Q-function.
-            if fail:
-                old_eta = eta
-                eta = eta0 + del_
-                LOGGER.debug('Increasing eta: %f -> %f', old_eta, eta)
-                del_ *= 2  # Increase del_ exponentially on failure.
-                if eta >= 1e16:
-                    if np.any(np.isnan(Fm)) or np.any(np.isnan(fv)):
-                        raise ValueError('NaNs encountered in dynamics!')
-                    raise ValueError('Failed to find PD solution even for very \
-                            large eta (check that dynamics and cost are \
-                            reasonably well conditioned)!')
         return traj_distr, eta
 
     def compute_extended_costs(self, cond, eta):
         """ Compute expansions of extended cost used in the LQR backward pass.
             The extended cost function is 1/eta * c(x, u) - log p(u | x)
+            with eta being the lagrange dual variable and
+            p being the previous trajectory distribution
         """
         traj_info, traj_distr = self.cur[cond].traj_info, self.cur[cond].traj_distr
         Cm_ext, cv_ext = traj_info.Cm / eta, traj_info.cv / eta
@@ -494,7 +469,7 @@ class AlgorithmTrajOpt(object):
         dimX = traj_distr.dX
 
         # Constants.
-        idx_x = slice(dimX)
+        index_x = slice(dimX)
 
         # Allocate space.
         sigma = np.zeros((T, dimX + dimU, dimX + dimU))
@@ -506,31 +481,31 @@ class AlgorithmTrajOpt(object):
         dyn_covar = traj_info.dynamics.dyn_covar
 
         # Set initial covariance (initial mu is always zero).
-        sigma[0, idx_x, idx_x] = traj_info.x0sigma
-        mu[0, idx_x] = traj_info.x0mu
+        sigma[0, index_x, index_x] = traj_info.x0sigma
+        mu[0, index_x] = traj_info.x0mu
 
         for t in range(T):
             sigma[t, :, :] = np.vstack([
                 np.hstack([
-                    sigma[t, idx_x, idx_x],
-                    sigma[t, idx_x, idx_x].dot(traj_distr.K[t, :, :].T)
+                    sigma[t, index_x, index_x],
+                    sigma[t, index_x, index_x].dot(traj_distr.K[t, :, :].T)
                 ]),
                 np.hstack([
-                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]),
-                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(
+                    traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]),
+                    traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
                         traj_distr.K[t, :, :].T
                     ) + traj_distr.pol_covar[t, :, :]
                 ])
             ])
             mu[t, :] = np.hstack([
-                mu[t, idx_x],
-                traj_distr.K[t, :, :].dot(mu[t, idx_x]) + traj_distr.k[t, :]
+                mu[t, index_x],
+                traj_distr.K[t, :, :].dot(mu[t, index_x]) + traj_distr.k[t, :]
             ])
             if t < T - 1:
-                sigma[t+1, idx_x, idx_x] = \
+                sigma[t+1, index_x, index_x] = \
                         Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
                         dyn_covar[t, :, :]
-                mu[t+1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
+                mu[t+1, index_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
         return mu, sigma
 
     def _advance_iteration_variables(self):
