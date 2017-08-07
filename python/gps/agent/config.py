@@ -54,3 +54,7 @@ except ImportError as e:
 except rospkg.common.ResourceNotFound as e:
     AGENT_ROS_JACO = {}
     LOGGER.debug('No gps_agent_pkg: %s', e)
+
+AGENT_BOX2D = {
+    'render': True,
+}
