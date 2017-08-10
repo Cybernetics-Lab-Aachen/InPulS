@@ -303,8 +303,8 @@ class AlgorithmTrajOpt(object):
 
             # Run fwd/bwd pass, note that eta may be updated.
             # NOTE: we can just ignore case when the new eta is larger.
-            traj_distr, eta = self.backward(prev_traj_distr, traj_info,
-                                                eta, m)
+            traj_distr = self.backward(prev_traj_distr, traj_info,
+                                                eta)
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
 
             # Compute KL divergence constraint violation.
@@ -342,7 +342,7 @@ class AlgorithmTrajOpt(object):
 
         return traj_distr, eta
 
-    def backward(self, prev_traj_distr, traj_info, eta, cond):
+    def backward(self, prev_traj_distr, traj_info, eta):
         """
         Perform LQR backward pass. This computes a new linear Gaussian
         policy object.
@@ -351,21 +351,20 @@ class AlgorithmTrajOpt(object):
                 previous iteration.
             traj_info: A TrajectoryInfo object.
             eta: Lagrange dual variable.
-            cond: Condition number.
         Returns:
             traj_distr: A new linear Gaussian policy.
-            new_eta: The updated dual variable. Updates happen if the
-                Q-function is not PD.
         """
         # Constants.
         T = prev_traj_distr.T
         dimU = prev_traj_distr.dU
         dimX = prev_traj_distr.dX
 
-        traj_distr = prev_traj_distr.nans_like()
-
         index_x = slice(dimX)
         index_u = slice(dimX, dimX + dimU)
+
+        # Get quadratic expansion of the extended cost function
+        Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info,
+                                                     prev_traj_distr)
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -375,7 +374,7 @@ class AlgorithmTrajOpt(object):
         Vm = np.zeros((T, dimX, dimX))
         vv = np.zeros((T, dimX))
 
-        Cm_ext, cv_ext = self.compute_extended_costs(cond, eta)
+        traj_distr = prev_traj_distr.nans_like()
 
         # Compute state-action-state function at each time step.
         for t in range(T - 1, -1, -1):
@@ -396,15 +395,6 @@ class AlgorithmTrajOpt(object):
             U = sp.linalg.cholesky(Qm[index_u, index_u])
             L = U.T
 
-            # Store conditional covariance, inverse, and Cholesky.
-            traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
-            traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
-                U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
-            )
-            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
-                traj_distr.pol_covar[t, :, :]
-            )
-
             # Compute mean terms.
             traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
                 U, sp.linalg.solve_triangular(L, Qm[index_u, index_x],
@@ -414,6 +404,15 @@ class AlgorithmTrajOpt(object):
                 U, sp.linalg.solve_triangular(L, qv[index_u], lower=True)
             )
 
+            # Store conditional covariance, inverse, and Cholesky.
+            traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
+                U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
+            )
+            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
+                traj_distr.pol_covar[t, :, :]
+            )
+            traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
+
             # Compute value function.
             Vm[t, :, :] = Qm[index_x, index_x] + \
                     Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
@@ -421,15 +420,14 @@ class AlgorithmTrajOpt(object):
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
 
-        return traj_distr, eta
+        return traj_distr
 
-    def compute_extended_costs(self, cond, eta):
-        """ Compute expansions of extended cost used in the LQR backward pass.
+    def compute_extended_costs(self, eta, traj_info, traj_distr):
+        """ Compute expansion of extended cost used in the LQR backward pass.
             The extended cost function is 1/eta * c(x, u) - log p(u | x)
             with eta being the lagrange dual variable and
             p being the previous trajectory distribution
         """
-        traj_info, traj_distr = self.cur[cond].traj_info, self.cur[cond].traj_distr
         Cm_ext, cv_ext = traj_info.Cm / eta, traj_info.cv / eta
         K, ipc, k = traj_distr.K, traj_distr.inv_pol_covar, traj_distr.k
 
