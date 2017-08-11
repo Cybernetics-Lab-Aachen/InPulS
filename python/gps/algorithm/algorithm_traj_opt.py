@@ -457,53 +457,52 @@ class AlgorithmTrajOpt(object):
             traj_distr: A linear Gaussian policy object.
             traj_info: A TrajectoryInfo object.
         Returns:
-            mu: T x (dX + dU) mean action vector.
-            sigma: T x (dX + dU) x (dX + dU) covariance matrix.
+            mu: T x (dX + dU) mean state + action vector.
+            sigma: T x (dX + dU) x (dX + dU) state + action covariance matrix.
         """
-        # Compute state-action marginals from specified conditional
-        # parameters and current traj_info.
+        # Constants.
         T = traj_distr.T
         dimU = traj_distr.dU
         dimX = traj_distr.dX
 
-        # Constants.
         index_x = slice(dimX)
-
-        # Allocate space.
-        sigma = np.zeros((T, dimX + dimU, dimX + dimU))
-        mu = np.zeros((T, dimX + dimU))
+        index_u = slice(dimX, dimX + dimU)
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
         fv = traj_info.dynamics.fv
         dyn_covar = traj_info.dynamics.dyn_covar
 
-        # Set initial covariance (initial mu is always zero).
-        sigma[0, index_x, index_x] = traj_info.x0sigma
+        # Allocate space.
+        sigma = np.zeros((T, dimX + dimU, dimX + dimU))
+        mu = np.zeros((T, dimX + dimU))
+
+        # Set initial mean and covariance
         mu[0, index_x] = traj_info.x0mu
+        sigma[0, index_x, index_x] = traj_info.x0sigma
 
         for t in range(T):
-            sigma[t, :, :] = np.vstack([
-                np.hstack([
-                    sigma[t, index_x, index_x],
-                    sigma[t, index_x, index_x].dot(traj_distr.K[t, :, :].T)
-                ]),
-                np.hstack([
-                    traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]),
-                    traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
-                        traj_distr.K[t, :, :].T
-                    ) + traj_distr.pol_covar[t, :, :]
-                ])
-            ])
-            mu[t, :] = np.hstack([
-                mu[t, index_x],
-                traj_distr.K[t, :, :].dot(mu[t, index_x]) + traj_distr.k[t, :]
-            ])
+            mu[t, index_u] = traj_distr.K[t, :, :].dot(mu[t, index_x]) + \
+                             traj_distr.k[t, :]
+
+            sigma[t, index_x, index_u] = \
+                sigma[t, index_x, index_x].dot(traj_distr.K[t, :, :].T)
+
+            sigma[t, index_u, index_x] = \
+                traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x])
+
+            sigma[t, index_u, index_u] = \
+                traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
+                    traj_distr.K[t, :, :].T
+                ) + traj_distr.pol_covar[t, :, :]
+
             if t < T - 1:
-                sigma[t+1, index_x, index_x] = \
-                        Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
-                        dyn_covar[t, :, :]
                 mu[t+1, index_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
+
+                sigma[t+1, index_x, index_x] = \
+                    Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
+                    dyn_covar[t, :, :]
+
         return mu, sigma
 
     def _advance_iteration_variables(self):
