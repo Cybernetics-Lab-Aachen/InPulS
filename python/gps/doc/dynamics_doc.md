@@ -75,7 +75,7 @@ We use the empirical mean as our estimated mean and use the normal-inverse-Wisha
 
 $$ {\bold \mu}_t={\bold \mu}_{emp,t} $$
 $$ $$
-$$ {\bold \Sigma}_t=\frac{{\bold \Phi}+N{\bold \Sigma}_{emp,t}+\frac{Nm}{N+m}({\bold \mu}_{emp,t}-{\bold \mu}_0)({\bold \mu}_{emp,t}-{\bold \mu}_0)^T}{N+n_0} $$
+$$ {\bold \Sigma}_t=\frac{{\bold \Phi}+(N-1){\bold \Sigma}_{emp,t}+\frac{Nm}{N+m}({\bold \mu}_{emp,t}-{\bold \mu}_0)({\bold \mu}_{emp,t}-{\bold \mu}_0)^T}{N+n_0} $$
 
 ```python
 mu = empmu 
@@ -89,7 +89,7 @@ ${\bold \Sigma}_t$ can contain singularities so that its inverse contains infini
 
 Now we condition the gaussian on $x$ and $u$:
 
-$$ {\bold F} = ({\bold \Sigma}_{xu,xu}^{-1}{\bold \Sigma}_{xu,x'})^T $$
+$$ {\bold F} = {\bold \Sigma}_{x',xu}{\bold \Sigma}_{xu,xu}^{-1} = ({\bold \Sigma}_{xu,xu}^{-1}{\bold \Sigma}_{xu,x'})^T $$
 $$ {\bold f} = {\bold \mu}_x-{\bold F}{\bold \mu}_{xu} $$
 $$ {\bold \Sigma}_{dyn} = {\bold \Sigma}_{x',x'}-{\bold F}{\bold \Sigma}_{xu,xu}{\bold F}^T $$
 
