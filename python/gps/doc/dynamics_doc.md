@@ -1,6 +1,24 @@
+Dynamics fitting
+================
+
+Notation
+--------
+
+In this part we consider a normal distribution over
+
+$$ {\bold y}=\begin{pmatrix}{\bold x}\\{\bold u}\\{\bold x}'\end{pmatrix} $$
+
+where ${\bold x}'$ is the state that results from taking the action ${\bold u}$ in state ${\bold x}$. We divide the parameters of the normal distribution ${\bold y}\ \sim\ {\mathscr N}({\bold \mu}, {\bold \Sigma})$ as follows:
+
+$$ {\bold \mu}=\begin{pmatrix}{\bold \mu}_{{\bold x}{\bold u}}\\{\bold \mu}_{{\bold x}'}\end{pmatrix} $$
+$$ {\bold \Sigma}=\begin{pmatrix}{\bold \Sigma}_{{\bold x}{\bold u},{\bold x}{\bold u}}&{\bold \Sigma}_{{\bold x}{\bold u},{\bold x}'}\\{\bold \Sigma}_{{\bold x}',{\bold x}{\bold u}}&{\bold \Sigma}_{{\bold x}',{\bold x}'}\end{pmatrix} $$
+
+Code
+----
+
 The fitting function takes as arguments:
-+ `X`: States sampled from the previous policy
-+ `U`: Actions sampled from the previous policy
++ `X`: States of the trajectory samples from the previous policy
++ `U`: Actions of the trajectory samples from the previous policy
 
 ```python
 def fit(self, X, U):
@@ -13,7 +31,7 @@ N, T, dimX = X.shape
 dimU = U.shape[2]
 ```
 
-We use slice syntax so that `sigma[index_xu, index_x]` means ${\bold \Sigma}_{{\bold x}{\bold u}_t,{\bold x}_t}$ etc.
+We use slice syntax so that `sigma[index_xu, index_x]` means ${\bold \Sigma}_{{\bold x}{\bold u},{\bold x}'}$ etc.
 
 ```python
 index_xu = slice(dimX + dimU)
@@ -53,7 +71,7 @@ for t in range(T - 1):
     Ys = np.c_[X[:, t, :], U[:, t, :], X[:, t + 1, :]]
 ```
 
-We obtain the hyperparameters of the normal-inverse-Wishart prior $NIW(\mu,\Phi,m,n_0)$
+We obtain the hyperparameters of the normal-inverse-Wishart prior $NIW(\mu_0,\Phi,m,n_0)$
 
 ```python
 mu0, Phi, mm, n0 = self.prior.eval(dimX, dimU, Ys)

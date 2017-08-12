@@ -1,3 +1,28 @@
+LQR Forward pass
+================
+
+Notation
+--------
+
+We use the following quadratic expansion of the costs, value-function and Q-function:
+
+$$ c({\bold x}, {\bold u})=\frac{1}{2}\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}^T{\bold C}\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}+\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}^T{\bold c}+const. $$
+$$ $$
+$$ V({\bold x})=\frac{1}{2}{\bold x}^T{\bold V}{\bold x}+{\bold x}^T{\bold v}+const. $$
+$$ $$
+$$ Q({\bold x}, {\bold u})=\frac{1}{2}\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}^T{\bold Q}\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}+\begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}^T{\bold q}+const. $$
+
+where
+
+$$ {\bold Q}=\begin{pmatrix}{\bold Q}_{{\bold x},{\bold x}}&{\bold Q}_{{\bold x},{\bold u}}\\{\bold Q}_{{\bold u},{\bold x}}&{\bold Q}_{{\bold u},{\bold u}}\end{pmatrix} $$
+$$ $$
+$$ {\bold q}=\begin{pmatrix}{\bold q}_{\bold x}\\{\bold q}_{\bold u}\end{pmatrix} $$
+
+The `m` and `v` in `Vm` and `vv` etc. stand for 'matrix' and 'vector'.
+
+Code
+----
+
 The backward recursion function takes as arguments
 + `prev_traj_distr`: The policy object of the previous iteration, used get the dimensions of the new policy object
 + `traj_info`: This object contains the dynamics
@@ -24,7 +49,7 @@ Fm = traj_info.dynamics.Fm
 fv = traj_info.dynamics.fv
 ```
 
-We use slice syntax so that `Qm[index_x, index_u]` means ${\bold Q}_{{\bold x}_t,{\bold u}_t}$ etc.
+We use slice syntax so that `Qm[index_x, index_u]` means ${\bold Q}_{{\bold x},{\bold u}}$ etc.
 
 ```python
 index_x = slice(dimX)
@@ -66,14 +91,14 @@ Qm = 0.5 * (Qm + Qm.T)
 
 ${\bold Q}_t$ is a symmetric matrix, but numerical errors lead to `Qm` being not quite symmetric. To counter these numerical errors we symmetrize `Qm`.
 
-Instead of directly computing ${\bold Q}_{{\bold u}_t,{\bold u}_t}^{-1}$ we use Cholesky decomposition:
+Instead of directly computing ${\bold Q}_{t,{\bold u},{\bold u}}^{-1}$ we use Cholesky decomposition:
 
 ```python
 U = sp.linalg.cholesky(Qm[index_u, index_u])
 L = U.T
 ```
 
-We calculate ${\bold K}_t = -{\bold Q}_{{\bold u}_t,{\bold u}_t}^{-1}{\bold Q}_{{\bold u}_t,{\bold x}_t}$ and ${\bold k}_t = -{\bold Q}_{{\bold u}_t,{\bold u}_t}^{-1}{\bold q}_{{\bold u}_t}$ and store them in the new `traj_distr` object:
+We calculate ${\bold K}_t = -{\bold Q}_{t,{\bold u},{\bold u}}^{-1}{\bold Q}_{t,{\bold u},{\bold x}}$ and ${\bold k}_t = -{\bold Q}_{t,{\bold u},{\bold u}}^{-1}{\bold q}_{t,{\bold u}}$ and store them in the new `traj_distr` object:
 
 ```python
 traj_distr.K[t, :, :] = - sp.linalg.solve_triangular(
@@ -84,7 +109,7 @@ traj_distr.k[t, :] = - sp.linalg.solve_triangular(
 )
 ```
 
-We store the covariance ${\bold \Sigma} = {\bold Q}_{{\bold u}_t,{\bold u}_t}^{-1}$ and also its Cholesky decomposition and its inverse ${\bold \Sigma}^{-1} = {\bold Q}_{{\bold u}_t,{\bold u}_t}$ in the `traj_distr` object:
+We store the covariance ${\bold \Sigma} = {\bold Q}_{t,{\bold u},{\bold u}}^{-1}$ and also its Cholesky decomposition and its inverse ${\bold \Sigma}^{-1} = {\bold Q}_{t,{\bold u},{\bold u}}$ in the `traj_distr` object:
 
 ```python
 traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
@@ -98,8 +123,8 @@ traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
 
 We calculate the quadratic and the linear coefficients of the Value-function, which are used in the next iteration:
 
-$$ {\bold V}_t = {\bold Q}_{{\bold x}_t,{\bold x}_t} + {\bold Q}_{{\bold x}_t,{\bold u}_t}{\bold K}_t $$
-$$ {\bold v}_t = {\bold q}_{{\bold x}_t} + {\bold Q}_{{\bold x}_t,{\bold u}_t}{\bold k}_t $$
+$$ {\bold V}_t = {\bold Q}_{t,{\bold x},{\bold x}} + {\bold Q}_{t,{\bold x},{\bold u}}{\bold K}_t $$
+$$ {\bold v}_t = {\bold q}_{t,{\bold x}} + {\bold Q}_{t,{\bold x},{\bold u}}{\bold k}_t $$
 
 ```python
 Vm[t, :, :] = Qm[index_x, index_x] + \

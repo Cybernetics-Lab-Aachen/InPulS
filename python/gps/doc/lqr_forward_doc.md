@@ -1,3 +1,21 @@
+LQR Forward pass
+================
+
+Notation
+--------
+
+In this part we consider a normal distribution over ${\bold x}$ and ${\bold u}$:
+
+$$ \begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}\ \sim\ {\mathscr N}({\bold \mu}, {\bold \Sigma}) $$
+
+where
+
+$$ {\bold \mu}=\begin{pmatrix}{\bold \mu}_{\bold x}\\{\bold \mu}_{\bold u}\end{pmatrix} $$
+$$ {\bold \Sigma}=\begin{pmatrix}{\bold \Sigma}_{{\bold x},{\bold x}}&{\bold \Sigma}_{{\bold x},{\bold u}}\\{\bold \Sigma}_{{\bold u},{\bold x}}&{\bold \Sigma}_{{\bold u},{\bold u}}\end{pmatrix} $$
+
+Code
+----
+
 The forward recursion function takes as arguments
 + `traj_distr`: The policy object containing the linear gaussian policy
 + `traj_info`: This object contains the dynamics
@@ -14,7 +32,7 @@ dimU = traj_distr.dU
 dimX = traj_distr.dX
 ```
 
-We use slice syntax so that `sigma[index_x, index_u]` means ${\bold \Sigma}_{{\bold x}_t,{\bold u}_t}$ etc.
+We use slice syntax so that `sigma[index_x, index_u]` means ${\bold \Sigma}_{{\bold x},{\bold u}}$ etc.
 
 ```python
 index_x = slice(dimX)
@@ -33,10 +51,10 @@ sigma[0, index_x, index_x] = traj_info.x0sigma
 
 We iterate over $t$ and compute:
 
-$$ {\bold \mu}_{{\bold u}_t} = {\bold K}_t{\bold \mu}_{{\bold x}_t}+{\bold k}_t $$
-$$ {\bold \Sigma}_{{\bold x}_t{\bold u}_t} = {\bold \Sigma}_{{\bold x}_t{\bold x}_t}{\bold K}_t^T $$
-$$ {\bold \Sigma}_{{\bold u}_t{\bold x}_t} = {\bold K}_t{\bold \Sigma}_{{\bold x}_t{\bold x}_t} $$
-$$ {\bold \Sigma}_{{\bold u}_t{\bold u}_t} = {\bold K}_t{\bold \Sigma}_{{\bold x}_t{\bold x}_t}{\bold K}_t^T+{\bold \Sigma_{pol,t}}$$
+$$ {\bold \mu}_{t,{\bold u}} = {\bold K}_t{\bold \mu}_{t,{\bold x}}+{\bold k}_t $$
+$$ {\bold \Sigma}_{t,{\bold x},{\bold u}} = {\bold \Sigma}_{t,{\bold x},{\bold x}}{\bold K}_t^T $$
+$$ {\bold \Sigma}_{t,{\bold u},{\bold x}} = {\bold K}_t{\bold \Sigma}_{t,{\bold x},{\bold x}} $$
+$$ {\bold \Sigma}_{t,{\bold u}{\bold u}} = {\bold K}_t{\bold \Sigma}_{t,{\bold x},{\bold x}}{\bold K}_t^T+{\bold \Sigma_{pol,t}}$$
 
 ```python
 for t in range(T):
@@ -57,8 +75,8 @@ for t in range(T):
 
 for $t<T$ we compute:
 
-$$ {\bold \mu}_{{\bold x}_{t+1}}={\bold F}_t{\bold \mu}_t+{\bold f}_t $$
-$$ {\bold \Sigma}_{{\bold x}_{t+1}{\bold x}_{t+1}}={\bold F}_t{\bold \Sigma}_t{\bold F}_t^T+{\bold \Sigma}_{dyn} $$
+$$ {\bold \mu}_{t+1,{\bold x}}={\bold F}_t{\bold \mu}_t+{\bold f}_t $$
+$$ {\bold \Sigma}_{t+1,{\bold x},{\bold x}}={\bold F}_t{\bold \Sigma}_t{\bold F}_t^T+{\bold \Sigma}_{dyn} $$
 
 ```python
 if t < T - 1:
