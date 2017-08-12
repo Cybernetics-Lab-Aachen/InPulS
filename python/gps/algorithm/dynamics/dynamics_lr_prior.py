@@ -38,7 +38,7 @@ class DynamicsLRPrior(Dynamics):
 
         # Weights used in computing sample mean and sample covariance.
         dwts = (1.0 / N) * np.ones(N)
-        D = np.diag(dwts)
+        D = np.diag((1.0 / (N - 1)) * np.ones(N))
 
         # Allocate 
         self.Fm = np.zeros([T, dimX, dimX + dimU])
@@ -60,7 +60,7 @@ class DynamicsLRPrior(Dynamics):
 
             # Compute posterior estimates of mean and covariance.
             mu = empmu
-            sigma = (Phi + N * empsig + (N * mm) / (N + mm) *
+            sigma = (Phi + (N - 1) * empsig + (N * mm) / (N + mm) *
                      np.outer(empmu - mu0, empmu - mu0)) / (N + n0)
             # Symmetrize sigma to counter numerical errors.
             sigma = 0.5 * (sigma + sigma.T)

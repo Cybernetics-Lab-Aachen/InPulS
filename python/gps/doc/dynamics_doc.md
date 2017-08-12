@@ -11,6 +11,7 @@ $$ {\bold y}=\begin{pmatrix}{\bold x}\\{\bold u}\\{\bold x}'\end{pmatrix} $$
 where ${\bold x}'$ is the state that results from taking the action ${\bold u}$ in state ${\bold x}$. We divide the parameters of the normal distribution ${\bold y}\ \sim\ {\mathscr N}({\bold \mu}, {\bold \Sigma})$ as follows:
 
 $$ {\bold \mu}=\begin{pmatrix}{\bold \mu}_{{\bold x}{\bold u}}\\{\bold \mu}_{{\bold x}'}\end{pmatrix} $$
+$$ $$
 $$ {\bold \Sigma}=\begin{pmatrix}{\bold \Sigma}_{{\bold x}{\bold u},{\bold x}{\bold u}}&{\bold \Sigma}_{{\bold x}{\bold u},{\bold x}'}\\{\bold \Sigma}_{{\bold x}',{\bold x}{\bold u}}&{\bold \Sigma}_{{\bold x}',{\bold x}'}\end{pmatrix} $$
 
 Code
@@ -27,7 +28,7 @@ def fit(self, X, U):
 We get the number of samples, the number of timesteps and the dimensions of the states and the actions from the policy object:
 
 ```python
-N, T, dimX = X.shape                                                                          
+N, T, dimX = X.shape
 dimU = U.shape[2]
 ```
 
@@ -49,7 +50,7 @@ We compute the weight vector and matrix, used to compute sample mean and sample 
 
 ```python
 dwts = (1.0 / N) * np.ones(N)
-D = np.diag(dwts)
+D = np.diag((1.0 / (N - 1)) * np.ones(N))
 ```
 
 We allocate space for ${\bold F}$, ${\bold f}$ and ${\bold \Sigma}_{dyn}$:
@@ -97,7 +98,7 @@ $$ {\bold \Sigma}_t=\frac{{\bold \Phi}+(N-1){\bold \Sigma}_{emp,t}+\frac{Nm}{N+m
 
 ```python
 mu = empmu 
-sigma = (Phi + N * empsig + (N * mm) / (N + mm) *
+sigma = (Phi + (N - 1) * empsig + (N * mm) / (N + mm) *
     np.outer(empmu - mu0, empmu - mu0)) / (N + n0) 
 sigma = 0.5 * (sigma + sigma.T)
 sigma += sig_reg

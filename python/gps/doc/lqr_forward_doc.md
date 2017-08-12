@@ -11,6 +11,7 @@ $$ \begin{pmatrix}{\bold x}\\{\bold u}\end{pmatrix}\ \sim\ {\mathscr N}({\bold \
 where
 
 $$ {\bold \mu}=\begin{pmatrix}{\bold \mu}_{\bold x}\\{\bold \mu}_{\bold u}\end{pmatrix} $$
+$$ $$
 $$ {\bold \Sigma}=\begin{pmatrix}{\bold \Sigma}_{{\bold x},{\bold x}}&{\bold \Sigma}_{{\bold x},{\bold u}}\\{\bold \Sigma}_{{\bold u},{\bold x}}&{\bold \Sigma}_{{\bold u},{\bold u}}\end{pmatrix} $$
 
 Code
