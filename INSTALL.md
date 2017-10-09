@@ -1,8 +1,8 @@
-### Installation
+# Installation
 
 ## Dependencies
 
-The following are required
+The following are required:
 
 * python 2.7
 * numpy (>=1.7.0)
@@ -12,7 +12,7 @@ The following are required
 
 ## Setup
 
-1. Check that the dependencies above are installed
+1. Check that the dependencies above are installed.
 
 1. Install boost and protobuf:
    ```bash
@@ -34,7 +34,7 @@ The following are required
    ```bash
    source /path/to/gps/devel/setup.bash
    ```
-   Re-login to your shell or run `source ~/.bashrc`
+   Run `source ~/.bashrc` or re-login to your shell.
 
 1. Compile the package:
    ```bash
