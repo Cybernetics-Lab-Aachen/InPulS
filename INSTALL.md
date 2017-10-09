@@ -1,6 +1,6 @@
-###Installation###
+### Installation
 
-##Dependencies##
+## Dependencies
 
 The following are required
 
@@ -10,39 +10,33 @@ The following are required
 * scipy (>=0.11.0)
 * ROS (kinetic)
 
-##Setup##
+## Setup
 
 1. Check that the dependencies above are installed
 
-2. Install boost and protobuf:
-
+1. Install boost and protobuf:
    ```bash
    sudo apt-get install libboost-all libprotobuf-dev protobuf-compiler python-protobuf
    ```
 
-3. Clone the repo:
-
+1. Clone the repo:
    ```bash
    git clone git@git.zlw-ima.rwth-aachen.de:dissertation_ennen/gps.git
    cd gps
    ```
 
-4. Compile protobuf:
-
+1. Compile protobuf:
    ```bash
    ./compile_proto.sh
    ```
 
-5. Add to your `~/.bashrc`:
-
+1. Add to your `~/.bashrc`:
    ```bash
    source /path/to/gps/devel/setup.bash
    ```
-
    Re-login to your shell or run `source ~/.bashrc`
 
-6. Compile the package:
-
+1. Compile the package:
    ```bash
    catkin_make
    ```
