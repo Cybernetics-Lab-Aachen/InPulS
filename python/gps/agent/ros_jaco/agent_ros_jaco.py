@@ -150,9 +150,8 @@ class AgentROSJACO(Agent):
         Returns:
             sample: A Sample object.
         """
-        if TfPolicy is not None:  # user has tf installed.
-            if use_TfController:
-                self._init_tf(policy, policy.dU)
+        if use_TfController:
+            self._init_tf(policy, policy.dU)
 
         self.reset(condition)
         # Generate noise.
@@ -194,7 +193,7 @@ class AgentROSJACO(Agent):
                 tf_policy_to_action_msg(self.dU,
                                         self._get_new_action(self.stf_policy,
                                                              obs,
-                                                             current_action_id),
+                                                             self.current_action_id),
                                         self.current_action_id + 1)
         self._tf_publish(action_msg)
         self.current_action_id += 1
