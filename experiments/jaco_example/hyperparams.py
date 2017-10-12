@@ -173,7 +173,7 @@ config = {
     'iterations': algorithm['iterations'],
     'common': common,
     'verbose_trials': 10,
-    #'verbose_policy_trials': 2,
+    'verbose_policy_trials': 1,
     'min_iteration_for_testing' : 15,
     'agent': agent,
     'gui_on': True,

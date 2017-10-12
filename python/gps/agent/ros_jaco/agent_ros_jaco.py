@@ -19,7 +19,6 @@ except ImportError:  # user does not have tf installed.
     TfPolicy = None
 
 
-
 class AgentROSJACO(Agent):
     """
     All communication between the algorithms and ROS is done through
@@ -51,6 +50,8 @@ class AgentROSJACO(Agent):
         r = rospy.Rate(1)
         r.sleep()
 
+        self.stf_policy = None
+        self.init_tf = False
         self.use_tf = False
         self.observations_stale = True
 
@@ -135,7 +136,8 @@ class AgentROSJACO(Agent):
                        condition_data[TRIAL_ARM]['data'])
         time.sleep(2.0)  # useful for the real robot, so it stops completely
 
-    def sample(self, policy, condition, verbose=True, save=True, noisy=True):
+    def sample(self, policy, condition, verbose=True, save=True, noisy=True,
+               use_TfController=False):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -144,12 +146,13 @@ class AgentROSJACO(Agent):
             verbose: Unused for this agent.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
+            use_TfController: Whether to use the syncronous TfController
         Returns:
             sample: A Sample object.
         """
         if TfPolicy is not None:  # user has tf installed.
-            if isinstance(policy, TfPolicy):
-                self._init_tf(policy.dU)
+            if use_TfController:
+                self._init_tf(policy, policy.dU)
 
         self.reset(condition)
         # Generate noise.
@@ -158,10 +161,11 @@ class AgentROSJACO(Agent):
         else:
             noise = np.zeros((self.T, self.dU))
 
-        # Execute trial.
+        # Fill in trial command
         trial_command = TrialCommand()
         trial_command.id = self._get_next_seq_id()
-        trial_command.controller = policy_to_msg(policy, noise)
+        trial_command.controller = \
+                policy_to_msg(policy, noise, use_TfController=use_TfController)
         trial_command.T = self.T
         trial_command.id = self._get_next_seq_id()
         trial_command.frequency = self._hyperparams['frequency']
@@ -172,68 +176,40 @@ class AgentROSJACO(Agent):
         trial_command.state_datatypes = self._hyperparams['state_include']
         trial_command.obs_datatypes = self._hyperparams['state_include']
 
-        if self.use_tf is False:
-            sample_msg = self._trial_service.publish_and_wait(
-                trial_command, timeout=self._hyperparams['trial_timeout']
-            )
-            sample = msg_to_sample(sample_msg, self)
-            if save:
-                self._samples[condition].append(sample)
-            return sample
-        else:
-            self._trial_service.publish(trial_command)
-            sample_msg = self.run_trial_tf(policy, time_to_run=self._hyperparams['trial_timeout'])
-            sample = msg_to_sample(sample_msg, self)
-            if save:
-                self._samples[condition].append(sample)
-            return sample
+        # Execute trial.
+        sample_msg = self._trial_service.publish_and_wait(
+            trial_command, timeout=self._hyperparams['trial_timeout']
+        )
+        sample = msg_to_sample(sample_msg, self)
+        if save:
+            self._samples[condition].append(sample)
+        return sample
 
-    def run_trial_tf(self, policy, time_to_run=5):
-        """ Run an async controller from a policy. The async controller receives observations from ROS subscribers
-         and then uses them to publish actions."""
-        should_stop = False
-        consecutive_failures = 0
-        start_time = time.time()
-        while should_stop is False:
-            if self.observations_stale is False:
-                consecutive_failures = 0
-                last_obs = tf_obs_msg_to_numpy(self._tf_subscriber_msg)
-                action_msg = tf_policy_to_action_msg(self.dU,
-                                                     self._get_new_action(policy, last_obs),
-                                                     self.current_action_id)
-                self._tf_publish(action_msg)
-                self.observations_stale = True
-                self.current_action_id += 1
-            else:
-                rospy.sleep(0.01)
-                consecutive_failures += 1
-                if time.time() - start_time > time_to_run and consecutive_failures > 5:
-                    # we only stop when we have run for the trial time and are no longer receiving obs.
-                    should_stop = True
-        rospy.sleep(0.25)  # wait for finished trial to come in.
-        result = self._trial_service._subscriber_msg
-        return result  # the trial has completed. Here is its message.
-
-    def _get_new_action(self, policy, obs):
-        return policy.act(None, obs, None, None)
+    def _get_new_action(self, policy, obs, t=None):
+        return policy.act(obs, obs, t, None)
 
     def _tf_callback(self, message):
-        self._tf_subscriber_msg = message
-        self.observations_stale = False
+        obs = tf_obs_msg_to_numpy(message)
+        action_msg = \
+                tf_policy_to_action_msg(self.dU,
+                                        self._get_new_action(self.stf_policy,
+                                                             obs,
+                                                             current_action_id),
+                                        self.current_action_id + 1)
+        self._tf_publish(action_msg)
+        self.current_action_id += 1
 
     def _tf_publish(self, pub_msg):
         """ Publish a message without waiting for response. """
         self._pub.publish(pub_msg)
 
-    def _init_tf(self, dU):
-        self._tf_subscriber_msg = None
-        self.observations_stale = True
-        self.current_action_id = 1
-        self.dU = dU
-        if self.use_tf is False:  # init pub and sub if this init has not been called before.
+    def _init_tf(self, policy, dU):
+        if self.init_tf is False:  # init pub and sub if this init has not been called before.
             self._pub = rospy.Publisher('/gps_controller_sent_robot_action_tf', TfActionCommand)
             self._sub = rospy.Subscriber('/gps_obs_tf', TfObsData, self._tf_callback)
             r = rospy.Rate(0.5)  # wait for publisher/subscriber to kick on.
             r.sleep()
-        self.use_tf = True
-        self.observations_stale = True
+            self.init_tf = True
+        self.stf_policy = policy
+        self.dU = dU
+        self.current_action_id = 0
