@@ -5,38 +5,48 @@
 The following are required:
 
 * python 2.7
-* numpy (>=1.7.0)
-* matplotlib (>=1.5.0)
-* scipy (>=0.11.0)
+* python-numpy (>=1.7.0)
+* python-matplotlib (>=1.5.0)
+* python-scipy (>=0.11.0)
+* python-qt4
 * ROS (kinetic)
 
 ## Setup
 
 1. Check that the dependencies above are installed.
 
-1. Install boost and protobuf:
+2. Install boost and protobuf:
    ```bash
-   sudo apt-get install libboost-all libprotobuf-dev protobuf-compiler python-protobuf
+   sudo apt-get install libboost-all-dev libprotobuf-dev protobuf-compiler python-protobuf
    ```
 
-1. Clone the repo:
+3. Clone the repo:
    ```bash
    git clone git@git.zlw-ima.rwth-aachen.de:dissertation_ennen/gps.git
    cd gps
    ```
 
-1. Compile protobuf:
+4. Compile protobuf:
    ```bash
    ./compile_proto.sh
    ```
+5. Initialize the workspace and build the package:
+   ```bash
+   catkin_make
+   ```
+   The build will likely fail because of missing ROS packages, but that is ok for now.
 
-1. Add to your `~/.bashrc`:
+6. Add to your `~/.bashrc`:
    ```bash
    source /path/to/gps/devel/setup.bash
    ```
    Run `source ~/.bashrc` or re-login to your shell.
 
-1. Compile the package:
+7. If the build failed in step 5, install missing dependencies:
+   ```bash
+   rosdep install gps_agent_pkg
+   ```
+   and build the package again:
    ```bash
    catkin_make
    ```
