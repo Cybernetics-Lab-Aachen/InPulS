@@ -179,6 +179,7 @@ class AgentROSJACO(Agent):
             self.use_tf = True
             self.cur_timestep = 0
             self.sample_save = save
+            self.active = True
 
         self.reset(condition)
         # Generate noise.
@@ -214,6 +215,7 @@ class AgentROSJACO(Agent):
         #sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
         if save:
             self._samples[condition].append(sample)
+        self.active = False
         return sample
 
     def add_rgb_stream_to_sample(self, sample_msg):

@@ -1,6 +1,7 @@
 """ This file defines the base agent class. """
 import abc
 import copy
+import time
 
 from gps.agent.config import AGENT
 from gps.proto.gps_pb2 import ACTION
@@ -18,6 +19,9 @@ class Agent(object):
         config = copy.deepcopy(AGENT)
         config.update(hyperparams)
         self._hyperparams = config
+
+        #
+        self.active = False
 
         # Store samples, along with size/index information for samples.
         self._samples = [[] for _ in range(self._hyperparams['conditions'])]
@@ -61,6 +65,9 @@ class Agent(object):
                                                    self._obs_idx)}
         self._meta_data_idx = {d: i for d, i in zip(self.meta_data_types,
                                                    self._meta_idx)}
+
+    def is_active(self):
+        return self.active
 
     @abc.abstractmethod
     def sample(self, policy, condition, verbose=True, save=True, noisy=True):

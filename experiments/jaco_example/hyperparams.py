@@ -75,11 +75,11 @@ for i in xrange(common['conditions']):
     x_tgt[6:12] = jv_tgt
 
     ja_x0 = ja_x0_[:6]
-    x0 = np.zeros(30)
+    x0 = np.zeros(12)
     x0[:6] = ja_x0
-    x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
-        get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
-    )
+    #x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
+    #    get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
+    #)
 
     ee_tgt = np.ndarray.flatten(
         get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
@@ -110,8 +110,7 @@ agent = {
     'exp_x_tgts': x_tgts,
     'reset_conditions': reset_conditions,
     'sensor_dims': SENSOR_DIMS,
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS,
-                      END_EFFECTOR_POINT_VELOCITIES],
+    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES],
     'end_effector_points': EE_POINTS,
     'obs_include': [],
     'rgb_topic': '/usb_cam/image_raw',
