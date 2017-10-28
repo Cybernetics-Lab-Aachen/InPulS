@@ -230,12 +230,12 @@ class AgentROSJACO(Agent):
         return sample_msg
 
     def _get_new_action(self, policy, obs, t=None):
-        if self.vision_enabled:
-            self.rgb_image_seq[t, :, :, :] = self.rgb_image
         return policy.act(obs, obs, t, self.noise)
 
     def _tf_callback(self, message):
         obs = tf_obs_msg_to_numpy(message)
+        if self.vision_enabled:
+            self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
         action_msg = \
                 tf_policy_to_action_msg(self.dU,
                                         self._get_new_action(self.stf_policy,

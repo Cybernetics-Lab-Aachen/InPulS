@@ -31,6 +31,7 @@ class Sample(object):
 
     def set(self, sensor_name, sensor_data, t=None):
         """ Set trajectory data for a particular sensor. """
+        #print("sensor name: ", sensor_name)
         if t is None:
             self._data[sensor_name] = sensor_data
             self._X.fill(np.nan)  # Invalidate existing X.
@@ -47,6 +48,8 @@ class Sample(object):
 
     def get(self, sensor_name, t=None):
         """ Get trajectory data for a particular sensor. """
+        #print("Access to get::Sample")
+        #print("dict with data types: ", self._data)
         return (self._data[sensor_name] if t is None
                 else self._data[sensor_name][t, :])
 
@@ -60,7 +63,13 @@ class Sample(object):
                 data = (self._data[data_type] if t is None
                         else self._data[data_type][t, :])
                 self.agent.pack_data_x(X, data, data_types=[data_type])
+        #print("shape X: ", X.shape)                     #shape: dTxdX = (100,32)
+        #print("Access to get_X::sample")
+        #print("X_100: ", X[99,:])
         return X
+
+    def update_X(self, data, t=None):
+        self._X = data if t is None else self._X[t,:]
 
     def get_U(self, t=None):
         """ Get the action. """
