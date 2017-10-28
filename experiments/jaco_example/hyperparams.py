@@ -20,17 +20,22 @@ from gps.algorithm.policy.lin_gauss_init import init_lqr
 from gps.gui.target_setup_gui import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES, ACTION, \
-        TRIAL_ARM, AUXILIARY_ARM, JOINT_SPACE
+        TRIAL_ARM, AUXILIARY_ARM, JOINT_SPACE, RGB_IMAGE, RGB_IMAGE_SIZE
 from gps.utility.general_utils import get_ee_points
 
 
 EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
+
+IMAGE_WIDTH = 320
+IMAGE_HEIGHT = 240
+IMAGE_CHANNELS = 3
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 6,
     JOINT_VELOCITIES: 6,
     END_EFFECTOR_POINTS: 3 * EE_POINTS.shape[0],
     END_EFFECTOR_POINT_VELOCITIES: 3 * EE_POINTS.shape[0],
+    RGB_IMAGE: IMAGE_WIDTH * IMAGE_HEIGHT * IMAGE_CHANNELS,
     ACTION: 6,
 }
 
@@ -53,6 +58,7 @@ common = {
 
 # Set up each condition.
 x0s = []
+x_tgts = []
 ee_tgts = []
 reset_conditions = []
 for i in xrange(common['conditions']):
@@ -60,9 +66,14 @@ for i in xrange(common['conditions']):
     ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
         common['target_filename'], 'trial_arm', str(i), 'initial'
     )
-    _, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
+    ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
         common['target_filename'], 'trial_arm', str(i), 'target'
     )
+    x_tgt = np.zeros(12)
+    jv_tgt = np.zeros(6)
+    x_tgt[:6] = ja_tgt
+    x_tgt[6:12] = jv_tgt
+
     ja_x0 = ja_x0_[:6]
     x0 = np.zeros(30)
     x0[:6] = ja_x0
@@ -81,6 +92,7 @@ for i in xrange(common['conditions']):
         },
     }
 
+    x_tgts.append(x_tgt)
     x0s.append(x0)
     ee_tgts.append(ee_tgt)
     reset_conditions.append(reset_condition)
@@ -95,12 +107,15 @@ agent = {
     'T': 80,
     'x0': x0s,
     'ee_points_tgt': ee_tgts,
+    'exp_x_tgts': x_tgts,
     'reset_conditions': reset_conditions,
     'sensor_dims': SENSOR_DIMS,
     'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS,
                       END_EFFECTOR_POINT_VELOCITIES],
     'end_effector_points': EE_POINTS,
     'obs_include': [],
+    'rgb_topic': '/usb_cam/image_raw',
+    'rgb_shape': [IMAGE_WIDTH,IMAGE_HEIGHT,IMAGE_CHANNELS],
 }
 
 algorithm = {

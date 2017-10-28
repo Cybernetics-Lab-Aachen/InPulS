@@ -40,7 +40,7 @@ class LinearGaussianPolicy(Policy):
         """
         u = self.K[t].dot(x) + self.k[t]
         if noise is not None:
-            u += self.chol_pol_covar[t].T.dot(noise)
+            u += self.chol_pol_covar[t].T.dot(noise[t])
         return u
 
     def fold_k(self, noise):

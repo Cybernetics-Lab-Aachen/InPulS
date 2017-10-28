@@ -4,7 +4,11 @@ import time
 import numpy as np
 
 import rospy
+import cv2
 
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+from threading import Timer
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
@@ -12,9 +16,13 @@ from gps.agent.ros_jaco.ros_utils import ServiceEmulator, msg_to_sample, \
         policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 from gps_agent_pkg.msg import TrialCommand, SampleResult, PositionCommand, \
-        RelaxCommand, DataRequest, TfActionCommand, TfObsData
+        RelaxCommand, DataRequest, TfActionCommand, TfObsData, DataType
+from gps.utility.perpetual_timer import PerpetualTimer
+
 try:
     from gps.algorithm.policy.tf_policy import TfPolicy
+    from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
+    from gps.proto.gps_pb2 import RGB_IMAGE
 except ImportError:  # user does not have tf installed.
     TfPolicy = None
 
@@ -46,6 +54,9 @@ class AgentROSJACO(Agent):
             self._hyperparams[field] = setup(self._hyperparams[field],
                                              conditions)
         self.x0 = self._hyperparams['x0']
+        self.x_tgt = self._hyperparams['exp_x_tgts']
+        self.target_state = np.zeros(self.dX)
+        self.dt = self._hyperparams['dt']
 
         r = rospy.Rate(1)
         r.sleep()
@@ -54,6 +65,19 @@ class AgentROSJACO(Agent):
         self.init_tf = False
         self.use_tf = False
         self.observations_stale = True
+        self.noise = None
+        self.cur_timestep = None
+        self.vision_enabled = False
+        img_width = self._hyperparams['rgb_shape'][0]
+        img_height = self._hyperparams['rgb_shape'][1]
+        img_channel = self._hyperparams['rgb_shape'][2]
+        self.rgb_image = np.empty([img_height, img_width, img_channel])
+        self.rgb_image_seq = np.empty([self.T, img_height, img_width, img_channel], dtype=np.uint8)
+
+        self.sample_processing = False
+        self.sample_save = False
+
+        self._cv_bridge = CvBridge()
 
     def _init_pubs_and_subs(self):
         self._trial_service = ServiceEmulator(
@@ -137,7 +161,7 @@ class AgentROSJACO(Agent):
         time.sleep(2.0)  # useful for the real robot, so it stops completely
 
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False):
+               use_TfController=False, first_itr=False):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -152,13 +176,18 @@ class AgentROSJACO(Agent):
         """
         if use_TfController:
             self._init_tf(policy, policy.dU)
+            self.use_tf = True
+            self.cur_timestep = 0
+            self.sample_save = save
 
         self.reset(condition)
         # Generate noise.
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
+            self.noise = noise
         else:
             noise = np.zeros((self.T, self.dU))
+            self.noise = noise
 
         # Fill in trial command
         trial_command = TrialCommand()
@@ -179,13 +208,31 @@ class AgentROSJACO(Agent):
         sample_msg = self._trial_service.publish_and_wait(
             trial_command, timeout=self._hyperparams['trial_timeout']
         )
+        if self.vision_enabled:
+            self.add_rgb_stream_to_sample(sample_msg)
         sample = msg_to_sample(sample_msg, self)
+        #sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
         if save:
             self._samples[condition].append(sample)
         return sample
 
+    def add_rgb_stream_to_sample(self, sample_msg):
+        img_data = DataType()
+        img_data.data_type = 11
+        img_data.shape = self.rgb_image_seq.shape
+        #print("img_data: ", img_data.shape)
+        #print("rgb_seq0: ", self.rgb_image_seq[0,:,:,:].shape)
+        #cv2.imshow('dst_rt', self.rgb_image_seq[0,:,:,:])
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        img_data.data = np.array(self.rgb_image_seq).reshape(-1)
+        sample_msg.sensor_data.append(img_data)
+        return sample_msg
+
     def _get_new_action(self, policy, obs, t=None):
-        return policy.act(obs, obs, t, None)
+        if self.vision_enabled:
+            self.rgb_image_seq[t, :, :, :] = self.rgb_image
+        return policy.act(obs, obs, t, self.noise)
 
     def _tf_callback(self, message):
         obs = tf_obs_msg_to_numpy(message)
@@ -198,6 +245,10 @@ class AgentROSJACO(Agent):
         self._tf_publish(action_msg)
         self.current_action_id += 1
 
+    def _cv_callback(self, image_msg):
+        self.vision_enabled = True
+        self.rgb_image = self._cv_bridge.imgmsg_to_cv2(image_msg, "bgr8")
+
     def _tf_publish(self, pub_msg):
         """ Publish a message without waiting for response. """
         self._pub.publish(pub_msg)
@@ -206,6 +257,7 @@ class AgentROSJACO(Agent):
         if self.init_tf is False:  # init pub and sub if this init has not been called before.
             self._pub = rospy.Publisher('/gps_controller_sent_robot_action_tf', TfActionCommand)
             self._sub = rospy.Subscriber('/gps_obs_tf', TfObsData, self._tf_callback)
+            self._sub = rospy.Subscriber(self._hyperparams['rgb_topic'], Image, self._cv_callback)
             r = rospy.Rate(0.5)  # wait for publisher/subscriber to kick on.
             r.sleep()
             self.init_tf = True
