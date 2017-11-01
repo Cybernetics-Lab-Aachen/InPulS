@@ -21,6 +21,7 @@ from gps.utility.perpetual_timer import PerpetualTimer
 
 try:
     from gps.algorithm.policy.tf_policy import TfPolicy
+    from gps.algorithm.agmp.agmp_controller import AGMP_Controller
     from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
     from gps.proto.gps_pb2 import RGB_IMAGE
 except ImportError:  # user does not have tf installed.
@@ -238,6 +239,7 @@ class AgentROSJACO(Agent):
         obs = tf_obs_msg_to_numpy(message)
         if self.vision_enabled:
             self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
+            self.stf_policy.update_task_context(obs, self.rgb_image)
         action_msg = \
                 tf_policy_to_action_msg(self.dU,
                                         self._get_new_action(self.stf_policy,
@@ -247,9 +249,11 @@ class AgentROSJACO(Agent):
         self._tf_publish(action_msg)
         self.current_action_id += 1
 
+
     def _cv_callback(self, image_msg):
-        self.vision_enabled = True
         self.rgb_image = self._cv_bridge.imgmsg_to_cv2(image_msg, "bgr8")
+        self.vision_enabled = True
+
 
     def _tf_publish(self, pub_msg):
         """ Publish a message without waiting for response. """
@@ -266,3 +270,7 @@ class AgentROSJACO(Agent):
         self.stf_policy = policy
         self.dU = dU
         self.current_action_id = 0
+        if isinstance(policy, AGMP_Controller):
+            #wait for first obs and x to set agmpcontroller context
+            pass
+
