@@ -16,6 +16,7 @@ src/gps_agent_pkg/catkin*
 src/gps_agent_pkg/devel*
 devel/
 .catkin_workspace
+src/CMakeLists.txt
 
 #ROS
 build/
