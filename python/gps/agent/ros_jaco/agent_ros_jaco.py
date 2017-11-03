@@ -270,7 +270,7 @@ class AgentROSJACO(Agent):
         self.stf_policy = policy
         self.dU = dU
         self.current_action_id = 0
-        if isinstance(policy, AGMP_Controller):
+        #if isinstance(policy, AGMP_Controller):
             #wait for first obs and x to set agmpcontroller context
-            pass
+        #    pass
 
