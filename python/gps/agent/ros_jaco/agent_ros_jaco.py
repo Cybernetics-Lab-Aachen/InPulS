@@ -22,6 +22,7 @@ from gps.utility.perpetual_timer import PerpetualTimer
 try:
     from gps.algorithm.policy.tf_policy import TfPolicy
     from gps.algorithm.agmp.agmp_controller import AGMP_Controller
+    from gps.algorithm.gcm.gcm_controller import GCMController
     from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
     from gps.proto.gps_pb2 import RGB_IMAGE
 except ImportError:  # user does not have tf installed.
