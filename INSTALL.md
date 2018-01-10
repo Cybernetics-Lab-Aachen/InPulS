@@ -10,7 +10,7 @@ The following are required:
 * python-scipy (>=0.11.0)
 * python-qt4
 * ROS (kinetic)
-
+* ros-kinetic-gazebo-ros-control and other packages
 ## Setup
 
 1. Check that the dependencies above are installed.
