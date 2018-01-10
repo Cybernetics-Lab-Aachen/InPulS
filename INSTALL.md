@@ -11,6 +11,7 @@ The following are required:
 * python-qt4
 * ROS (kinetic)
 * ros-kinetic-gazebo-ros-control and other packages
+
 ## Setup
 
 1. Check that the dependencies above are installed.
