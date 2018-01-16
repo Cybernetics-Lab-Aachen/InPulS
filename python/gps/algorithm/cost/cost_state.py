@@ -33,7 +33,6 @@ class CostState(Cost):
         final_lux = np.zeros((T, Du, Dx))
 
         for data_type in self._hyperparams['data_types']:
-            print("data_type: ", data_type)
 
             config = self._hyperparams['data_types'][data_type]
             wp = config['wp']
@@ -79,7 +78,6 @@ class CostState(Cost):
         final_lux = np.zeros((T, Du, Dx))
 
         for data_type in self._hyperparams['data_types']:
-            print("data_type: ", data_type)
 
             config = self._hyperparams['data_types'][data_type]
             wp = config['wp']
