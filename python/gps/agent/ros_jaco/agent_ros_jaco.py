@@ -212,7 +212,7 @@ class AgentROSJACO(Agent):
             trial_command, timeout=self._hyperparams['trial_timeout']
         )
         if self.vision_enabled:
-            self.add_rgb_stream_to_sample(sample_msg)
+            sample_msg = self.add_rgb_stream_to_sample(sample_msg)
         sample = msg_to_sample(sample_msg, self)
         #sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
         if save:
@@ -240,7 +240,7 @@ class AgentROSJACO(Agent):
         obs = tf_obs_msg_to_numpy(message)
         if self.vision_enabled:
             self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
-            self.stf_policy.update_task_context(obs, self.rgb_image)
+            # self.stf_policy.update_task_context(obs, self.rgb_image)
         action_msg = \
                 tf_policy_to_action_msg(self.dU,
                                         self._get_new_action(self.stf_policy,
