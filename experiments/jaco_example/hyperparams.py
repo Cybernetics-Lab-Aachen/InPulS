@@ -126,6 +126,7 @@ algorithm = {
     'iterations': 25,
 }
 
+
 algorithm['init_traj_distr'] = {
     'type': init_lqr,
     'init_gains':  1.0 / PR2_GAINS,
