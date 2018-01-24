@@ -23,8 +23,11 @@ from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         TRIAL_ARM, AUXILIARY_ARM, JOINT_SPACE, RGB_IMAGE, RGB_IMAGE_SIZE
 from gps.utility.general_utils import get_ee_points
 
+#EE points for key in hole
+EE_POINTS = np.array([[0.04, -0.04, -0.135], [0.04, 0.04, -0.135], [-0.04, 0.0, -0.105]])
 
-EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
+#EE points for block in hole
+#EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
 
 IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
@@ -123,6 +126,7 @@ algorithm = {
     'iterations': 25,
 }
 
+
 algorithm['init_traj_distr'] = {
     'type': init_lqr,
     'init_gains':  1.0 / PR2_GAINS,
@@ -161,7 +165,7 @@ fk_cost2 = {
     'l1': 1.0,
     'l2': 15.0,
     'alpha': 1e-6,
-    'wp_final_multiplier': 25.0,
+    'wp_final_multiplier': 15.0,
     'experiment_ID': common['experiment_ID'],
     'dir':common['cost_log_dir'],
 }
