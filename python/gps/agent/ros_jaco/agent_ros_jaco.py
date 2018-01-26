@@ -12,7 +12,7 @@ from threading import Timer
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
-from gps.agent.ros_jaco.ros_utils import ServiceEmulator, msg_to_sample, \
+from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
         policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 from gps_agent_pkg.msg import TrialCommand, SampleResult, PositionCommand, \
@@ -148,7 +148,13 @@ class AgentROSJACO(Agent):
         reset_command.arm = arm
         timeout = self._hyperparams['trial_timeout']
         reset_command.id = self._get_next_seq_id()
-        self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+        try:
+            self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+        except TimeoutException:
+            self.relax_arm(arm)
+            wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
+            self.reset_arm(arm, mode, data)
+
         #TODO: Maybe verify that you reset to the correct position.
 
     def reset(self, condition):
