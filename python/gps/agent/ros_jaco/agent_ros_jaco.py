@@ -168,6 +168,63 @@ class AgentROSJACO(Agent):
                        condition_data[TRIAL_ARM]['data'])
         time.sleep(2.0)  # useful for the real robot, so it stops completely
 
+    def independent_sample(self, policy, condition, verbose=True, save=True, noisy=True,
+               use_TfController=False, first_itr=False):
+        """
+                Reset and execute a policy and collect a sample.
+                Args:
+                    policy: A Policy object.
+                    condition: Which condition setup to run.
+                    verbose: Unused for this agent.
+                    save: Whether or not to store the trial into the samples.
+                    noisy: Whether or not to use noise during sampling.
+                    use_TfController: Whether to use the syncronous TfController
+                Returns:
+                    sample: A Sample object.
+                """
+        if use_TfController:
+            self._init_tf(policy, policy.dU)
+            self.use_tf = True
+            self.cur_timestep = 0
+            self.sample_save = save
+            self.active = True
+
+        # Generate noise.
+        if noisy:
+            noise = generate_noise(self.T, self.dU, self._hyperparams)
+            self.noise = noise
+        else:
+            noise = np.zeros((self.T, self.dU))
+            self.noise = noise
+
+        # Fill in trial command
+        trial_command = TrialCommand()
+        trial_command.id = self._get_next_seq_id()
+        trial_command.controller = \
+            policy_to_msg(policy, noise, use_TfController=use_TfController)
+        trial_command.T = self.T
+        trial_command.id = self._get_next_seq_id()
+        trial_command.frequency = self._hyperparams['frequency']
+        ee_points = self._hyperparams['end_effector_points']
+        trial_command.ee_points = ee_points.reshape(ee_points.size).tolist()
+        trial_command.ee_points_tgt = \
+            self._hyperparams['ee_points_tgt'][condition].tolist()
+        trial_command.state_datatypes = self._hyperparams['state_include']
+        trial_command.obs_datatypes = self._hyperparams['state_include']
+
+        # Execute trial.
+        sample_msg = self._trial_service.publish_and_wait(
+            trial_command, timeout=self._hyperparams['trial_timeout']
+        )
+        if self.vision_enabled:
+            sample_msg = self.add_rgb_stream_to_sample(sample_msg)
+        sample = msg_to_sample(sample_msg, self)
+        # sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
+        if save:
+            self._samples[condition].append(sample)
+        self.active = False
+        return sample
+
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
                use_TfController=False, first_itr=False):
         """
