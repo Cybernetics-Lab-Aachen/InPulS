@@ -53,9 +53,9 @@ common = {
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
     'cost_log_dir': EXP_DIR + 'cost_log/',
-    'target_filename': EXP_DIR + 'target.npz',
+    'target_filename': EXP_DIR + 'target_more_conditions.npz', #change here to target.npz
     'log_filename': EXP_DIR + 'log.txt',
-    'conditions': 1,
+    'conditions': 2,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -64,6 +64,7 @@ x0s = []
 x_tgts = []
 ee_tgts = []
 reset_conditions = []
+print(common['conditions'])
 for i in xrange(common['conditions']):
 
     ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
@@ -72,6 +73,7 @@ for i in xrange(common['conditions']):
     ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
         common['target_filename'], 'trial_arm', str(i), 'target'
     )
+
     x_tgt = np.zeros(12)
     jv_tgt = np.zeros(6)
     x_tgt[:6] = ja_tgt
