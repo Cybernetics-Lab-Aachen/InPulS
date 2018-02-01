@@ -25,6 +25,12 @@ class SampleList(object):
             idx = range(len(self._samples))
         return np.asarray([self._samples[i].get_X() for i in idx])
 
+    def get_EEF_Position(self, idx=None):
+        """ Returns N x T x dX numpy array of states. """
+        if idx is None:
+            idx = range(len(self._samples))
+        return np.asarray([self._samples[i].get_EEF_Position() for i in idx])
+
     def get_U(self, idx=None):
         """ Returns N x T x dU numpy array of actions. """
         if idx is None:

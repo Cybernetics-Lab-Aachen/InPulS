@@ -71,6 +71,9 @@ class Sample(object):
     def update_X(self, data, t=None):
         self._X = data if t is None else self._X[t,:]
 
+    def get_EEF_Position(self, t=None):
+        return self.get(7, t)
+
     def get_U(self, t=None):
         """ Get the action. """
         return self._data[ACTION] if t is None else self._data[ACTION][t, :]
