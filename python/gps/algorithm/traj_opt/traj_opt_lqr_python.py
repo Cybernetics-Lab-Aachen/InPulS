@@ -62,6 +62,10 @@ class TrajOptLQRPython(TrajOpt):
                                    traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
+            print("kl_step: ", kl_step)
+            print("con: ", con)
+            print("kl_div: ", kl_div)
+
             # Convergence check - constraint satisfaction.
             if (abs(con) < 0.1*kl_step):
                 LOGGER.debug("KL: %f / %f, converged iteration %i",

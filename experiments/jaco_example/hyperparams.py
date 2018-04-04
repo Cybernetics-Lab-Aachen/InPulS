@@ -13,6 +13,7 @@ from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
 from gps.algorithm.cost.cost_fk import CostFK
 from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
+from gps.algorithm.cost.cost_state import CostState
 from gps.algorithm.cost.cost_utils import RAMP_LINEAR, RAMP_FINAL_ONLY
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
@@ -23,11 +24,10 @@ from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         TRIAL_ARM, AUXILIARY_ARM, JOINT_SPACE, RGB_IMAGE, RGB_IMAGE_SIZE
 from gps.utility.general_utils import get_ee_points
 
-#EE points for key in hole
-EE_POINTS = np.array([[0.04, -0.04, -0.135], [0.04, 0.04, -0.135], [-0.04, 0.0, -0.105]])
 
-#EE points for block in hole
-#EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
+
+
+EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
 
 IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
@@ -53,9 +53,11 @@ common = {
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
     'cost_log_dir': EXP_DIR + 'cost_log/',
-    'target_filename': EXP_DIR + 'target_more_conditions.npz', #change here to target.npz
+    'target_filename': EXP_DIR + 'target.npz',
     'log_filename': EXP_DIR + 'log.txt',
-    'conditions': 2,
+    'train_conditions': [0, 1],
+    'test_conditions': [1,2],
+    'conditions': 4,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -64,7 +66,6 @@ x0s = []
 x_tgts = []
 ee_tgts = []
 reset_conditions = []
-print(common['conditions'])
 for i in xrange(common['conditions']):
 
     ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
@@ -73,7 +74,6 @@ for i in xrange(common['conditions']):
     ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
         common['target_filename'], 'trial_arm', str(i), 'target'
     )
-
     x_tgt = np.zeros(12)
     jv_tgt = np.zeros(6)
     x_tgt[:6] = ja_tgt
@@ -122,8 +122,11 @@ agent = {
     'rgb_shape': [IMAGE_WIDTH,IMAGE_HEIGHT,IMAGE_CHANNELS],
 }
 
+
 algorithm = {
     'type': AlgorithmTrajOpt,
+    'train_conditions': common['train_conditions'],
+    'test_conditions': common['test_conditions'],
     'conditions': common['conditions'],
     'iterations': 25,
 }
@@ -146,6 +149,7 @@ torque_cost = {
     'wu': 5e-3 / PR2_GAINS,
 }
 
+'''
 fk_cost1 = {
    'type': CostFK,
     # Target end effector is subtracted out of EE_POINTS in ROS so goal
@@ -167,7 +171,7 @@ fk_cost2 = {
     'l1': 1.0,
     'l2': 15.0,
     'alpha': 1e-6,
-    'wp_final_multiplier': 15.0,
+    'wp_final_multiplier': 25.0,
     'experiment_ID': common['experiment_ID'],
     'dir':common['cost_log_dir'],
 }
@@ -177,7 +181,23 @@ algorithm['cost'] = {
     'costs': [torque_cost, fk_cost1, fk_cost2],
     'weights': [1.0, 1.0, 1.0],
 }
+'''
 
+state_cost = {
+    'type': CostState,
+    'data_types' : {
+        JOINT_ANGLES: {
+            'wp': np.array([1, 1, 1, 1, 1, 1]),
+            'target_state': agent["exp_x_tgts"][0][:6],
+        },
+    },
+}
+
+algorithm['cost'] = {
+    'type': CostSum,
+    'costs': [torque_cost, state_cost],
+    'weights': [1.0, 1.0],
+}
 algorithm['dynamics'] = {
     'type': DynamicsLRPrior,
     'regularization': 1e-6,
@@ -198,7 +218,7 @@ config = {
     'agent': agent,
     'gui_on': True,
     'algorithm': algorithm,
-    'num_samples': 6,
+    'num_samples': 5,
     'experiment_ID': common['experiment_ID'],
     'dir':common['cost_log_dir'],
 }

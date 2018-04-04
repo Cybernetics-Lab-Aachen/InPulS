@@ -30,6 +30,8 @@ class PolicyOptTf(PolicyOpt):
 
         self.tf_iter = 0
         self.checkpoint_file = self._hyperparams['checkpoint_prefix']
+        save_path = self._hyperparams['save_path']
+        self.model_file = (save_path + "model.ckpt")
         self.batch_size = self._hyperparams['batch_size']
         self.device_string = "/cpu:0"
         if self._hyperparams['use_gpu'] == 1:

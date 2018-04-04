@@ -74,6 +74,8 @@ class TfPolicy(Policy):
         pickle.dump(pickled_pol, open(checkpoint_path, "wb"))
         saver = tf.train.Saver()
         saver.save(self.sess, checkpoint_path + '_tf_data')
+        path = checkpoint_path + '_tf_data'
+        print("Model saved at: ", path)
 
     @classmethod
     def load_policy(cls, policy_dict_path, tf_generator, network_config=None):
