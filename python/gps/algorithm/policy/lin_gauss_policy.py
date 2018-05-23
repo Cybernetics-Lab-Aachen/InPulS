@@ -25,6 +25,8 @@ class LinearGaussianPolicy(Policy):
 
         self.K = K
         self.k = k
+        self.jac_K = np.ones((self.T,self.dU*self.dX,self.dX))
+        self.jac_k = np.ones((self.T,self.dU,self.dX))
         self.pol_covar = pol_covar
         self.chol_pol_covar = chol_pol_covar
         self.inv_pol_covar = inv_pol_covar
