@@ -103,3 +103,6 @@ experiments/**/data_files/
 experiments/**/log.txt
 experiments/**/*.png
 .previous_experiment
+
+#Pycharm Files
+.idea/
