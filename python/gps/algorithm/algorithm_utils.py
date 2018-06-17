@@ -112,3 +112,4 @@ def gauss_fit_joint_prior(pts, mu0, Phi, m, n0, dwts, dX, dU, sig_reg):
     dynsig = sigma[dX:dX+dU, dX:dX+dU] - fd.dot(sigma[:dX, :dX]).dot(fd.T)
     dynsig = 0.5 * (dynsig + dynsig.T)
     return fd, fc, dynsig
+

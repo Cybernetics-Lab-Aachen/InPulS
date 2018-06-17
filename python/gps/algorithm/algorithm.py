@@ -59,9 +59,9 @@ class Algorithm(object):
             )
             self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
 
-        self.traj_opt = hyperparams['traj_opt']['type'](
-            hyperparams['traj_opt']
-        )
+        #self.traj_opt = hyperparams['traj_opt']['type'](
+        #    hyperparams['traj_opt']
+        #)
         self.cost = [
             hyperparams['cost']['type'](hyperparams['cost'])
             for _ in range(self.M)
