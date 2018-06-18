@@ -176,19 +176,13 @@ def main():
         gps._take_policy_samples(20, agmp_policy)
         sys.exit()
 
-    if args.testgcm is not None:
-        #load context based model
-        #test each condition of experiment
-        # 1. go to reset state
-        # 2. perform motion from there
-        # 3. exit
+    if args.testgcm:
         import random
         import copy
         import numpy as np
         import matplotlib.pyplot as plt
         from gps.algorithm.gcm.gcm_controller import GCMController
         import gps.algorithm.gcm.gcm_utils as gcm_utils
-
         data_files_dir = exp_dir + 'data_files/'
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
@@ -236,8 +230,8 @@ def main():
         import numpy as np
         import matplotlib.pyplot as plt
         from gps.algorithm.gcm.gcm_controller import GCMController
-        #from gps.algorithm.gcm.gcm_controller import GCMController
         import gps.algorithm.gcm.gcm_utils as gcm_utils
+
 
         labels = args.testgcmcond
         reset_cond = labels[1]
@@ -247,11 +241,8 @@ def main():
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
         np.random.seed(seed)
-
         gps = GPSMain(hyperparams.config)
-
         model_files_dir = data_files_dir + ('itr_%02d/' % labels[0])
-
         gcm_policy = GCMController(hyperparams.config, model_files_dir)
         gcm_policy.reset_ctr_context()
 
