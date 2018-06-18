@@ -33,12 +33,13 @@ class AlgorithmMDGPS(Algorithm):
             self._hyperparams['policy_opt'], self.dO, self.dU
         )
 
-    def iteration(self, sample_lists):
+    def iteration(self, sample_lists, _):
         """
         Run iteration of MDGPS-based guided policy search.
 
         Args:
             sample_lists: List of SampleList objects for each condition.
+            _: to match parent class
         """
         # Store the samples and evaluate the costs.
         for m in range(self.M):
