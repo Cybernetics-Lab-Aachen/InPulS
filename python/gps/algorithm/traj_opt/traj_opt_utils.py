@@ -11,8 +11,15 @@ LOGGER = logging.getLogger(__name__)
 # Constants used in TrajOptLQR.
 DGD_MAX_ITER = 50
 
-
 def traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr):
+    kl_div, _ = calc_traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr)
+    return kl_div
+
+def timedependent_traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr):
+    _, kl_div = calc_traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr)
+    return kl_div
+
+def calc_traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr):
     """
     Compute KL divergence between new and previous trajectory
     distributions.
@@ -83,4 +90,4 @@ def traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr):
         )
 
     # Add up divergences across time to get total divergence.
-    return np.sum(kl_div)
+    return np.sum(kl_div), kl_div

@@ -87,6 +87,10 @@ class Algorithm(object):
             self.cur[m].traj_info.dynamics.update_prior(cur_data)
             self.cur[m].traj_info.dynamics.fit(X, U)
 
+            # Update mean and covariance
+            self.cur[m].traj_info.xmu = np.mean(X[:, :, :], axis=0)
+            self.cur[m].traj_info.xmusigma = np.mean(X[:, :, :], axis=0)
+
             # Fit x0mu/x0sigma.
             x0 = X[:, 0, :]
             x0mu = np.mean(x0, axis=0)

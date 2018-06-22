@@ -28,6 +28,8 @@ class TrajectoryInfo(BundleType):
             'dynamics': None,  # Dynamics object for the current iteration.
             'x0mu': None,  # Mean for the initial state, used by the dynamics.
             'x0sigma': None,  # Covariance for the initial state distribution.
+            'xmu': None, # Mean of real world trajectory distribution
+            'xmusigma': None, # Covariance of real world trajectory distribution
             'cc': None,  # Cost estimate constant term.
             'cv': None,  # Cost estimate vector term.
             'Cm': None,  # Cost estimate matrix term.

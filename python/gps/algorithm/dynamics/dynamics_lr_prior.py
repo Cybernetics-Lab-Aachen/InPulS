@@ -121,14 +121,13 @@ class DynamicsLRPrior(Dynamics):
             Ys_gcm = np.array([Ys_gcm])
 
             # Compute empirical mean and covariance.
-            # Compute empirical mean and covariance.
-            empmu = np.sum((Ys.T * dwts).T, axis=0)
-            diff = Ys - empmu
-            empsig = diff.T.dot(D).dot(diff)
+            empmu = np.sum((Ys_ref.T * np.ones(1)).T, axis=0)
+            diff = Ys_gcm - Ys_ref
+            empsig = diff.T.dot(diff)
             # Symmetrize empsig to counter numerical errors.
             gcm_sig = 0.5 * (empsig + empsig.T)
 
-            # empmu = np.sum((Ys_ref.T * dwts).T, axis=0)
+            # ref_mu = np.sum((Ys_ref.T * np.ones(1)).T, axis=0)
             # diff = Ys - Ys_ref
             # print("shape Ys: ", Ys.shape)
             # print("shape Ys_ref", Ys_ref.shape)
@@ -151,6 +150,7 @@ class DynamicsLRPrior(Dynamics):
 
             # Compute posterior estimates of mean and covariance.
             # mu = empmu
+            # mu = ref_mu
             mu = (mm * mu0 + n0 * empmu) / (mm + n0)
             sigma = (Phi + (N - 1) * gcm_sig + (N * mm) / (N + mm) *
                      np.outer(empmu - mu0, empmu - mu0)) / (N + n0)

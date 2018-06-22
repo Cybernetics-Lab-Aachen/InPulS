@@ -3,7 +3,7 @@ import copy
 import logging
 import numpy as np
 import scipy as sp
-from traj_opt.traj_opt_utils import traj_distr_kl, DGD_MAX_ITER
+from traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_ITER
 from traj_opt.config import TRAJ_OPT_LQR
 import abc
 
@@ -293,7 +293,7 @@ class Algorithm_NN(Algorithm):
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
 
             # Compute KL divergence constraint violation.
-            kl_div = traj_distr_kl(new_mu, new_sigma,
+            kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma,
                                    traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
@@ -326,7 +326,7 @@ class Algorithm_NN(Algorithm):
                 "Final KL divergence after DGD convergence is too high."
             )
 
-        return traj_distr, eta, new_mu, new_sigma
+        return traj_distr, eta, new_mu, new_sigma, kl_div_t
 
     def compute_extended_costs(self, eta, traj_info, traj_distr):
         """ Compute expansion of extended cost used in the LQR backward pass.
