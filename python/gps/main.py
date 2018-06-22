@@ -16,7 +16,6 @@ import time
 sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
 
 
-
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Run the Guided Policy Search algorithm.')
@@ -110,7 +109,28 @@ def main():
         import glob
         import copy
         import cPickle as pickle
-        from gps.algorithm.agmp_x.agmp_training import AGMP_Training
+        from gps.algorithm.agmp_obs.agmp_training import AGMP_Training
+        import multiprocessing
+
+        def load(idx, cleaned_sample_lists, queue):
+            """this is a worker function for the multiprocessed loading"""
+            # print("debug info: started process with:",idx.value)
+            while not queue.empty():
+                queue_lock.acquire()
+                local_idx = idx.value
+                idx.value = idx.value + 1
+                filename = queue.get()
+                queue_lock.release()
+                sample = pickle.load(open(filename, 'r'))
+                while not len(cleaned_sample_lists) == local_idx:
+                    pass
+                write_lock.acquire()
+                cleaned_sample_lists.append(sample)
+                write_lock.release()
+                # print("debug info: done writing to list",filename)
+
+            # print("now returning process",multiprocessing.current_process())
+            return
 
         labels = args.trainagmp
         data_files_dir = exp_dir + 'data_files/'
@@ -124,23 +144,78 @@ def main():
                 print("no sample file available")
                 return
             print(str(last_itr_idx) + " sample files available for label " + label)
+            sample_list_files.sort()
+
+            queue_lock = multiprocessing.Lock()
+            write_lock = multiprocessing.Lock()
+            filename_queue = multiprocessing.Queue(len(sample_list_files))
+            threads = []
+            cores = multiprocessing.cpu_count()
+            manager = multiprocessing.Manager()
+            cleaned_sample_lists_man = manager.list()
+            idx = multiprocessing.Value('i', 0)
+
+            queue_lock.acquire()
+            for filename in sample_list_files:
+                filename_queue.put(filename)
+            queue_lock.release()
+
+            # print("start loading (multiprocessed)")
+            # loading sample data
+            for core in range(cores):
+                worker = multiprocessing.Process(target=load, args=(idx, cleaned_sample_lists_man, filename_queue))
+                threads.append(worker)
+                worker.start()
+            for p in threads:
+                p.join()
+            # print("done loading")
+            cleaned_sample_lists = []
+            for samp in cleaned_sample_lists_man:
+                cleaned_sample_lists.append(samp)
+
+            # print("debug info: len(cleaned_sample_lists)", len(cleaned_sample_lists))
+
             last_itr_sample_file = (data_files_dir + label + ('_samplelist_itr%02d.pkl') % last_itr_idx)
             # cleaned_sample_list_files = copy.copy(sample_list_files)
             # cleaned_sample_list_files.remove(last_itr_sample_file)
-            cleaned_sample_lists = [pickle.load(open(i, 'r')) for i in sample_list_files]
+            # cleaned_sample_lists = [pickle.load(open(i, 'r')) for i in sample_list_files]
             last_itr_sample = pickle.load(open(last_itr_sample_file, 'r'))
             samples.append({'data_list': cleaned_sample_lists, 'optimal_data': last_itr_sample})
-            print("conditions)", len(samples[-1]['optimal_data']))
+            # print("conditions)", len(samples[-1]['optimal_data']))
             # print("len cleaned sample list: ", len(cleaned_sample_lists))           #3          2
             # print("len last_itr_sample: ", len(last_itr_sample))                    #2          1
             # print("len cleaned sample list[-1]: ", len(cleaned_sample_lists[-1]))   #2          1
 
             controller_list_files = glob.glob(data_files_dir + label + '_controller_*.pkl')
+            controller_list_files.sort()
             last_itr_idx = len(sample_list_files) - 1
             last_itr_controller_file = (data_files_dir + label + ('_controller_itr%02d.pkl') % last_itr_idx)
             # cleaned_controller_list_files = copy.copy(controller_list_files)
             # cleaned_controller_list_files.remove(last_itr_controller_file)
-            cleaned_controller_lists = [pickle.load(open(i, 'r')) for i in controller_list_files]
+
+            cleaned_controller_lists_man = manager.list()
+            idx = multiprocessing.Value('i', 0)
+
+            # load controller
+            queue_lock.acquire()
+            filename_controller_queue = multiprocessing.Queue(len(controller_list_files))
+            for filename in controller_list_files:
+                filename_controller_queue.put(filename)
+            queue_lock.release()
+            threads = []
+            # print("start loading (multiprocessed)")
+            for core in range(cores):
+                worker = multiprocessing.Process(target=load,
+                                                 args=(idx, cleaned_controller_lists_man, filename_controller_queue))
+                threads.append(worker)
+                worker.start()
+            for p in threads:
+                p.join()
+            # print("done loading")
+            cleaned_controller_lists = []
+            for samp in cleaned_controller_lists_man:
+                cleaned_controller_lists.append(samp)
+            # cleaned_controller_lists = [pickle.load(open(i, 'r')) for i in controller_list_files]
             last_itr_controller = pickle.load(open(last_itr_controller_file, 'r'))
             controller.append({'data_list': cleaned_controller_lists, 'optimal_data': last_itr_controller})
             # print("len cleaned_controller_lists: ", len(cleaned_controller_lists))  #3          2
@@ -149,6 +224,8 @@ def main():
 
         # raw_input("wait")
         agmp_tr = AGMP_Training(hyperparams.config, data_files_dir)
+        # print("Debug info: samples  length = ",len(samples))
+        # print("Debug info: samples[0]['data_list']  length = ",len(samples[0]['data_list']))
         agmp_tr.run(samples, controller)
         sys.exit()
 
