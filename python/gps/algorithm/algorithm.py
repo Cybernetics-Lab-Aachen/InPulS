@@ -39,6 +39,7 @@ class Algorithm(object):
         self.dU = self._hyperparams['dU'] = agent.dU
         self.dX = self._hyperparams['dX'] = agent.dX
         self.dO = self._hyperparams['dO'] = agent.dO
+        #self.dX = self._hyperparams['agent']['dtgtX'] + self.dX
 
         init_traj_distr = config['init_traj_distr']
         init_traj_distr['x0'] = agent.x0

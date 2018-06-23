@@ -313,6 +313,8 @@ class AgentROSJACO(Agent):
 
     def _tf_callback(self, message):
         obs = tf_obs_msg_to_numpy(message)
+        ja_tgt = self._hyperparams['exp_x_tgts'][self.condition][0:6]
+        obs = np.append(obs, ja_tgt)
         if self.vision_enabled:
             self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
             # self.stf_policy.update_task_context(obs, self.rgb_image)

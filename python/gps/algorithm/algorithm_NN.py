@@ -173,6 +173,15 @@ class Algorithm_NN(Algorithm):
         self.itr = itr
         for m in range(self.M):
             self.cur[m].sample_list = sample_lists[m]
+            for traj_sample in self.cur[m].sample_list:
+                X_seq = traj_sample.get_X()
+                print("shape X_seq: ", X_seq.shape)
+                ja_tgt = self._hyperparams['exp_x_tgts'][m][0:6]
+                ja_tgts = np.repeat([ja_tgt], self.T, axis=0)
+                X_seq[:,12:18] = ja_tgts[:, 0:6]
+                traj_sample.dX = self.dX
+                print("dX self: ", self.dX)
+                traj_sample.update_X(X_seq)
 
         # Update dynamics model using all samples.
         self._update_dynamics()
