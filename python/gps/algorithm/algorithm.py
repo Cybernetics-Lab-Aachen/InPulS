@@ -69,7 +69,7 @@ class Algorithm(object):
         self.base_kl_step = self._hyperparams['kl_step']
 
     @abc.abstractmethod
-    def iteration(self, sample_list, itr):
+    def iteration(self, sample_list, itr, train_gcm = False):
         """ Run iteration of the algorithm. """
         raise NotImplementedError("Must be implemented in subclass")
 

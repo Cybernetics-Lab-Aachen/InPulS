@@ -28,6 +28,7 @@ def main():
     parser.add_argument('-tegcm', '--testgcm', type=int, metavar='<iteration>', help='tests context based GCM')
     parser.add_argument('-tgc', '--testgcmcond', nargs='+', type=int, help='test policy [iteration, start condition]')
     parser.add_argument('-tc', '--testcond', nargs='+', type=int, help='test policy [iteration, start condition]')
+    parser.add_argument('-tl', '--transferlearning',  nargs='+', type=str, help='load transferlearning')
     parser.add_argument('-l', '--logging', nargs='?', const=[time.strftime("%S%M%H-%d%m%Y")], type=str,
                         help='enable labeled logging')
     parser.add_argument('-n', '--new', action='store_true',
@@ -330,6 +331,41 @@ def main():
             data_files_dir + ('pol_gcm_sample_itr_%02d.pkl' % labels[0]),
             copy.copy(gcm_sample_lists)
         )
+        sys.exit()
+
+    if args.transferlearning:
+        import random
+        import copy
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from transfer_learning import TransferLearning
+        from gps.algorithm.gcm.gcm_controller import GCMController
+        import gps.algorithm.gcm.gcm_utils as gcm_utils
+
+        data_files_dir = exp_dir + 'data_files/'
+        seed = hyperparams.config.get('random_seed', 0)
+        random.seed(seed)
+        np.random.seed(seed)
+        tl = TransferLearning(hyperparams.config, args.quit)
+        model_files_dir = data_files_dir + ('gcm/')
+        gcm_policy = GCMController(hyperparams.config, model_files_dir)
+        gcm_policy.reset_ctr_context()
+
+        #model_files_dir = data_files_dir + ('itr_%02d/' % labels[0])
+        #gcm_policy = GCMController(hyperparams.config, model_files_dir)
+        #gcm_policy.reset_ctr_context()
+
+        if hyperparams.config['gui_on']:
+            run_tl = threading.Thread(
+                target=lambda: tl.run(sessionid, gcm_policy)
+            )
+            run_tl.daemon = True
+            run_tl.start()
+            plt.ioff()
+            plt.show()
+        else:
+            tl.run(sessionid, gcm_policy)
+
         sys.exit()
 
 

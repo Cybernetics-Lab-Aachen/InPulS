@@ -164,7 +164,7 @@ class Algorithm_NN(Algorithm):
 
         return mu, sigma
 
-    def iteration(self, sample_lists, itr=None):
+    def iteration(self, sample_lists, itr=None, train_gcm = False):
         """
         Run iteration of LQR.
         Args:
@@ -188,7 +188,7 @@ class Algorithm_NN(Algorithm):
                 self._stepadjust(m)
             self.init_step_mult.append(copy.deepcopy(self.cur[m].step_mult))
 
-        self._update_trajectories()
+        self._update_trajectories(train_gcm)
 
         self._advance_iteration_variables()
 
