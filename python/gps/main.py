@@ -28,7 +28,7 @@ def main():
     parser.add_argument('-tegcm', '--testgcm', type=int, metavar='<iteration>', help='tests context based GCM')
     parser.add_argument('-tgc', '--testgcmcond', nargs='+', type=int, help='test policy [iteration, start condition]')
     parser.add_argument('-tc', '--testcond', nargs='+', type=int, help='test policy [iteration, start condition]')
-    parser.add_argument('-tl', '--transferlearning',  nargs='+', type=str, help='load transferlearning')
+    parser.add_argument('-tl', '--transferlearning', action='store_true', help='load transferlearning')
     parser.add_argument('-l', '--logging', nargs='?', const=[time.strftime("%S%M%H-%d%m%Y")], type=str,
                         help='enable labeled logging')
     parser.add_argument('-n', '--new', action='store_true',
@@ -347,7 +347,7 @@ def main():
         random.seed(seed)
         np.random.seed(seed)
         tl = TransferLearning(hyperparams.config, args.quit)
-        model_files_dir = data_files_dir + ('gcm/')
+        model_files_dir = data_files_dir
         gcm_policy = GCMController(hyperparams.config, model_files_dir)
         gcm_policy.reset_ctr_context()
 

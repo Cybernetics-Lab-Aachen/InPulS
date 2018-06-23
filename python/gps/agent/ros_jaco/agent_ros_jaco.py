@@ -24,7 +24,7 @@ try:
     from gps.algorithm.agmp.agmp_controller import AGMP_Controller
     from gps.algorithm.gcm.gcm_controller import GCMController
     from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
-    from gps.proto.gps_pb2 import RGB_IMAGE
+    from gps.proto.gps_pb2 import RGB_IMAGE, END_EFFECTOR_POINTS, END_EFFECTOR_POSITIONS, END_EFFECTOR_ROTATIONS, JOINT_ANGLES, JOINT_SPACE
 except ImportError:  # user does not have tf installed.
     TfPolicy = None
 
@@ -60,6 +60,10 @@ class AgentROSJACO(Agent):
         self.target_state = np.zeros(self.dX)
         self.dt = self._hyperparams['dt']
 
+        self.gui = None
+
+        self.condition = None
+        self.policy = None
         r = rospy.Rate(1)
         r.sleep()
 
@@ -163,6 +167,7 @@ class AgentROSJACO(Agent):
         Args:
             condition: An index into hyperparams['reset_conditions'].
         """
+        self.condition = condition
         condition_data = self._hyperparams['reset_conditions'][condition]
         self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
                        condition_data[TRIAL_ARM]['data'])
@@ -226,7 +231,7 @@ class AgentROSJACO(Agent):
         return sample
 
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, first_itr=False):
+               use_TfController=False, first_itr=False, timeout=None, reset=True):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -246,7 +251,11 @@ class AgentROSJACO(Agent):
             self.sample_save = save
             self.active = True
 
-        self.reset(condition)
+        self.policy = policy
+        if reset:
+            self.reset(condition)
+            self.condition = condition
+
         # Generate noise.
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
@@ -260,19 +269,22 @@ class AgentROSJACO(Agent):
         trial_command.id = self._get_next_seq_id()
         trial_command.controller = \
                 policy_to_msg(policy, noise, use_TfController=use_TfController)
-        trial_command.T = self.T
+        if timeout is not None:
+            trial_command.T = timeout
+        else:
+            trial_command.T = self.T
         trial_command.id = self._get_next_seq_id()
         trial_command.frequency = self._hyperparams['frequency']
         ee_points = self._hyperparams['end_effector_points']
         trial_command.ee_points = ee_points.reshape(ee_points.size).tolist()
         trial_command.ee_points_tgt = \
-                self._hyperparams['ee_points_tgt'][condition].tolist()
+                self._hyperparams['ee_points_tgt'][self.condition].tolist()
         trial_command.state_datatypes = self._hyperparams['state_include']
         trial_command.obs_datatypes = self._hyperparams['state_include']
 
         # Execute trial.
         sample_msg = self._trial_service.publish_and_wait(
-            trial_command, timeout=self._hyperparams['trial_timeout']
+            trial_command, timeout=(trial_command.T + self._hyperparams['trial_timeout'])
         )
         if self.vision_enabled:
             sample_msg = self.add_rgb_stream_to_sample(sample_msg)
@@ -334,7 +346,4 @@ class AgentROSJACO(Agent):
         self.stf_policy = policy
         self.dU = dU
         self.current_action_id = 0
-        #if isinstance(policy, AGMP_Controller):
-            #wait for first obs and x to set agmpcontroller context
-        #    pass
 
