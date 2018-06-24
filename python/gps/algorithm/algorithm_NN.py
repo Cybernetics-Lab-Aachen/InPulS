@@ -94,10 +94,12 @@ class Algorithm_NN(Algorithm):
             traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
                 U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
             )
+
             traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
                 traj_distr.pol_covar[t, :, :]
             )
             traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
+
 
             # Compute value function.
             Vm[t, :, :] = Qm[index_x, index_x] + \
@@ -154,6 +156,7 @@ class Algorithm_NN(Algorithm):
                 traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
                     traj_distr.K[t, :, :].T
                 ) + traj_distr.pol_covar[t, :, :]
+
 
             if t < T - 1:
                 mu[t + 1, index_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
