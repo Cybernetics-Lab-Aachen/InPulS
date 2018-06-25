@@ -56,7 +56,7 @@ class AgentROSJACO(Agent):
             self._hyperparams[field] = setup(self._hyperparams[field],
                                              conditions)
         self.x0 = self._hyperparams['x0']
-        self.x_tgt = self._hyperparams['exp_x_tgts']
+        #self.x_tgt = self._hyperparams['exp_x_tgts']
         self.target_state = np.zeros(self.dX)
         self.dt = self._hyperparams['dt']
 
@@ -313,8 +313,9 @@ class AgentROSJACO(Agent):
 
     def _tf_callback(self, message):
         obs = tf_obs_msg_to_numpy(message)
-        ja_tgt = self._hyperparams['exp_x_tgts'][self.condition][0:6]
-        obs = np.append(obs, ja_tgt)
+        obs[self.dX - self._hyperparams['dee_tgt']: self.dX] = self._hyperparams['ee_points_tgt'][self.condition]
+        #ja_tgt = self._hyperparams['exp_x_tgts'][self.condition][0:6]
+        #obs = np.append(obs, ja_tgt)
         if self.vision_enabled:
             self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
             # self.stf_policy.update_task_context(obs, self.rgb_image)

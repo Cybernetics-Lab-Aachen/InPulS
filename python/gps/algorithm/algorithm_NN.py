@@ -179,9 +179,9 @@ class Algorithm_NN(Algorithm):
             for traj_sample in self.cur[m].sample_list:
                 X_seq = traj_sample.get_X()
                 print("shape X_seq: ", X_seq.shape)
-                ja_tgt = self._hyperparams['exp_x_tgts'][m][0:6]
-                ja_tgts = np.repeat([ja_tgt], self.T, axis=0)
-                X_seq[:,12:18] = ja_tgts[:, 0:6]
+                ee_tgt = self._hyperparams['ee_points_tgt'][m]
+                ee_tgts = np.repeat([ee_tgt], self.T, axis=0)
+                X_seq[:,X_seq.shape[1]-self._hyperparams['dee_tgt']:self.dX] = ee_tgts[:, 0:self._hyperparams['dee_tgt']]
                 traj_sample.dX = self.dX
                 print("dX self: ", self.dX)
                 traj_sample.update_X(X_seq)

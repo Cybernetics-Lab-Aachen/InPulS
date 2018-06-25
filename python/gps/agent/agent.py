@@ -41,7 +41,7 @@ class Agent(object):
             dim = self._hyperparams['sensor_dims'][sensor]
             self._state_idx.append(list(range(i, i+dim)))
             i += dim
-        self.dX = i + self._hyperparams['dtgtX']
+        self.dX = i
 
         # List of indices for each data type in observation.
         self._obs_idx, i = [], 0
