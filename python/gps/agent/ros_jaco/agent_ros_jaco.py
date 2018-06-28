@@ -88,7 +88,7 @@ class AgentROSJACO(Agent):
     def _init_pubs_and_subs(self):
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], TrialCommand,
-            self._hyperparams['sample_result_topic'], SampleResult
+        self._hyperparams['sample_result_topic'], SampleResult
         )
         self._reset_service = ServiceEmulator(
             self._hyperparams['reset_command_topic'], PositionCommand,
@@ -168,7 +168,9 @@ class AgentROSJACO(Agent):
             condition: An index into hyperparams['reset_conditions'].
         """
         self.condition = condition
+        print("condition: ", condition)
         condition_data = self._hyperparams['reset_conditions'][condition]
+        print("condition data: ", condition_data)
         self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
                        condition_data[TRIAL_ARM]['data'])
         time.sleep(2.0)  # useful for the real robot, so it stops completely
@@ -187,12 +189,15 @@ class AgentROSJACO(Agent):
                 Returns:
                     sample: A Sample object.
                 """
+
         if use_TfController:
             self._init_tf(policy, policy.dU)
             self.use_tf = True
             self.cur_timestep = 0
             self.sample_save = save
             self.active = True
+
+        #self.condition = condition
 
         # Generate noise.
         if noisy:
@@ -252,9 +257,11 @@ class AgentROSJACO(Agent):
             self.active = True
 
         self.policy = policy
+
         if reset:
             self.reset(condition)
             self.condition = condition
+
 
         # Generate noise.
         if noisy:
@@ -313,7 +320,7 @@ class AgentROSJACO(Agent):
 
     def _tf_callback(self, message):
         obs = tf_obs_msg_to_numpy(message)
-        obs[self.dX - self._hyperparams['dee_tgt']: self.dX] = self._hyperparams['ee_points_tgt'][self.condition]
+        obs = self.extend_state_space(obs)
         #ja_tgt = self._hyperparams['exp_x_tgts'][self.condition][0:6]
         #obs = np.append(obs, ja_tgt)
         if self.vision_enabled:

@@ -30,6 +30,8 @@ class LinearGaussianPolicy(Policy):
         self.pol_covar = pol_covar
         self.chol_pol_covar = chol_pol_covar
         self.inv_pol_covar = inv_pol_covar
+        self.Qm = np.zeros((self.T, self.dU + self.dX, self.dU + self.dX))
+        self.qv = np.zeros((self.T, self.dU + self.dX))
 
     def act(self, x, obs, t, noise=None):
         """

@@ -50,6 +50,8 @@ class AlgorithmTrajOpt(Algorithm_NN):
         # Get quadratic expansion of the extended cost function
         Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info,
                                                      prev_traj_distr)
+        self.Cm_ext = Cm_ext
+        self.cv_ext = cv_ext
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -104,6 +106,9 @@ class AlgorithmTrajOpt(Algorithm_NN):
             # Symmetrize quadratic component to counter numerical errors.
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
+
+            traj_distr.Qm[t, :, :] = Qm
+            traj_distr.qv[t, :] = qv
 
         return traj_distr
 

@@ -66,6 +66,10 @@ class Agent(object):
         self._meta_data_idx = {d: i for d, i in zip(self.meta_data_types,
                                                    self._meta_idx)}
 
+        self._target_ja = []
+        self._initial_ja = []
+
+
     def is_active(self):
         return self.active
 
@@ -90,6 +94,12 @@ class Agent(object):
         """
         return (SampleList(self._samples[condition][start:]) if end is None
                 else SampleList(self._samples[condition][start:end]))
+
+    def extend_state_space(self, state):
+        if self._hyperparams['include_tgt']:
+            state[(self.dX - self._hyperparams['dtgtX']): self.dX] = self._hyperparams['exp_x_tgts'][self.condition][
+                                                                   0:self._hyperparams['dtgtX']]
+        return state
 
     def delete_last_sample(self, condition):
         """ Delete the last sample from the specified condition. """

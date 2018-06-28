@@ -51,6 +51,8 @@ class Algorithm_NN(Algorithm):
         # Get quadratic expansion of the extended cost function
         Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info,
                                                      prev_traj_distr)
+        self.Cm_ext = Cm_ext
+        self.cv_ext = cv_ext
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -107,6 +109,9 @@ class Algorithm_NN(Algorithm):
             # Symmetrize quadratic component to counter numerical errors.
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
+
+            traj_distr.Qm[t, :, :] = Qm
+            traj_distr.qv[t, :] = qv
 
         return traj_distr
 
@@ -175,16 +180,7 @@ class Algorithm_NN(Algorithm):
         """
         self.itr = itr
         for m in range(self.M):
-            self.cur[m].sample_list = sample_lists[m]
-            for traj_sample in self.cur[m].sample_list:
-                X_seq = traj_sample.get_X()
-                print("shape X_seq: ", X_seq.shape)
-                ee_tgt = self._hyperparams['ee_points_tgt'][m]
-                ee_tgts = np.repeat([ee_tgt], self.T, axis=0)
-                X_seq[:,X_seq.shape[1]-self._hyperparams['dee_tgt']:self.dX] = ee_tgts[:, 0:self._hyperparams['dee_tgt']]
-                traj_sample.dX = self.dX
-                print("dX self: ", self.dX)
-                traj_sample.update_X(X_seq)
+            self.cur[m].sample_list = self.extend_state_in_samples(sample_lists[m], m)
 
         # Update dynamics model using all samples.
         self._update_dynamics()
@@ -366,3 +362,14 @@ class Algorithm_NN(Algorithm):
             ])
 
         return Cm_ext, cv_ext
+
+    def extend_state_in_samples(self, sample_list, cond):
+        if self._hyperparams['include_tgt']:
+            for traj_sample in sample_list:
+                X_seq = traj_sample.get_X()
+                ee_tgt = self._hyperparams['exp_x_tgts'][cond][0:self._hyperparams['dtgtX']]
+                ee_tgts = np.repeat([ee_tgt], self.T, axis=0)
+                X_seq[:, X_seq.shape[1] - self._hyperparams['dtgtX']:self.dX] = ee_tgts
+                traj_sample.dX = self.dX
+                traj_sample.update_X(X_seq)
+        return sample_list
