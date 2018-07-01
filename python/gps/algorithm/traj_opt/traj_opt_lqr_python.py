@@ -220,7 +220,8 @@ class TrajOptLQRPython(TrajOpt):
             Vx = np.zeros((T, dX))
 
             fCm, fcv = algorithm.compute_costs(m, eta)
-
+            self.Cm_ext = fCm
+            self.cv_ext = fcv
             # Compute state-action-state function at each time step.
             for t in range(T - 1, -1, -1):
                 # Add in the cost.
