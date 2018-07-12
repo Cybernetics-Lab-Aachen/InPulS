@@ -276,8 +276,10 @@ class Algorithm_NN(Algorithm):
         """ Run dual gradient decent to optimize trajectories. """
         T = self.T
         eta = self.cur[m].eta
+        print("eta_0: ", eta)
         step_mult = self.cur[m].step_mult
         traj_info = self.cur[m].traj_info
+        print("step_mult: ", step_mult)
 
         prev_traj_distr = self.cur[m].traj_distr
 
@@ -328,6 +330,9 @@ class Algorithm_NN(Algorithm):
 
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
+
+            print("eta_1: ", eta)
+            print("kl_step: ", kl_step)
 
         if kl_div > kl_step and abs(kl_div - kl_step) > 0.1*kl_step:
             LOGGER.warning(
