@@ -40,8 +40,8 @@ ALG_BADMM = {
 }
 
 
-# AlgorithmBADMM
-ALG_GGPS = {
+# AlgorithmGGCS
+ALG_GGCS = {
     'inner_iterations': 4,
     'policy_dual_rate': 0.1,
     'policy_dual_rate_covar': 0.0,
