@@ -39,6 +39,23 @@ ALG_BADMM = {
     'exp_step_lower': 1.0,
 }
 
+
+# AlgorithmBADMM
+ALG_GGPS = {
+    'inner_iterations': 4,
+    'policy_dual_rate': 0.1,
+    'policy_dual_rate_covar': 0.0,
+    'fixed_lg_step': 0,
+    'lg_step_schedule': 10.0,
+    'ent_reg_schedule': 0.0,
+    'init_pol_wt': 0.01,
+    'policy_sample_mode': 'add',
+    'exp_step_increase': 2.0,
+    'exp_step_decrease': 0.5,
+    'exp_step_upper': 0.5,
+    'exp_step_lower': 1.0,
+}
+
 # AlgorithmMD
 ALG_MDGPS = {
     # TODO: remove need for init_pol_wt in MDGPS
