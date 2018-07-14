@@ -41,7 +41,8 @@ class TfPolicy(Policy):
             t: Time step.
             noise: Action noise. This will be scaled by the variance.
         """
-
+        print("obs.shape: ", obs.shape)
+        raw_input("wait")
         # Normalize obs.
         if len(obs.shape) == 1:
             obs = np.expand_dims(obs, axis=0)
