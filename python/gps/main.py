@@ -319,7 +319,7 @@ def main():
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
         np.random.seed(seed)
-        gps = GPSMain(hyperparams.config)
+        gps = GPSMain(hyperparams.config, no_algorithm=True)
         model_files_dir = data_files_dir + ('itr_%02d/' % labels[0])
         gcm_policy = GCMController(hyperparams.config, model_files_dir)
         gcm_policy.reset_ctr_context()

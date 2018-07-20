@@ -89,7 +89,9 @@ class Algorithm(object):
             self.cur[m].traj_info.dynamics.fit(X, U)
 
             # Update mean and covariance
-            self.cur[m].traj_info.xmu = np.mean(X[:, :, :], axis=0)
+            mu = np.concatenate((X[:, :, :], U[:, :, :]), axis=2)
+            #print("shape mu: ", mu.shape)
+            self.cur[m].traj_info.xmu = np.mean(mu, axis=0)
             self.cur[m].traj_info.xmusigma = np.mean(X[:, :, :], axis=0)
 
             # Fit x0mu/x0sigma.
@@ -113,6 +115,7 @@ class Algorithm(object):
         """
         Compute new linear Gaussian controllers.
         """
+
         if not hasattr(self, 'new_traj_distr'):
             self.new_traj_distr = [
                 self.cur[cond].traj_distr for cond in range(self.M)

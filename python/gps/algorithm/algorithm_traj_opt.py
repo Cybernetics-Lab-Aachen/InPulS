@@ -165,7 +165,6 @@ class AlgorithmTrajOpt(Algorithm_NN):
                 sigma[t + 1, index_x, index_x] = \
                     Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
                     dyn_covar[t, :, :]
-
         return mu, sigma
 
 

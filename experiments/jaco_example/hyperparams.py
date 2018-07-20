@@ -55,9 +55,9 @@ common = {
     'cost_log_dir': EXP_DIR + 'cost_log/',
     'target_filename': EXP_DIR + 'target.npz',
     'log_filename': EXP_DIR + 'log.txt',
-    'train_conditions': [0, 1],
-    'test_conditions': [1,2],
-    'conditions': 4,
+    #'train_conditions': [0, 1],
+    #'test_conditions': [1,2],
+    'conditions': 1,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -111,8 +111,12 @@ agent = {
     'conditions': common['conditions'],
     'T': 80,
     'x0': x0s,
-    'ee_points_tgt': ee_tgts,
+    'ee_points': EE_POINTS,
+    'dee_tgt': 3 * EE_POINTS.shape[0],
     'exp_x_tgts': x_tgts,
+    'dtgtX': 6,
+    'include_tgt': False,
+    'ee_points_tgt': ee_tgts,
     'reset_conditions': reset_conditions,
     'sensor_dims': SENSOR_DIMS,
     'state_include': [JOINT_ANGLES, JOINT_VELOCITIES],
@@ -125,9 +129,14 @@ agent = {
 
 algorithm = {
     'type': AlgorithmTrajOpt,
-    'train_conditions': common['train_conditions'],
-    'test_conditions': common['test_conditions'],
+    #'train_conditions': common['train_conditions'],
+    #'test_conditions': common['test_conditions'],
     'conditions': common['conditions'],
+    'exp_x_tgts': x_tgts,
+    'include_tgt': agent['include_tgt'],
+    'dtgtX': agent['dtgtX'],
+    'dee_tgt': agent['dee_tgt'],
+    'ee_points_tgt': agent['ee_points_tgt'],
     'iterations': 25,
 }
 
