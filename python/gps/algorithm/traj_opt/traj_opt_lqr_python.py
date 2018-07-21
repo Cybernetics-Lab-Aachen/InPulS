@@ -94,7 +94,7 @@ class TrajOptLQRPython(TrajOpt):
                 "Final KL divergence after DGD convergence is too high."
             )
 
-        return traj_distr, eta
+        return traj_distr, eta, new_mu, new_sigma
 
     def estimate_cost(self, traj_distr, traj_info):
         """ Compute Laplace approximation to expected cost. """
