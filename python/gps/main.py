@@ -308,6 +308,7 @@ def main():
         import numpy as np
         import matplotlib.pyplot as plt
         from gps.algorithm.gcm.gcm_controller import GCMController
+        from gps.algorithm.algorithm_ggcs import AlgorithmGGCS
         import gps.algorithm.gcm.gcm_utils as gcm_utils
 
 
@@ -319,10 +320,14 @@ def main():
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
         np.random.seed(seed)
-        gps = GPSMain(hyperparams.config, no_algorithm=True)
+        gps = GPSMain(hyperparams.config, no_algorithm=False)
         model_files_dir = data_files_dir + ('itr_%02d/' % labels[0])
-        gcm_policy = GCMController(hyperparams.config, model_files_dir)
-        gcm_policy.reset_ctr_context()
+        if (type(gps.algorithm) == AlgorithmGGCS):
+            gcm = gps.algorithm.policy_opt.gcm
+            gcm_policy = GCMController(hyperparams.config, model_files_dir, restore=True, gcm=gcm)
+        else:
+            gcm_policy = GCMController(hyperparams.config, model_files_dir)
+            gcm_policy.reset_ctr_context()
 
         # sample based on init configuration in hyperparams
         gcm_sample_lists = gps._take_policy_samples(1, gcm_policy, reset_cond)
@@ -348,6 +353,7 @@ def main():
         np.random.seed(seed)
         tl = TransferLearning(hyperparams.config, args.quit)
         model_files_dir = data_files_dir
+
         gcm_policy = GCMController(hyperparams.config, model_files_dir)
         gcm_policy.reset_ctr_context()
 

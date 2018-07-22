@@ -113,7 +113,7 @@ class Algorithm(object):
                         Phi + (N*priorm) / (N+priorm) * \
                         np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
 
-    def _update_trajectories(self):
+    def _update_trajectories(self, itr=None):
         """
         Compute new linear Gaussian controllers.
         """

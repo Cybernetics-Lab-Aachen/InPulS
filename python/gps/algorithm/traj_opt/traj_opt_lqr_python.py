@@ -228,6 +228,9 @@ class TrajOptLQRPython(TrajOpt):
             fCm, fcv = algorithm.compute_costs(m, eta)
             self.Cm_ext = fCm
             self.cv_ext = fcv
+
+            if algorithm.inner_itr == 0:
+                print("Optimize without importance sampling")
             # Compute state-action-state function at each time step.
             for t in range(T - 1, -1, -1):
                 # Add in the cost.
@@ -237,7 +240,10 @@ class TrajOptLQRPython(TrajOpt):
                 # Add in the value function from the next time step.
                 if t < T - 1:
                     if type(algorithm) == AlgorithmBADMM or type(algorithm) == AlgorithmGGCS:
-                        multiplier = (pol_wt[t+1] + eta)/(pol_wt[t] + eta)
+                        if algorithm.inner_itr > 0:
+                            multiplier = (pol_wt[t+1] + eta)/(pol_wt[t] + eta)
+                        else:
+                            multiplier = 1.0
                     else:
                         multiplier = 1.0
                     Qtt = Qtt + multiplier * \
