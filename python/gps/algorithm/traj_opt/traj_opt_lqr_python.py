@@ -14,6 +14,8 @@ from gps.algorithm.traj_opt.traj_opt_utils import \
 from gps.algorithm.algorithm_badmm import AlgorithmBADMM
 from gps.algorithm.algorithm_ggcs import AlgorithmGGCS
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
+from gps.algorithm.algorithm_mdggcs import AlgorithmMDGGCS
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ class TrajOptLQRPython(TrajOpt):
         step_mult = algorithm.cur[m].step_mult
         traj_info = algorithm.cur[m].traj_info
 
-        if type(algorithm) == AlgorithmMDGPS:
+        if type(algorithm) == AlgorithmMDGPS or  type(algorithm) == AlgorithmMDGGCS:
             # For MDGPS, constrain to previous NN linearization
             prev_traj_distr = algorithm.cur[m].pol_info.traj_distr()
         else:
@@ -229,8 +231,8 @@ class TrajOptLQRPython(TrajOpt):
             self.Cm_ext = fCm
             self.cv_ext = fcv
 
-            if algorithm.inner_itr == 0:
-                print("Optimize without importance sampling")
+            #if algorithm.inner_itr == 0:
+            #    print("Optimize without importance sampling")
             # Compute state-action-state function at each time step.
             for t in range(T - 1, -1, -1):
                 # Add in the cost.

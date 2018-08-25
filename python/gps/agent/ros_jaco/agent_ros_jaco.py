@@ -204,8 +204,7 @@ class AgentROSJACO(Agent):
             noise = generate_noise(self.T, self.dU, self._hyperparams)
             self.noise = noise
         else:
-            noise = np.zeros((self.T, self.dU))
-            self.noise = noise
+            self.noise = None
 
         # Fill in trial command
         trial_command = TrialCommand()
@@ -269,7 +268,7 @@ class AgentROSJACO(Agent):
             self.noise = noise
         else:
             noise = np.zeros((self.T, self.dU))
-            self.noise = noise
+            self.noise = None
 
         # Fill in trial command
         trial_command = TrialCommand()
