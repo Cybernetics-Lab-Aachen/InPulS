@@ -33,6 +33,10 @@ class AlgorithmMDGPS(Algorithm):
             self._hyperparams['policy_opt'], self.dO, self.dU
         )
 
+        self.traj_opt = hyperparams['traj_opt']['type'](
+            hyperparams['traj_opt']
+        )
+
     def iteration(self, sample_lists, _):
         """
         Run iteration of MDGPS-based guided policy search.

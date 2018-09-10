@@ -10,6 +10,7 @@ import numpy as np
 from gps import __file__ as gps_filepath
 from gps.agent.ros_jaco.agent_ros_jaco import AgentROSJACO
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
+from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
 from gps.algorithm.cost.cost_fk import CostFK
 from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
@@ -57,7 +58,7 @@ common = {
     'log_filename': EXP_DIR + 'log.txt',
     #'train_conditions': [0, 1],
     #'test_conditions': [1,2],
-    'conditions': 1,
+    'conditions': 2,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -151,6 +152,10 @@ algorithm['init_traj_distr'] = {
     'final_weight': 50.0,
     'dt': agent['dt'],
     'T': agent['T'],
+}
+
+algorithm['traj_opt'] = {
+    'type': TrajOptLQRPython,
 }
 
 torque_cost = {

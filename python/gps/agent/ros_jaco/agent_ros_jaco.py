@@ -2,6 +2,9 @@
 import copy
 import time
 import numpy as np
+from random import random
+from math import pi
+
 
 import rospy
 import cv2
@@ -161,7 +164,39 @@ class AgentROSJACO(Agent):
 
         #TODO: Maybe verify that you reset to the correct position.
 
-    def reset(self, condition):
+    def reset_arm_rnd(self, arm, mode, data):
+        """
+        Issues a position command to an arm.
+        Args:
+            arm: Either TRIAL_ARM or AUXILIARY_ARM.
+            mode: An integer code (defined in gps_pb2).
+            data: An array of floats.
+        """
+        reset_command = PositionCommand()
+        reset_command.mode = mode
+        # Reset to uniform random state
+        # Joints 1, 4, 5 and 6 have a range of -10,000 to +10,000 degrees. Joint 2 has a range of +42 to +318 degrees. Joint 3 has a range of +17 to +343 degrees. (see http://wiki.ros.org/jaco)
+        reset_command.data = [
+            (random() * 2 - 1) * pi,
+            pi + (random() * 2 - 1) * pi / 2,
+            # Limit elbow joints to 180 +/-90 degrees to prevent getting stuck in the ground
+            pi + (random() * 2 - 1) * pi / 2,
+            (random() * 2 - 1) * pi,
+            (random() * 2 - 1) * pi,
+            (random() * 2 - 1) * pi]
+        reset_command.pd_gains = self._hyperparams['pid_params']
+        reset_command.arm = arm
+        timeout = self._hyperparams['trial_timeout']
+        reset_command.id = self._get_next_seq_id()
+        try:
+            self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+        except TimeoutException:
+            self.relax_arm(arm)
+            wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
+            self.reset_arm(arm, mode, data)
+
+
+    def reset(self, condition, rnd=None):
         """
         Reset the agent for a particular experiment condition.
         Args:
@@ -171,9 +206,15 @@ class AgentROSJACO(Agent):
         print("condition: ", condition)
         condition_data = self._hyperparams['reset_conditions'][condition]
         print("condition data: ", condition_data)
-        self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
-                       condition_data[TRIAL_ARM]['data'])
+        print("rnd: ", rnd)
+        if rnd:
+            self.reset_arm_rnd(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
+                               condition_data[TRIAL_ARM]['data'])
+        else:
+            self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
+                           condition_data[TRIAL_ARM]['data'])
         time.sleep(2.0)  # useful for the real robot, so it stops completely
+
 
     def independent_sample(self, policy, condition, verbose=True, save=True, noisy=True,
                use_TfController=False, first_itr=False):
@@ -235,7 +276,7 @@ class AgentROSJACO(Agent):
         return sample
 
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, first_itr=False, timeout=None, reset=True):
+               use_TfController=False, first_itr=False, timeout=None, reset=True, rnd=None):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -258,7 +299,7 @@ class AgentROSJACO(Agent):
         self.policy = policy
 
         if reset:
-            self.reset(condition)
+            self.reset(condition, rnd=rnd)
             self.condition = condition
 
 
@@ -325,6 +366,9 @@ class AgentROSJACO(Agent):
         if self.vision_enabled:
             self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
             # self.stf_policy.update_task_context(obs, self.rgb_image)
+        if self.current_action_id > (self.T - 1):
+            print("self.T: ", self.T)
+            return
         action_msg = \
                 tf_policy_to_action_msg(self.dU,
                                         self._get_new_action(self.stf_policy,
