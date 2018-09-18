@@ -203,17 +203,17 @@ class AgentROSJACO(Agent):
             condition: An index into hyperparams['reset_conditions'].
         """
         self.condition = condition
-        print("condition: ", condition)
+        #print("condition: ", condition)
         condition_data = self._hyperparams['reset_conditions'][condition]
-        print("condition data: ", condition_data)
-        print("rnd: ", rnd)
+        #print("condition data: ", condition_data)
+        #print("rnd: ", rnd)
         if rnd:
             self.reset_arm_rnd(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
                                condition_data[TRIAL_ARM]['data'])
         else:
             self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
                            condition_data[TRIAL_ARM]['data'])
-        time.sleep(2.0)  # useful for the real robot, so it stops completely
+        time.sleep(0.2)  # useful for the real robot, so it stops completely
 
 
     def independent_sample(self, policy, condition, verbose=True, save=True, noisy=True,

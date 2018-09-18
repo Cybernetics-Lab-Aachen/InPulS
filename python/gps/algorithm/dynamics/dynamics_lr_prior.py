@@ -24,7 +24,7 @@ class DynamicsLRPrior(Dynamics):
         """ Return the dynamics prior. """
         return self.prior
 
-    def fit(self, X, U):
+    def fit(self, X, U, prior_only=False):
         """ Fit dynamics. """
         # Constants
         N, T, dimX = X.shape
@@ -59,9 +59,9 @@ class DynamicsLRPrior(Dynamics):
             empsig = 0.5 * (empsig + empsig.T)
 
             # Compute posterior estimates of mean and covariance.
-            mu = empmu
+            mu = empmu if not prior_only else mu0
             sigma = (Phi + (N - 1) * empsig + (N * mm) / (N + mm) *
-                     np.outer(empmu - mu0, empmu - mu0)) / (N + n0)
+                     np.outer(empmu - mu0, empmu - mu0)) / (N + n0) if not prior_only else Phi
             # Symmetrize sigma to counter numerical errors.
             sigma = 0.5 * (sigma + sigma.T)
             # Add sigma regularization.

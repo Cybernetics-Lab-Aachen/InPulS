@@ -27,7 +27,7 @@ class Algorithm(object):
             self._cond_idx = hyperparams['train_conditions']
             self.M = len(self._cond_idx)
         else:
-            self.M = hyperparams['conditions']
+            self.M = hyperparams['tac']['clusters'] if 'tac' in hyperparams else hyperparams['conditions']
             self._cond_idx = range(self.M)
             self._hyperparams['train_conditions'] = self._cond_idx
             self._hyperparams['test_conditions'] = self._cond_idx
@@ -58,7 +58,7 @@ class Algorithm(object):
             self.cur[m].traj_info = TrajectoryInfo()
             self.cur[m].traj_info.dynamics = dynamics['type'](dynamics)
             init_traj_distr = extract_condition(
-                self._hyperparams['init_traj_distr'], self._cond_idx[m]
+                self._hyperparams['init_traj_distr'], self._cond_idx[0] # TODO Global x0
             )
             self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
 
@@ -76,7 +76,7 @@ class Algorithm(object):
         """ Run iteration of the algorithm. """
         raise NotImplementedError("Must be implemented in subclass")
 
-    def _update_dynamics(self):
+    def _update_dynamics(self, update_prior=True, prior_only=False):
         """
         Instantiate dynamics objects and update prior. Fit dynamics to
         current samples.
@@ -87,8 +87,9 @@ class Algorithm(object):
             U = cur_data.get_U()
 
             # Update prior and fit dynamics.
-            self.cur[m].traj_info.dynamics.update_prior(cur_data)
-            self.cur[m].traj_info.dynamics.fit(X, U)
+            if update_prior:
+                self.cur[m].traj_info.dynamics.update_prior(cur_data)
+            self.cur[m].traj_info.dynamics.fit(X, U, prior_only=prior_only)
 
             # Update mean and covariance
             mu = np.concatenate((X[:, :, :], U[:, :, :]), axis=2)
