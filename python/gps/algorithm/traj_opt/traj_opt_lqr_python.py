@@ -35,7 +35,7 @@ class TrajOptLQRPython(TrajOpt):
         step_mult = algorithm.cur[m].step_mult
         traj_info = algorithm.cur[m].traj_info
 
-        if type(algorithm) == AlgorithmMDGPS or  type(algorithm) == AlgorithmMDGGCS:
+        if isinstance(algorithm, AlgorithmMDGPS) or isinstance(algorithm, AlgorithmMDGGCS):
             # For MDGPS, constrain to previous NN linearization
             prev_traj_distr = algorithm.cur[m].pol_info.traj_distr()
         else:
