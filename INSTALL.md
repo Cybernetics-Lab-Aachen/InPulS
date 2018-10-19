@@ -4,13 +4,13 @@
 
 The following are required:
 
-* python 2.7
+* python (>=3.5)
 * python-numpy (>=1.7.0)
 * python-matplotlib (>=1.5.0)
 * python-scipy (>=0.11.0)
 * python-qt4
-* ROS (kinetic)
-* ros-kinetic-gazebo-ros-control and other packages
+* Tensorflow-gpu
+* Mujoco 1.50
 
 ## Setup
 
