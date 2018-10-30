@@ -13,7 +13,7 @@ import threading
 import time
 
 # Add gps/python to path so that imports work.
-sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
+sys.path.append('/'.join(str.split(__file__.replace('\\', '/'), '/')[:-2]))  # Replace backslashes for windows compability
 
 
 def main():
@@ -56,15 +56,15 @@ def main():
         sessionid = ''
 
     from gps import __file__ as gps_filepath
-    gps_filepath = os.path.abspath(gps_filepath)
+    gps_filepath = os.path.abspath(gps_filepath).replace('\\', '/')  # Replace backslashes for windows compability
     gps_dir = '/'.join(str.split(gps_filepath, '/')[:-3]) + '/'
     exp_dir = gps_dir + 'experiments/' + exp_name + '/'
     hyperparams_file = exp_dir + 'hyperparams.py'
 
-    if args.silent:
-        logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-    else:
-        logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+    #if args.silent:
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.WARN)
+    #else:
+    #    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
     if args.new:
         from shutil import copy
@@ -447,13 +447,14 @@ def main():
     else:
         import random
         import numpy as np
-        import matplotlib.pyplot as plt
 
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
         np.random.seed(seed)
         gps = GPSMain(hyperparams.config, args.quit)
         if hyperparams.config['gui_on']:
+            import matplotlib.pyplot as plt
+            
             run_gps = threading.Thread(
                 target=lambda: gps.run(sessionid, itr_load=resume_training_itr)
             )

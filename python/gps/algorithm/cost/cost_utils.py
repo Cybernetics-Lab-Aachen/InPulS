@@ -82,7 +82,7 @@ def evall1l2term(wp, d, Jd, Jdd, l1, l2, alpha):
     Jd_expand_1 = np.expand_dims(np.expand_dims(Jd, axis=2), axis=4)
     Jd_expand_2 = np.expand_dims(np.expand_dims(Jd, axis=1), axis=3)
     d2_expand = np.expand_dims(np.expand_dims(d2, axis=-1), axis=-1)
-    lxx = np.sum(np.sum(Jd_expand_1 * Jd_expand_2 * d2_expand, axis=1), axis=1)
+    lxx = np.sum(np.sum(Jd_expand_1 * Jd_expand_2 * d2_expand, axis=1), axis=1)  #  TODO This multiplication is very slow for higher dimensions
 
     lxx += 0.5 * sec + 0.5 * np.transpose(sec, [0, 2, 1])
 
