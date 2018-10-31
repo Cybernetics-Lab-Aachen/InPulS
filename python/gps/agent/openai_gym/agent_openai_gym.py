@@ -26,15 +26,16 @@ class AgentOpenAIGym(Agent):
         Agent.__init__(self, hyperparams)
         self.x0 = self._hyperparams['x0']
         self.record = False
+        self.render = self._hyperparams['render']
         self.__init_gym()
 
     def __init_gym(self):
         self.env = gym.make(self._hyperparams['env'])
         self.sim = self.env.env.sim
         self.env._max_episode_steps = self.T-1 # So env is done with the last timestep
-        self.env = gym.wrappers.Monitor(self.env , self._hyperparams['data_files_dir'])
-        if isinstance(self.env, gym.GoalEnv):
-            dX = self.env.observation_space.spaces['observation'].shape[0]
+        self.env = gym.wrappers.Monitor(self.env , self._hyperparams['data_files_dir'], force=True)
+        if is_goal_based(self.env):
+            dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces['desired_goal'].shape[0] 
         else:
             dX = self.env.observation_space.shape[0]
         dU = self.env.action_space.shape[0]
@@ -72,6 +73,8 @@ class AgentOpenAIGym(Agent):
 
         self.env.video_callable = lambda episode_id, record=record: record
         # Get initial state
+        if not rnd:
+            self.env.seed(self.x0[condition])
         obs = self.env.reset() 
         self.set_states(sample, obs, 0)
         #sample.set('observation', obs['observation'], 0)
@@ -79,7 +82,7 @@ class AgentOpenAIGym(Agent):
         U_0 = policy.act(sample.get_X(0), sample.get_obs(0), 0, noise)
         sample.set(ACTION, U_0, 0)
         for t in range(1, self.T):
-            if not record:
+            if not record and self.render:
                 self.env.render(mode='human')  # TODO add hyperparam
 
             # Get state
@@ -103,11 +106,16 @@ class AgentOpenAIGym(Agent):
         """
         Reads individual sensors from obs and store them in the sample.
         """
-        if isinstance(self.env, gym.GoalEnv):
+        if is_goal_based(self.env):
             sample.set(END_EFFECTOR_POINTS, np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal']), t)  # Use goal as EE
             obs = obs['observation']
         else:
-            sample.set(END_EFFECTOR_POINTS, self.sim.data.qpos[:2], t)  # Use first pos as EE
+            sample.set(END_EFFECTOR_POINTS, self.sim.data.qpos[:2], t)  # Use first pos as EE TODO Depends on env
 
         for data_type in self._x_data_idx:
-            sample.set(data_type, obs[self._x_data_idx[data_type]], t)
+            if data_type != END_EFFECTOR_POINTS:
+                sample.set(data_type, obs[self._x_data_idx[data_type]], t)
+
+
+def is_goal_based(env):
+    return isinstance(env.observation_space, gym.spaces.Dict)

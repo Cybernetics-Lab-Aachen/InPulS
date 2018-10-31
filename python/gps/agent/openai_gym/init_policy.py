@@ -2,13 +2,14 @@ import numpy as np
 import gym
 
 from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
+from gps.agent.openai_gym.agent_openai_gym import is_goal_based
 
 
 def init_gym_pol(hyperparams):
     env = gym.make(hyperparams['env'])
 
-    if isinstance(env, gym.GoalEnv):
-        dX = env.observation_space.spaces['observation'].shape[0]
+    if is_goal_based(env):
+        dX = env.observation_space.spaces['observation'].shape[0] + env.observation_space.spaces['desired_goal'].shape[0] 
     else:
         dX = env.observation_space.shape[0]
     dU = env.action_space.shape[0]
