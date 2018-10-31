@@ -30,8 +30,11 @@ class AgentOpenAIGym(Agent):
         self.__init_gym()
 
     def __init_gym(self):
+        import types
+
         self.env = gym.make(self._hyperparams['env'])
         self.sim = self.env.env.sim
+        self.env.env.render = types.MethodType(render, self.env.env)  # Dirty hack to work around the fixed 500x500 pixel recording
         self.env._max_episode_steps = self.T-1 # So env is done with the last timestep
         self.env = gym.wrappers.Monitor(self.env , self._hyperparams['data_files_dir'], force=True)
         if is_goal_based(self.env):
@@ -119,3 +122,14 @@ class AgentOpenAIGym(Agent):
 
 def is_goal_based(env):
     return isinstance(env.observation_space, gym.spaces.Dict)
+
+def render(self, mode='human'):
+    """
+    Dirty hack to work around the fixed 500x500 pixel recording in gym.
+    """
+    self._render_callback()
+    if mode == 'rgb_array':
+        self._get_viewer().render()
+        return self._get_viewer()._read_pixels_as_in_window()
+    elif mode == 'human':
+        self._get_viewer().render()
