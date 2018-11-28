@@ -1,3 +1,8 @@
+#TODO File
+TODO
+#compiled protofiles
+cpp_compiled/
+python_compiled/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
