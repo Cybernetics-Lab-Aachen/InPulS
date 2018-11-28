@@ -18,8 +18,17 @@ from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
         policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
-from gps_agent_pkg.msg import TrialCommand, SampleResult, PositionCommand, \
-        RelaxCommand, DataRequest, TfActionCommand, TfObsData, DataType
+
+
+from gps_agent_pkg.proto.python_compiled.TrialCommand_pb2 import TrialCommand
+from gps_agent_pkg.proto.python_compiled.SampleResult_pb2 import SampleResult
+from gps_agent_pkg.proto.python_compiled.PositionCommand_pb2 import PositionCommand
+from gps_agent_pkg.proto.python_compiled.RelaxCommand_pb2 import RelaxCommand
+from gps_agent_pkg.proto.python_compiled.DataRequest_pb2 import DataRequest
+from gps_agent_pkg.proto.python_compiled.TfActionCommand_pb2 import TfActionCommand
+from gps_agent_pkg.proto.python_compiled.TfObsData_pb2 import TfObsData
+from gps_agent_pkg.proto.python_compiled.DataType_pb2 import DataType
+
 from gps.utility.perpetual_timer import PerpetualTimer
 
 try:
