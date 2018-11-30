@@ -6,17 +6,15 @@ from random import random
 from math import pi
 
 
-import rospy
 import cv2
 
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 from threading import Timer
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
-        policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy
+        policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
+        image_msg_to_cv
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 
 
@@ -28,6 +26,7 @@ from gps_agent_pkg.proto.python_compiled.DataRequest_pb2 import DataRequest
 from gps_agent_pkg.proto.python_compiled.TfActionCommand_pb2 import TfActionCommand
 from gps_agent_pkg.proto.python_compiled.TfObsData_pb2 import TfObsData
 from gps_agent_pkg.proto.python_compiled.DataType_pb2 import DataType
+from gps_agent_pkg.proto.python_compiled.Image import Image
 
 from gps.utility.perpetual_timer import PerpetualTimer
 
@@ -56,8 +55,8 @@ class AgentROSJACO(Agent):
         config = copy.deepcopy(AGENT_ROS_JACO)
         config.update(hyperparams)
         Agent.__init__(self, config)
-        if init_node:
-            rospy.init_node('gps_agent_ros_node')
+        # if init_node:
+        #     rospy.init_node('gps_agent_ros_node')
         self._init_pubs_and_subs()
         self._seq_id = 0  # Used for setting seq in ROS commands.
 
@@ -76,8 +75,7 @@ class AgentROSJACO(Agent):
 
         self.condition = None
         self.policy = None
-        r = rospy.Rate(1)
-        r.sleep()
+        time.sleep(1)
 
         self.stf_policy = None
         self.init_tf = False
@@ -129,7 +127,7 @@ class AgentROSJACO(Agent):
         request = DataRequest()
         request.id = self._get_next_seq_id()
         request.arm = arm
-        request.stamp = rospy.get_rostime()
+        request.stamp = time.time()
         result_msg = self._data_service.publish_and_wait(request)
         # TODO - Make IDs match, assert that they match elsewhere here.
         sample = msg_to_sample(result_msg, self)
@@ -145,7 +143,7 @@ class AgentROSJACO(Agent):
         """
         relax_command = RelaxCommand()
         relax_command.id = self._get_next_seq_id()
-        relax_command.stamp = rospy.get_rostime()
+        relax_command.stamp = time.time()
         relax_command.arm = arm
         self._relax_service.publish_and_wait(relax_command)
 
@@ -389,7 +387,7 @@ class AgentROSJACO(Agent):
 
 
     def _cv_callback(self, image_msg):
-        self.rgb_image = self._cv_bridge.imgmsg_to_cv2(image_msg, "bgr8")
+        self.rgb_image = image_msg_to_cv(image_msg)
         self.vision_enabled = True
 
 
@@ -398,12 +396,13 @@ class AgentROSJACO(Agent):
         self._pub.publish(pub_msg)
 
     def _init_tf(self, policy, dU):
+        """TODO: Image message proto type
+                check callback functions for proto message compatibility"""
         if self.init_tf is False:  # init pub and sub if this init has not been called before.
-            self._pub = rospy.Publisher('/gps_controller_sent_robot_action_tf', TfActionCommand)
-            self._sub = rospy.Subscriber('/gps_obs_tf', TfObsData, self._tf_callback)
-            self._sub = rospy.Subscriber(self._hyperparams['rgb_topic'], Image, self._cv_callback)
-            r = rospy.Rate(0.5)  # wait for publisher/subscriber to kick on.
-            r.sleep()
+            self._pub = PublisherEmulator('/gps_controller_sent_robot_action_tf', TfActionCommand)
+            self._sub = SubscriberEmulator('/gps_obs_tf', TfObsData, self._tf_callback)
+            self._sub = SubscriberEmulator(self._hyperparams['rgb_topic'], Image, self._cv_callback)
+            time.sleep(1)
             self.init_tf = True
         self.stf_policy = policy
         self.dU = dU
