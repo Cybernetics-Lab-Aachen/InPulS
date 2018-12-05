@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import scipy as sp
 
-from algorithm_NN import Algorithm_NN
+from gps.algorithm.algorithm_NN import Algorithm_NN
 
 LOGGER = logging.getLogger(__name__)
 
