@@ -27,7 +27,7 @@ class AgentOpenAIGym(Agent):
         self.x0 = self._hyperparams['x0']
         self.record = False
         self.render = self._hyperparams['render']
-        self.__init_gym()
+        self.__init_gym() # TODO Emma only for testing!
 
     def __init_gym(self):
         import types
