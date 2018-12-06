@@ -27,7 +27,8 @@ class AgentOpenAIGym(Agent):
         self.x0 = self._hyperparams['x0']
         self.record = False
         self.render = self._hyperparams['render']
-        self.__init_gym() # TODO Emma only for testing!
+        self.scaler = self._hyperparams.get('scaler', None)
+        self.__init_gym()
 
     def __init_gym(self):
         import types
@@ -76,9 +77,8 @@ class AgentOpenAIGym(Agent):
 
         self.env.video_callable = lambda episode_id, record=record: record
         # Get initial state
-        if not rnd:
-            self.env.seed(self.x0[condition])
-        obs = self.env.reset() 
+        self.env.seed(None if rnd else self.x0[condition])
+        obs = self.env.reset()
         self.set_states(sample, obs, 0)
         #sample.set('observation', obs['observation'], 0)
         #sample.set(END_EFFECTOR_POINTS, np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal']), 0)
@@ -109,15 +109,11 @@ class AgentOpenAIGym(Agent):
         """
         Reads individual sensors from obs and store them in the sample.
         """
-        if is_goal_based(self.env):
-            sample.set(END_EFFECTOR_POINTS, np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal']), t)  # Use goal as EE
-            obs = obs['observation']
-        else:
-            sample.set(END_EFFECTOR_POINTS, self.sim.data.qpos[:2], t)  # Use first pos as EE TODO Depends on env
-
-        for data_type in self._x_data_idx:
-            if data_type != END_EFFECTOR_POINTS:
-                sample.set(data_type, obs[self._x_data_idx[data_type]], t)
+        X = np.concatenate([obs['observation'], np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal'])])
+        if self.scaler:
+            X = self.scaler.transform([X])[0]
+        sample.set('observation', X[:10], t)
+        sample.set(END_EFFECTOR_POINTS, X[10:], t)
 
 
 def is_goal_based(env):

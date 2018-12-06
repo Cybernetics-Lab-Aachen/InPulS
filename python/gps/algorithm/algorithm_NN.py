@@ -1,10 +1,10 @@
-from algorithm import Algorithm
+from gps.algorithm.algorithm import Algorithm
 import copy
 import logging
 import numpy as np
 import scipy as sp
-from traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_ITER
-from traj_opt.config import TRAJ_OPT_LQR
+from gps.algorithm.traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_ITER
+from gps.algorithm.traj_opt.config import TRAJ_OPT_LQR
 import abc
 
 
@@ -180,7 +180,7 @@ class Algorithm_NN(Algorithm):
         """
         self.itr = itr
         for m in range(self.M):
-            self.cur[m].sample_list = self.extend_state_in_samples(sample_lists[m], m)
+            self.cur[m].sample_list = sample_lists[m]
 
         # Update dynamics model using all samples.
         self._update_dynamics()
@@ -367,14 +367,3 @@ class Algorithm_NN(Algorithm):
             ])
 
         return Cm_ext, cv_ext
-
-    def extend_state_in_samples(self, sample_list, cond):
-        if self._hyperparams['include_tgt']:
-            for traj_sample in sample_list:
-                X_seq = traj_sample.get_X()
-                ee_tgt = self._hyperparams['exp_x_tgts'][cond][0:self._hyperparams['dtgtX']]
-                ee_tgts = np.repeat([ee_tgt], self.T, axis=0)
-                X_seq[:, X_seq.shape[1] - self._hyperparams['dtgtX']:self.dX] = ee_tgts
-                traj_sample.dX = self.dX
-                traj_sample.update_X(X_seq)
-        return sample_list
