@@ -103,6 +103,45 @@ class AlgorithmMDGPS(Algorithm):
             obs_data = np.concatenate((obs_data, samples.get_obs()))
         self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt)
 
+        # Visualize Approximation
+        import matplotlib.pyplot as plt
+        dX = dO
+
+        fig = plt.figure()
+        ax1 = fig.add_subplot(121)
+        ax1.set_ylabel('k')
+        ax1.set_xlabel('t')
+        for dim in range(dU):
+            line, = ax1.plot(np.arange(T), self.new_traj_distr[0].k[:, dim], ':')
+        
+        ax2 = fig.add_subplot(122)
+        ax2.set_ylabel('K')
+        ax2.set_xlabel('t')
+        for dim1 in range(dU):
+            for dim2 in range(dX):
+                line, = ax2.plot(np.arange(T), self.new_traj_distr[0].K[:, dim1, dim2], ':')
+        fig.savefig(self._data_files_dir + 'plot_traj_opt-%02d.png' % (self.iteration_count))
+        plt.close(fig)
+
+        # Visualize actions
+        import tensorflow as tf
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.set_ylabel('u')
+        ax1.set_xlabel('t')
+
+        sample = self.cur[0].sample_list.get_samples()[0].get_X()
+        sample = sample.dot(self.policy_opt.policy.scale) + self.policy_opt.policy.bias
+        u_tgt = tgt_mu[0]
+        with tf.device(self.policy_opt.policy.device_string):
+            u_approx = self.policy_opt.sess.run(self.policy_opt.act_op, feed_dict={self.policy_opt.obs_tensor: sample})
+        for dim in range(dU):
+            line, = ax1.plot(np.arange(T), u_tgt[:, dim], ':')
+            c = line.get_color()
+            ax1.plot(np.arange(T), u_approx[:, dim], color=c, label='$u_t[%d]$'%dim)
+        fig.savefig(self._data_files_dir + 'plot_gps_action-%02d.png' % (self.iteration_count))
+        plt.close(fig)
+
     def _update_policy_fit(self, m):
         """
         Re-estimate the local policy values in the neighborhood of the
@@ -133,6 +172,26 @@ class AlgorithmMDGPS(Algorithm):
         for t in range(T):
             pol_info.chol_pol_S[t, :, :] = \
                     sp.linalg.cholesky(pol_info.pol_S[t, :, :])
+
+        # Visualize pol lin
+        if m == 0:
+            import matplotlib.pyplot as plt
+
+            fig = plt.figure()
+            ax1 = fig.add_subplot(121)
+            ax1.set_ylabel('k')
+            ax1.set_xlabel('t')
+            for dim in range(dU):
+                line, = ax1.plot(np.arange(T), pol_info.pol_k[:, dim], ':')
+
+            ax2 = fig.add_subplot(122)
+            ax2.set_ylabel('K')
+            ax2.set_xlabel('t')
+            for dim1 in range(dU):
+                for dim2 in range(dX):
+                    line, = ax2.plot(np.arange(T), pol_info.pol_K[:, dim1, dim2], ':')
+            fig.savefig(self._data_files_dir + 'plot_pol_lin-%02d.png' % (self.iteration_count))
+            plt.close(fig)
 
     def _advance_iteration_variables(self):
         """
