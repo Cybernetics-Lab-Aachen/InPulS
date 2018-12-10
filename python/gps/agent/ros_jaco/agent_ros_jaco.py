@@ -93,8 +93,6 @@ class AgentROSJACO(Agent):
         self.sample_processing = False
         self.sample_save = False
 
-        self._cv_bridge = CvBridge()
-
     def _init_pubs_and_subs(self):
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], TrialCommand,
