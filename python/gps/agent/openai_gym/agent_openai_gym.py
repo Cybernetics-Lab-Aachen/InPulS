@@ -37,6 +37,8 @@ class AgentOpenAIGym(Agent):
         self.sim = self.env.env.sim
         self.env.env.render = types.MethodType(render, self.env.env)  # Dirty hack to work around the fixed 500x500 pixel recording
         self.env._max_episode_steps = self.T-1 # So env is done with the last timestep
+        if self._hyperparams.get('initial_step', 0) > 0:
+            self.env._max_episode_steps += 1
         self.env = gym.wrappers.Monitor(self.env , self._hyperparams['data_files_dir'], force=True)
         if is_goal_based(self.env):
             dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces['desired_goal'].shape[0] 
@@ -79,6 +81,10 @@ class AgentOpenAIGym(Agent):
         # Get initial state
         self.env.seed(None if rnd else self.x0[condition])
         obs = self.env.reset()
+        if self._hyperparams.get('initial_step', 0) > 0:
+            # Take one random step to get a slightly random initial state distribution
+            U_initial = (self.env.action_space.high - self.env.action_space.low)/12 * np.random.normal(size=self.dU) * self._hyperparams['initial_step']
+            obs = self.env.step(U_initial)[0]
         self.set_states(sample, obs, 0)
         #sample.set('observation', obs['observation'], 0)
         #sample.set(END_EFFECTOR_POINTS, np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal']), 0)
