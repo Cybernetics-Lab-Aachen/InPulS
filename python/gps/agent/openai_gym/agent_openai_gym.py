@@ -115,12 +115,17 @@ class AgentOpenAIGym(Agent):
         """
         Reads individual sensors from obs and store them in the sample.
         """
-        X = np.concatenate([obs['observation'], np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal'])])
+        if is_goal_based(self.env):
+            X = np.concatenate([obs['observation'], np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal'])])
+        else:
+            X = obs
+
+        # Scale states
         if self.scaler:
             X = self.scaler.transform([X])[0]
-        sample.set('observation', X[:10], t)
-        sample.set(END_EFFECTOR_POINTS, X[10:], t)
 
+        for sensor, idx in self._x_data_idx.items():
+            sample.set(sensor, X[idx], t)
 
 def is_goal_based(env):
     return isinstance(env.observation_space, gym.spaces.Dict)

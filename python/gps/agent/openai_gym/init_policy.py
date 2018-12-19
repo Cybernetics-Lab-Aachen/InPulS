@@ -9,7 +9,7 @@ def init_gym_pol(hyperparams):
     env = gym.make(hyperparams['env'])
 
     if is_goal_based(env):
-        dX = env.observation_space.spaces['observation'].shape[0] + env.observation_space.spaces['desired_goal'].shape[0] 
+        dX = env.observation_space.spaces['observation'].shape[0] + env.observation_space.spaces['desired_goal'].shape[0]
     else:
         dX = env.observation_space.shape[0]
     dU = env.action_space.shape[0]
