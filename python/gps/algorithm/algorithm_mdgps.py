@@ -174,24 +174,8 @@ class AlgorithmMDGPS(Algorithm):
                     sp.linalg.cholesky(pol_info.pol_S[t, :, :])
 
         # Visualize pol lin
-        if m == 0:
-            import matplotlib.pyplot as plt
-
-            fig = plt.figure()
-            ax1 = fig.add_subplot(121)
-            ax1.set_ylabel('k')
-            ax1.set_xlabel('t')
-            for dim in range(dU):
-                line, = ax1.plot(np.arange(T), pol_info.pol_k[:, dim], ':')
-
-            ax2 = fig.add_subplot(122)
-            ax2.set_ylabel('K')
-            ax2.set_xlabel('t')
-            for dim1 in range(dU):
-                for dim2 in range(dX):
-                    line, = ax2.plot(np.arange(T), pol_info.pol_K[:, dim1, dim2], ':')
-            fig.savefig(self._data_files_dir + 'plot_pol_lin-%02d.png' % (self.iteration_count))
-            plt.close(fig)
+        if m==0:
+            self.visualize_policy_linearization(m, 'pol_lin')
 
     def _advance_iteration_variables(self):
         """

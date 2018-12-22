@@ -247,3 +247,22 @@ class Algorithm(object):
             cov_label='$\\mathbf{F}_t$',
             y_label='$\\mathbf{y}$'
         )
+
+    def visualize_policy_linearization(self, m, title='pol_lin'):
+        from gps.visualization import visualize_linear_model
+
+        pol_info = self.cur[m].pol_info
+        traj_info = self.cur[m].traj_info
+
+        visualize_linear_model(
+            file=self._data_files_dir + 'plot_%s-m%d-%02d.png' % (title, m, self.iteration_count),
+            coeff=pol_info.pol_K,
+            intercept=pol_info.pol_k,
+            cov=pol_info.pol_S,
+            x=traj_info.xmu[:, :self.dX],
+            y=None,
+            coeff_label='$\\bar{\\mathbf{K}}_t$',
+            intercept_label='$\\bar{\\mathbf{k}}_t$',
+            cov_label='$\\bar{\\Sigma}_t$',
+            y_label='$\\bar{\\mathbf{u}}_t$'
+        )
