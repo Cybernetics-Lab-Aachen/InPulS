@@ -114,6 +114,8 @@ class Algorithm(object):
                         Phi + (N*priorm) / (N+priorm) * \
                         np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
 
+        self.visualize_dynamics(0)
+
     def _update_trajectories(self, itr=None):
         """
         Compute new linear Gaussian controllers.
@@ -226,3 +228,22 @@ class Algorithm(object):
                 np.log(np.diag(self.cur[m].traj_distr.chol_pol_covar[t, :, :]))
             )
         return ent
+
+    def visualize_dynamics(self, m):
+        from gps.visualization import visualize_linear_model
+
+        traj_info = self.cur[m].traj_info
+        dynamics = traj_info.dynamics
+
+        visualize_linear_model(
+            file=self._data_files_dir + 'plot_dynamics_m%d-%02d.png' % (m, self.iteration_count),
+            coeff=dynamics.Fm[:-1],
+            intercept=dynamics.fv[:-1],
+            cov=dynamics.dyn_covar[:-1],
+            x=traj_info.xmu[:-1],
+            y=traj_info.xmu[1:, :self.dX],
+            coeff_label='$f_{\\mathbf{x}\\mathbf{u} t}$',
+            intercept_label='$f_{\\mathbf{c} t}$',
+            cov_label='$\\mathbf{F}_t$',
+            y_label='$\\mathbf{y}$'
+        )
