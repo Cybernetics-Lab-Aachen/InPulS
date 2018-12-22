@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
+from gps.algorithm.cost.cost_fk import CostFK
 from gps.algorithm.cost.cost_state import CostState
 from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
@@ -19,12 +20,13 @@ from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION
-import gps.env.peg_insertion
+import gps.envs
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 7,
     JOINT_VELOCITIES: 7,
-    END_EFFECTOR_POINTS: 3,
+    END_EFFECTOR_POINTS: 6,
+    'diff': 6,
     ACTION: 7,
 }
 
@@ -52,21 +54,30 @@ scaler = StandardScaler()
 scaler.mean_ = []
 scaler.scale_ = []
 
+
+def additional_sensors(sim, sample, t):
+    from gps.proto.gps_pb2 import END_EFFECTOR_POINT_JACOBIANS
+    jac = np.empty((6, 7))
+    jac[:3] = sim.data.get_site_jacp('leg_bottom').reshape((3, -1))
+    jac[3:] = sim.data.get_site_jacp('leg_top').reshape((3, -1))
+    sample.set(END_EFFECTOR_POINT_JACOBIANS, jac, t=t)
+
+
 agent = {
     'type': AgentOpenAIGym,
     'render': True,
-    'T': 50,
+    'T': 150,
     'random_reset': False,
-    'x0': np.concatenate([np.array([0.1, 0.1, -1.54, -1.7, 1.54, -0.2, 0]),
-                          np.zeros(7)]),
+    'x0': [0, 1, 2, 3, 4, 5, 6, 7],  # Random seeds for each initial condition
     'dt': 1.0/25,
     'env': 'PegInsertion-v0',
     'sensor_dims': SENSOR_DIMS,
     'target_state': np.zeros(3),  # Target np.zeros(3), 
     'conditions': common['conditions'],
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS],
-    'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS],
+    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, 'diff'],
+    'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, 'diff'],
 #    'scaler': scaler,
+    'additional_sensors': additional_sensors,
 }
 
 algorithm = {
@@ -84,25 +95,34 @@ algorithm['init_traj_distr'] = {
     'T': agent['T'],
 }
 
-action_cost = {
+torque_cost = {
     'type': CostAction,
-    'wu': np.ones(SENSOR_DIMS[ACTION])
+    'wu': 1.0 / PR2_GAINS,
+}
+
+fk_cost = {
+    'type': CostFK,
+    'target_end_effector': np.array([0.0, 0.3, -0.5, 0.0, 0.3, -0.2]),
+    'wp': np.array([1, 1, 1, 1, 1, 1]),
+    'l1': 0.1,
+    'l2': 10.0,
+    'alpha': 1e-5,
 }
 
 state_cost = {
     'type': CostState,
     'data_types': {
-        END_EFFECTOR_POINTS: {
-            'wp': np.ones(3),
-            'target_state': agent['target_state']
+        'diff': {
+            'wp': np.ones(6),  # Target size
+            'target_state': np.zeros(6),
         },
     },
 }
 
 algorithm['cost'] = {
     'type': CostSum,
-    'costs': [action_cost, state_cost],
-    'weights': [1E-3, 1.0],
+    'costs': [torque_cost, fk_cost],
+    'weights': [1e-3, 1.0],
 }
 
 algorithm['dynamics'] = {
@@ -110,9 +130,9 @@ algorithm['dynamics'] = {
     'regularization': 1e-6,
     'prior': {
         'type': DynamicsPriorGMM,
-        'max_clusters': 60,
+        'max_clusters': 20,
         'min_samples_per_cluster': 40,
-        'max_samples': 80,
+        'max_samples': 20,
         'strength': 1,
     },
 }
@@ -131,7 +151,7 @@ config = {
     'agent': agent,
     'gui_on': False,
     'algorithm': algorithm,
-    'random_seed': 1,
+    'random_seed': 0,
 }
 
 common['info'] = generate_experiment_info(config)

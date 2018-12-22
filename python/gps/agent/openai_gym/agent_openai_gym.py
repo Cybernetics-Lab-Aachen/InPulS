@@ -46,11 +46,6 @@ class AgentOpenAIGym(Agent):
             dX = self.env.observation_space.shape[0]
         dU = self.env.action_space.shape[0]
 
-        #data = self.sim.data
-        #print("qpos", data.qpos.flat[1:].shape)
-        #print("qvel", data.qvel.flat[:].shape)
-        #exit(0)
-
         assert self.dX == dX, 'expected dX=%d, got dX=%d'%(self.dX, dX)
         assert self.dU == dU, 'expected dU=%d, got dU=%d'%(self.dU, dU)
 
@@ -86,8 +81,6 @@ class AgentOpenAIGym(Agent):
             U_initial = (self.env.action_space.high - self.env.action_space.low)/12 * np.random.normal(size=self.dU) * self._hyperparams['initial_step']
             obs = self.env.step(U_initial)[0]
         self.set_states(sample, obs, 0)
-        #sample.set('observation', obs['observation'], 0)
-        #sample.set(END_EFFECTOR_POINTS, np.asarray(obs['desired_goal']) - np.asarray(obs['achieved_goal']), 0)
         U_0 = policy.act(sample.get_X(0), sample.get_obs(0), 0, noise)
         sample.set(ACTION, U_0, 0)
         for t in range(1, self.T):
@@ -127,8 +120,13 @@ class AgentOpenAIGym(Agent):
         for sensor, idx in self._x_data_idx.items():
             sample.set(sensor, X[idx], t)
 
+        if 'additional_sensors' in self._hyperparams:
+            self._hyperparams['additional_sensors'](self.sim, sample, t)
+
+
 def is_goal_based(env):
     return isinstance(env.observation_space, gym.spaces.Dict)
+
 
 def render(self, mode='human'):
     """
