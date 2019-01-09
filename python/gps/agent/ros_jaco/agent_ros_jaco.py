@@ -13,7 +13,7 @@ from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
-        policy_to_msg, tf_policy_to_action_msg, tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
+        tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
         image_msg_to_cv
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 
@@ -97,6 +97,8 @@ class AgentROSJACO(Agent):
         self.sample_processing = False
         self.sample_save = False
 
+        self.latest_sample = Sample(self)
+
     def _init_pubs_and_subs(self):
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command,
@@ -127,13 +129,14 @@ class AgentROSJACO(Agent):
             arm: TRIAL_ARM or AUXILIARY_ARM.
         """
         # TODO: check what is needed as response!
-        request = command_msgs.Command()
+        request = command_msgs.Request()
         request.id = self._get_next_seq_id()
         #request.arm = arm
         #request.stamp = time.time()
         result_msg = self._data_service.publish_and_wait(request)
         # TODO - Make IDs match, assert that they match elsewhere here.
         sample = msg_to_sample(result_msg, self)
+        self.latest_sample = sample
         return sample
 
     # TODO - The following could be more general by being relax_actuator
@@ -150,7 +153,7 @@ class AgentROSJACO(Agent):
         # relax_command.arm = arm
         relax_command.is_position_command = False
         relax_command.command.extend([0, 0, 0, 0, 0, 0])
-        self._relax_service.publish_and_wait(relax_command)
+        self.latest_sample = self._relax_service.publish_and_wait(relax_command)
 
     def reset_arm(self, arm, mode, data):
         """
@@ -161,13 +164,13 @@ class AgentROSJACO(Agent):
             data: An array of floats.
         """
         reset_command = command_msgs.Command()
-        reset_command.command = data
+        reset_command.command.extend(data)
         #reset_command.pd_gains = self._hyperparams['pid_params']
         #reset_command.arm = arm
         timeout = self._hyperparams['trial_timeout']
         #reset_command.id = self._get_next_seq_id()
         try:
-            self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+            self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
         except TimeoutException:
             self.relax_arm(arm)
             wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
@@ -187,20 +190,20 @@ class AgentROSJACO(Agent):
         # reset_command.mode = mode
         # Reset to uniform random state
         # Joints 1, 4, 5 and 6 have a range of -10,000 to +10,000 degrees. Joint 2 has a range of +42 to +318 degrees. Joint 3 has a range of +17 to +343 degrees. (see http://wiki.ros.org/jaco)
-        reset_command.command = [
+        reset_command.command.extend([
             (random() * 2 - 1) * pi,
             pi + (random() * 2 - 1) * pi / 2,
             # Limit elbow joints to 180 +/-90 degrees to prevent getting stuck in the ground
             pi + (random() * 2 - 1) * pi / 2,
             (random() * 2 - 1) * pi,
             (random() * 2 - 1) * pi,
-            (random() * 2 - 1) * pi]
+            (random() * 2 - 1) * pi])
         #reset_command.pd_gains = self._hyperparams['pid_params']
         #reset_command.arm = arm
         timeout = self._hyperparams['trial_timeout']
         reset_command.id = self._get_next_seq_id()
         try:
-            self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+            self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
         except TimeoutException:
             self.relax_arm(arm)
             wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
@@ -259,15 +262,17 @@ class AgentROSJACO(Agent):
             self.noise = None
 
         # Fill in trial command
+        action = policy.act(self.latest_sample.get_X(), None, None, self.noise)
         trial_command = command_msgs.Command()
         trial_command.id = self._get_next_seq_id()
+        trial_command.command.extend(action)
         # trial_command.controller = \
         #     policy_to_msg(policy, noise, use_TfController=use_TfController)
         # trial_command.T = self.T
         # trial_command.id = self._get_next_seq_id()
         # trial_command.frequency = self._hyperparams['frequency']
-        ee_points = self._hyperparams['end_effector_points']
-        trial_command.command = ee_points.reshape(ee_points.size).tolist()
+        # ee_points = self._hyperparams['end_effector_points']
+        # trial_command.command = ee_points.reshape(ee_points.size).tolist()
         # trial_command.ee_points_tgt = \
         #     self._hyperparams['ee_points_tgt'][condition].tolist()
         # trial_command.state_datatypes = self._hyperparams['state_include']
@@ -323,8 +328,10 @@ class AgentROSJACO(Agent):
             self.noise = None
 
         # Fill in trial command
+        action = policy.act(self.latest_sample.get_X(), None, None, self.noise)
         trial_command = command_msgs.Command()
         trial_command.id = self._get_next_seq_id()
+        trial_command.command.extend(action)
         # trial_command.controller = \
         #         policy_to_msg(policy, noise, use_TfController=use_TfController)
         # if timeout is not None:
@@ -333,8 +340,8 @@ class AgentROSJACO(Agent):
         #     trial_command.T = self.T
         # trial_command.id = self._get_next_seq_id()
         # trial_command.frequency = self._hyperparams['frequency']
-        ee_points = self._hyperparams['end_effector_points']
-        trial_command.command = ee_points.reshape(ee_points.size).tolist()
+        # ee_points = self._hyperparams['end_effector_points']
+        # trial_command.command = ee_points.reshape(ee_points.size).tolist()
         # trial_command.ee_points_tgt = \
         #         self._hyperparams['ee_points_tgt'][self.condition].tolist()
         # trial_command.state_datatypes = self._hyperparams['state_include']
