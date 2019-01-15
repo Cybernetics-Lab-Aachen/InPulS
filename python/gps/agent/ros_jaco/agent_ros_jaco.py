@@ -105,11 +105,11 @@ class AgentROSJACO(Agent):
         self._hyperparams['sample_result_topic'], command_msgs.State
         )
         self._reset_service = ServiceEmulator(
-            self._hyperparams['reset_command_topic'], command_msgs.Command,
+            self._hyperparams['trial_command_topic'], command_msgs.Command,
             self._hyperparams['sample_result_topic'], command_msgs.State
         )
         self._relax_service = ServiceEmulator(
-            self._hyperparams['relax_command_topic'], command_msgs.Command,
+            self._hyperparams['trial_command_topic'], command_msgs.Command,
             self._hyperparams['sample_result_topic'], command_msgs.State
         )
         self._data_service = ServiceEmulator(
