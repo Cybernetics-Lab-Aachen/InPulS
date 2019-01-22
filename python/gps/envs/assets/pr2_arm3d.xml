@@ -1,4 +1,7 @@
 <mujoco model="arm3d">
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.44 0.85 0.56" rgb2="0.46 0.87 0.58" width="32" height="32"></texture>
+    </asset>
 
     <compiler inertiafromgeom="true" angle="radian" coordinate="local" />
     <option timestep="0.01" gravity="0 0 0" iterations="20" integrator="RK4" />
@@ -119,6 +122,8 @@
         <body name="w4" pos="0.0 0.084 -0.45">
             <geom name="w4" rgba="0.2 0.2 0.2 1" type="box" size="0.032 0.183 0.05" contype="1" conaffinity="1" />
         </body>
+
+        <light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0"></light>
     </worldbody>
 
     <actuator>

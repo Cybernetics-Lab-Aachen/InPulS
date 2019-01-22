@@ -50,7 +50,7 @@ class AgentOpenAIGym(Agent):
         assert self.dU == dU, 'expected dU=%d, got dU=%d'%(self.dU, dU)
 
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, first_itr=False, timeout=None, reset=True, rnd=False, record=False):
+               use_TfController=False, timeout=None, reset_cond=None, record=False):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -74,7 +74,7 @@ class AgentOpenAIGym(Agent):
 
         self.env.video_callable = lambda episode_id, record=record: record
         # Get initial state
-        self.env.seed(None if rnd else self.x0[condition])
+        self.env.seed(None if reset_cond is None else self.x0[reset_cond])
         obs = self.env.reset()
         if self._hyperparams.get('initial_step', 0) > 0:
             # Take one random step to get a slightly random initial state distribution

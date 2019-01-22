@@ -26,7 +26,7 @@ def init_gym_pol(hyperparams):
 
     for t in range(T):
         k[t] = (low+high)/2
-        PSig[t] = np.diag(np.square(high - low)/12)
+        PSig[t] = np.diag(np.square(high - low)/12) * hyperparams['init_var_scale']
         cholPSig[t] = np.linalg.cholesky(PSig[t])
         inv_pol_covar[t] = np.linalg.inv(PSig[t])
 
