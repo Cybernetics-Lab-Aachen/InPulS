@@ -100,22 +100,24 @@ class AgentROSJACO(Agent):
         self.latest_sample = Sample(self)
 
     def _init_pubs_and_subs(self):
+        ports = [5555, 5556, 5557, 5558, 5559]
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command,
-        self._hyperparams['sample_result_topic'], command_msgs.State
+        self._hyperparams['sample_result_topic'], command_msgs.State, ports[0], ports
         )
         self._reset_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State
+            self._hyperparams['sample_result_topic'], command_msgs.State, ports[1], ports
         )
         self._relax_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State
+            self._hyperparams['sample_result_topic'], command_msgs.State, ports[2], ports
         )
         self._data_service = ServiceEmulator(
             self._hyperparams['data_request_topic'], command_msgs.Request,
-            self._hyperparams['sample_result_topic'], command_msgs.State
+            self._hyperparams['sample_result_topic'], command_msgs.State, ports[3], ports
         )
+
 
     def _get_next_seq_id(self):
         self._seq_id = (self._seq_id + 1) % (2 ** 30)
