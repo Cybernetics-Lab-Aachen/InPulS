@@ -15,7 +15,6 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.gcm_opt.policy_opt_tf import PolicyOptTf
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
@@ -77,25 +76,18 @@ algorithm = {
     'type': AlgorithmTrajOpt,
     'conditions': common['conditions'],
     'iterations': 10,
-    #'tac_policy': {
-    #    'history': 10,
-    #},
 }
 
 algorithm['init_traj_distr'] = {
     'type': init_gym_pol,
-    'init_gains': np.zeros(SENSOR_DIMS[ACTION]),
-    'init_acc': np.zeros(SENSOR_DIMS[ACTION]),
-    'init_var': 0.1,
+    'init_var_scale': 1.0,
     'env': agent['env'],
-    'dt': agent['dt'],
-    'stiffness': 0.01,
     'T': agent['T'],
 }
 
 action_cost = {
     'type': CostAction,
-    'wu': np.ones(4)  # dU
+    'wu': np.ones(SENSOR_DIMS[ACTION])
 }
 
 state_cost = {
@@ -123,9 +115,9 @@ algorithm['dynamics'] = {
     'regularization': 1e-6,
     'prior': {
         'type': DynamicsPriorGMM,
-        'max_clusters': 60,
+        'max_clusters': 8,
         'min_samples_per_cluster': 40,
-        'max_samples': 80,
+        'max_samples': 40,
         'strength': 1,
     },
 }
@@ -155,6 +147,7 @@ param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
+param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 mkdir(common['data_files_dir'])
