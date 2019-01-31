@@ -126,7 +126,7 @@ algorithm['dynamics'] = {
         'type': DynamicsPriorGMM,
         'max_clusters': 8,
         'min_samples_per_cluster': 40,
-        'max_samples': 5*common['conditions'],
+        'max_samples': 40,
         'strength': 1,
     },
 }
