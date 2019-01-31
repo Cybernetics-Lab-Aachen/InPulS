@@ -15,7 +15,7 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.policy_opt.policy_opt_tf import PolicyOptTf
+from gps.algorithm.gps import GPS_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
@@ -136,16 +136,14 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': PolicyOptTf,
-    'network_params': {
-        'obs_include': agent['obs_include'],
-        'obs_vector_data': agent['obs_include'],
-        'sensor_dims': SENSOR_DIMS,
-    },
-    'save_path': common['data_files_dir'],
-    'network_model': example_tf_network,
-    'iterations': 3000,
-    'weights_file_prefix': EXP_DIR + 'policy',
+    'type': GPS_Policy,
+    'random_seed': 1,
+    'init_var': 0.1,
+    'ent_reg': 0.0,
+    'epochs': 100,
+    'batch_size': 25,
+    'weight_decay': 0.005,
+    'N_hidden': 80,
 }
 
 algorithm['policy_prior'] = {

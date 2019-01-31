@@ -125,17 +125,14 @@ class AlgorithmMDGPS(Algorithm):
         plt.close(fig)
 
         # Visualize actions
-        import tensorflow as tf
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         ax1.set_ylabel('u')
         ax1.set_xlabel('t')
 
         sample = self.cur[0].sample_list.get_samples()[0].get_X()
-        sample = sample.dot(self.policy_opt.policy.scale) + self.policy_opt.policy.bias
         u_tgt = tgt_mu[0]
-        with tf.device(self.policy_opt.policy.device_string):
-            u_approx = self.policy_opt.sess.run(self.policy_opt.act_op, feed_dict={self.policy_opt.obs_tensor: sample})
+        u_approx = self.policy_opt.prob(sample[np.newaxis, :, :])[0][0]
         for dim in range(dU):
             line, = ax1.plot(np.arange(T), u_tgt[:, dim], ':')
             c = line.get_color()
