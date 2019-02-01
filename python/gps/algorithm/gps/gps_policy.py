@@ -118,8 +118,16 @@ class GPS_Policy(PolicyOpt):
                         self.precision_in: batch_prc
                     }
                 )[1:]
-            losses /= batches_per_epoch
+            losses[epoch] /= batches_per_epoch
             pbar.set_description("GPS Loss: {:.6f}".format(np.sum(losses[epoch])))
+
+        # Visualize training loss
+        from gps.visualization import visualize_loss
+        visualize_loss(
+            self._data_files_dir + 'plot_gps_training-%02d' % (self.iteration_count),
+            losses,
+            labels=['KL divergence', 'L2 reg']
+        )
 
         # Optimize variance.
         A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
