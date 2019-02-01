@@ -3,10 +3,20 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 
-def visualize_linear_model(file, coeff, intercept, cov, x, y=None,
-                           N=100, coeff_label='Coefficients',
-                           intercept_label='Intercept', cov_label='Covariance',
-                           y_label='$\\mathbf{y}$', time_label='$t$'):
+def visualize_linear_model(
+    file,
+    coeff,
+    intercept,
+    cov,
+    x,
+    y=None,
+    N=100,
+    coeff_label='Coefficients',
+    intercept_label='Intercept',
+    cov_label='Covariance',
+    y_label='$\\mathbf{y}$',
+    time_label='$t$'
+):
     """
     Creates a figure visualizing a timeseries of linear Gausian models.
 
@@ -72,13 +82,17 @@ def visualize_linear_model(file, coeff, intercept, cov, x, y=None,
     ax4.set_xlabel(time_label)
     ax4.xaxis.set_major_locator(MaxNLocator(integer=True))
     for dim in range(dY):
-            line, = ax4.plot(np.arange(T), y_mean[:, dim])
-            c = line.get_color()
-            if y is not None:
-                ax4.plot(np.arange(T), y[:, dim], ':')
-            ax4.fill_between(np.arange(T),
-                             y_mean[:, dim]-y_std[:, dim],
-                             y_mean[:, dim]+y_std[:, dim],
-                             facecolor=c, alpha=0.25, interpolate=True)
+        line, = ax4.plot(np.arange(T), y_mean[:, dim])
+        c = line.get_color()
+        if y is not None:
+            ax4.plot(np.arange(T), y[:, dim], ':')
+        ax4.fill_between(
+            np.arange(T),
+            y_mean[:, dim] - y_std[:, dim],
+            y_mean[:, dim] + y_std[:, dim],
+            facecolor=c,
+            alpha=0.25,
+            interpolate=True
+        )
     fig.savefig(file)
     plt.close(fig)
