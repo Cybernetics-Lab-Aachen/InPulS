@@ -262,10 +262,10 @@ class Algorithm(object):
             cov=traj_distr.pol_covar,
             x=traj_info.xmu[:, :self.dX],
             y=None,
-            coeff_label='$\\bar{\\mathbf{K}}_t$',
-            intercept_label='$\\bar{\\mathbf{k}}_t$',
-            cov_label='$\\bar{\\Sigma}_t$',
-            y_label='$\\bar{\\mathbf{u}}_t$'
+            coeff_label='$\\mathbf{K}_t$',
+            intercept_label='$\\mathbf{k}_t$',
+            cov_label='$\\Sigma_t$',
+            y_label='$\\mathbf{u}_t$'
         )
 
     def visualize_policy_linearization(self, m, title='pol_lin'):
