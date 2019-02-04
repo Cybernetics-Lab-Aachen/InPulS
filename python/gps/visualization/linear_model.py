@@ -4,7 +4,7 @@ from matplotlib.ticker import MaxNLocator
 
 
 def visualize_linear_model(
-    file,
+    file_name,
     coeff,
     intercept,
     cov,
@@ -15,7 +15,9 @@ def visualize_linear_model(
     intercept_label='Intercept',
     cov_label='Covariance',
     y_label='$\\mathbf{y}$',
-    time_label='$t$'
+    time_label='$t$',
+    show=False,
+    export_data=True
 ):
     """
     Creates a figure visualizing a timeseries of linear Gausian models.
@@ -47,6 +49,7 @@ def visualize_linear_model(
     ax1.set_ylabel(intercept_label)
     ax1.set_xlabel(time_label)
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax1.grid(linestyle=':')
     for dim in range(dY):
         line, = ax1.plot(np.arange(T), intercept[:, dim])
 
@@ -55,6 +58,7 @@ def visualize_linear_model(
     ax2.set_ylabel(coeff_label)
     ax2.set_xlabel(time_label)
     ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax2.grid(linestyle=':')
     for dim1 in range(dY):
         for dim2 in range(dX):
             line, = ax2.plot(np.arange(T, dtype=int), coeff[:, dim1, dim2])
@@ -64,6 +68,7 @@ def visualize_linear_model(
     ax3.set_ylabel(cov_label)
     ax3.set_xlabel(time_label)
     ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax3.grid(linestyle=':')
     for dim1 in range(dY):
         for dim2 in range(dY):
             line, = ax3.plot(np.arange(T), cov[:, dim1, dim2])
@@ -80,6 +85,7 @@ def visualize_linear_model(
     ax4.set_ylabel(y_label)
     ax4.set_xlabel(time_label)
     ax4.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax1.grid(linestyle=':')
     for dim in range(dY):
         line, = ax4.plot(np.arange(T), y_mean[:, dim])
         c = line.get_color()
@@ -93,5 +99,9 @@ def visualize_linear_model(
             alpha=0.25,
             interpolate=True
         )
-    fig.savefig(file)
+    fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
+    if show:
+        plt.show()
     plt.close(fig)
+    if export_data:
+        np.savez_compressed(file_name, coeff=coeff, intercept=intercept, cov=cov, y=y, y_mean=y_mean, y_std=y_std)

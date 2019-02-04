@@ -10,7 +10,6 @@ from gps.algorithm.config import ALG
 from gps.algorithm.algorithm_utils import IterationData, TrajectoryInfo
 from gps.utility.general_utils import extract_condition
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -129,6 +128,8 @@ class Algorithm(object):
             self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond] = \
                     self.traj_opt.update(cond, self)
 
+        self.visualize_local_policy(0)
+
     def _eval_cost(self, cond):
         """
         Evaluate costs for all samples for a condition.
@@ -236,7 +237,7 @@ class Algorithm(object):
         dynamics = traj_info.dynamics
 
         visualize_linear_model(
-            file=self._data_files_dir + 'plot_dynamics_m%d-%02d.png' % (m, self.iteration_count),
+            file_name=self._data_files_dir + 'plot_dynamics_m%d-%02d' % (m, self.iteration_count),
             coeff=dynamics.Fm[:-1],
             intercept=dynamics.fv[:-1],
             cov=dynamics.dyn_covar[:-1],
@@ -245,7 +246,26 @@ class Algorithm(object):
             coeff_label='$f_{\\mathbf{x}\\mathbf{u} t}$',
             intercept_label='$f_{\\mathbf{c} t}$',
             cov_label='$\\mathbf{F}_t$',
-            y_label='$\\mathbf{y}$'
+            y_label='$\\mathbf{x}_{t+1}$'
+        )
+
+    def visualize_local_policy(self, m, title='pol_lqr'):
+        from gps.visualization import visualize_linear_model
+
+        traj_info = self.cur[m].traj_info
+        traj_distr = self.new_traj_distr[m]
+
+        visualize_linear_model(
+            file_name=self._data_files_dir + 'plot_%s-m%d-%02d' % (title, m, self.iteration_count),
+            coeff=traj_distr.K,
+            intercept=traj_distr.k,
+            cov=traj_distr.pol_covar,
+            x=traj_info.xmu[:, :self.dX],
+            y=None,
+            coeff_label='$\\bar{\\mathbf{K}}_t$',
+            intercept_label='$\\bar{\\mathbf{k}}_t$',
+            cov_label='$\\bar{\\Sigma}_t$',
+            y_label='$\\bar{\\mathbf{u}}_t$'
         )
 
     def visualize_policy_linearization(self, m, title='pol_lin'):
@@ -255,7 +275,7 @@ class Algorithm(object):
         traj_info = self.cur[m].traj_info
 
         visualize_linear_model(
-            file=self._data_files_dir + 'plot_%s-m%d-%02d.png' % (title, m, self.iteration_count),
+            file_name=self._data_files_dir + 'plot_%s-m%d-%02d' % (title, m, self.iteration_count),
             coeff=pol_info.pol_K,
             intercept=pol_info.pol_k,
             cov=pol_info.pol_S,
@@ -294,8 +314,10 @@ class Algorithm(object):
             k.append(k_)
             prc.append(prc_)
 
-        np.savez_compressed(self._data_files_dir + 'ctr_%02d' % self.iteration_count,
-                            X=np.concatenate(X),
-                            K=np.concatenate(K),
-                            k=np.concatenate(k),
-                            prc=np.concatenate(prc))
+        np.savez_compressed(
+            self._data_files_dir + 'ctr_%02d' % self.iteration_count,
+            X=np.concatenate(X),
+            K=np.concatenate(K),
+            k=np.concatenate(k),
+            prc=np.concatenate(prc)
+        )

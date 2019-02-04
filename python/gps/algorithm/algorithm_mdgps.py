@@ -105,31 +105,11 @@ class AlgorithmMDGPS(Algorithm):
             obs_data = np.concatenate((obs_data, samples.get_obs()))
         self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt)
 
-        # Visualize Approximation
-        import matplotlib.pyplot as plt
-        dX = dO
-
-        fig = plt.figure()
-        ax1 = fig.add_subplot(121)
-        ax1.set_ylabel('k')
-        ax1.set_xlabel('t')
-        for dim in range(dU):
-            line, = ax1.plot(np.arange(T), self.new_traj_distr[0].k[:, dim], ':')
-        
-        ax2 = fig.add_subplot(122)
-        ax2.set_ylabel('K')
-        ax2.set_xlabel('t')
-        for dim1 in range(dU):
-            for dim2 in range(dX):
-                line, = ax2.plot(np.arange(T), self.new_traj_distr[0].K[:, dim1, dim2], ':')
-        fig.savefig(self._data_files_dir + 'plot_traj_opt-%02d.png' % (self.iteration_count))
-        plt.close(fig)
-
         # Visualize actions
         sample = self.cur[0].sample_list.get_samples()[0].get_X()
         u_approx = self.policy_opt.prob(sample[np.newaxis, :, :])[0][0]
         visualize_approximation(
-            self._data_files_dir + 'plot_gps_action-%02d-m%02d-%02d' % (self.iteration_count, 0, 0),
+            self._data_files_dir + 'plot_gps_action-m%02d-%02d-%02d' % (0, 0, self.iteration_count),
             tgt_mu[0],
             u_approx,
             y_label='$\\mathbf{u}$',

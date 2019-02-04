@@ -10,7 +10,8 @@ def visualize_approximation(
     x_label='$t$',
     y_label='$\\mathbf{x}$',
     dim_label_pattern='$\\mathbf{x}_t[%d]$',
-    show=False
+    show=False,
+    export_data=True
 ):
     """
     Visualizes approximation ability.
@@ -18,6 +19,9 @@ def visualize_approximation(
         file_name: File name without extension.
         losses: ndarray (N_epochs, N_losses) with losses.
         labels: list (N_losses, ) with labels for each loss.
+        show: Display generated plot. This is a blocking operation.
+        export_data: Writes a npz file containing the plotted data points.
+                     This is useful for later recreation of the plot.
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
@@ -44,3 +48,5 @@ def visualize_approximation(
     if show:
         plt.show()
     plt.close(fig)
+    if export_data:
+        np.savez_compressed(file_name, target=target, approx=approx)
