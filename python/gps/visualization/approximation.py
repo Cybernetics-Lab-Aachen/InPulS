@@ -3,19 +3,17 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 
-def visualize_loss(
+def visualize_approximation(
     file_name,
-    losses,
-    labels,
-    x_label='epoch',
-    y_label='$\\mathcal{L}$',
-    log_scale=False,
-    add_total=True,
-    total_label='Total',
+    target,
+    approx,
+    x_label='$t$',
+    y_label='$\\mathbf{x}$',
+    dim_label_pattern='$\\mathbf{x}_t[%d]$',
     show=False
 ):
     """
-    Visualizes training losses.
+    Visualizes approximation ability.
     Args:
         file_name: File name without extension.
         losses: ndarray (N_epochs, N_losses) with losses.
@@ -25,17 +23,21 @@ def visualize_loss(
     ax1 = fig.add_subplot(111)
     ax1.set_xlabel(x_label)
     ax1.set_ylabel(y_label)
-    if log_scale:
-        ax1.set_yscale('log')
     ax1.grid(linestyle=':')
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    T, N = losses.shape
-    assert len(labels) == N, "Must provide a label for each loss"
-    for n in range(N):
-        ax1.plot(np.arange(T), losses[:, n], label=labels[n])
-    if add_total:
-        ax1.plot(np.arange(T), np.sum(losses, axis=1), label=total_label)
+    T, dX = target.shape
+    assert target.shape == approx.shape, "Target and approximation must have same shape"
+
+    for dim in range(dX):
+        line, = ax1.plot(np.arange(T), target[:, dim], ':')
+        c = line.get_color()
+        ax1.plot(
+            np.arange(T),
+            approx[:, dim],
+            color=c,
+            label=dim_label_pattern % dim if dim_label_pattern is not None else None
+        )
 
     ax1.legend()
     fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)

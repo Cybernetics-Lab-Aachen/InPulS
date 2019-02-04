@@ -29,7 +29,6 @@ def visualize_linear_model(
         y: Optional. Shape (T, dY)
         N: Number of random samples drawn to visualize variance.
     """
-
     fig = plt.figure(figsize=(16, 12))
 
     T, dX = x.shape

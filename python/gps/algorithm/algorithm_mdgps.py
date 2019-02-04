@@ -9,6 +9,7 @@ from gps.algorithm.algorithm import Algorithm
 from gps.algorithm.algorithm_utils import PolicyInfo
 from gps.algorithm.config import ALG_MDGPS
 from gps.sample.sample_list import SampleList
+from gps.visualization import visualize_approximation
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,20 +126,15 @@ class AlgorithmMDGPS(Algorithm):
         plt.close(fig)
 
         # Visualize actions
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        ax1.set_ylabel('u')
-        ax1.set_xlabel('t')
-
         sample = self.cur[0].sample_list.get_samples()[0].get_X()
-        u_tgt = tgt_mu[0]
         u_approx = self.policy_opt.prob(sample[np.newaxis, :, :])[0][0]
-        for dim in range(dU):
-            line, = ax1.plot(np.arange(T), u_tgt[:, dim], ':')
-            c = line.get_color()
-            ax1.plot(np.arange(T), u_approx[:, dim], color=c, label='$u_t[%d]$'%dim)
-        fig.savefig(self._data_files_dir + 'plot_gps_action-%02d.png' % (self.iteration_count))
-        plt.close(fig)
+        visualize_approximation(
+            self._data_files_dir + 'plot_gps_action-%02d-m%02d-%02d' % (self.iteration_count, 0, 0),
+            tgt_mu[0],
+            u_approx,
+            y_label='$\\mathbf{u}$',
+            dim_label_pattern='$\\mathbf{u}_t[%d]$',
+        )
 
     def _update_policy_fit(self, m):
         """
