@@ -3,11 +3,22 @@ import scipy as sp
 import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 
 
-def visualize_latent_space(
-    file_name, z_mean, z_std, x_label='$\\mathbf{z}$', y_label='pdf', show=False, export_data=True
-):
+def export_latent_space_data(file_name, x_train, z_mean_train, z_std_train, x_test, z_mean_test, z_std_test):
+    np.savez_compressed(
+        file_name,
+        x_train=x_train,
+        z_mean_train=z_mean_train,
+        z_std_train=z_std_train,
+        x_test=x_test,
+        z_mean_test=z_mean_test,
+        z_std_test=z_std_test
+    )
+
+
+def visualize_latent_space(file_name, z_mean, z_std, x_label='$\\mathbf{z}$', y_label='pdf', show=False):
     """
     Visualizes approximation ability.
     Args:
@@ -39,18 +50,20 @@ def visualize_latent_space(
 
     if file_name is not None:
         fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
-        if export_data:
-            np.savez_compressed(file_name, z_mean=z_mean, z_std=z_std)
     if show:
         plt.show()
     plt.close(fig)
 
-def visualize_latent_space_tsne(file_name, z, color_map='gist_rainbow', show=False, export_data=True):
+
+def visualize_latent_space_tsne(
+    file_name, x_train, z_train, x_test, z_test, color_map='gist_rainbow', N_colors=16, show=False
+):
     """
     Visualizes latent space via tsne.
     Args:
         file_name: File name without extension.
-        Z: ndarray (N, S, dZ) with latent states were N is the number of input states and S the number of laten space sample of each state.
+        x ndarray (N, dX) of states.
+        z_train: ndarray (N, S, dZ) with latent states were N is the number of input states and S the number of laten space sample of each state.
         show: Display generated plot. This is a blocking operation.
         export_data: Writes a npz file containing the plotted data points.
                      This is useful for later recreation of the plot.
@@ -59,17 +72,37 @@ def visualize_latent_space_tsne(file_name, z, color_map='gist_rainbow', show=Fal
     ax1 = fig.add_subplot(111)
     ax1.grid(linestyle=':')
 
-    N, S, dZ = z.shape
+    kmeans = KMeans(n_clusters=N_colors).fit(x_train)
+    N_train, S, dZ = z_train.shape
+    N_test, _, _ = z_test.shape
+
+    z = np.concatenate([z_train, z_test])
     z_embedded = TSNE(n_components=2, perplexity=S).fit_transform(z.reshape(-1, dZ))
 
-    plt.scatter(z_embedded[:, 0], z_embedded[:, 1], c=np.repeat(np.arange(N), S), cmap=plt.cm.get_cmap(color_map, N))
+    # Plot trained
+    plt.scatter(
+        x=z_embedded[:N_train * S, 0],
+        y=z_embedded[:N_train * S, 1],
+        c=np.repeat(kmeans.labels_, S),
+        cmap=plt.cm.get_cmap(color_map, N_colors),
+        marker="o",
+        alpha=0.5,
+    )
+
+    # Plot test
+    nearest = sp.spatial.cKDTree(x_train).query(x_test)[0]
+    plt.scatter(
+        x=z_embedded[N_train * S:, 0],
+        y=z_embedded[N_train * S:, 1],
+        c=np.repeat(1 - nearest / np.amax(nearest), S),
+        cmap=plt.cm.gray,
+        marker="D",
+    )
     ax1.set_xticklabels([])
     ax1.set_yticklabels([])
 
     if file_name is not None:
         fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
-        if export_data:
-            np.savez_compressed(file_name, z=z)
     if show:
         plt.show()
     plt.close(fig)
