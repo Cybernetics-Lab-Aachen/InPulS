@@ -69,7 +69,6 @@ class AlgorithmMDGPS(Algorithm):
         if self.iteration_count > 0:
             self._stepadjust()
         self._update_trajectories()
-        self.export_controllers()
 
         # S-step
         self._update_policy()

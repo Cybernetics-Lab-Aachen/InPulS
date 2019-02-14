@@ -197,7 +197,6 @@ class Algorithm_NN(Algorithm):
             self.init_step_mult.append(copy.deepcopy(self.cur[m].step_mult))
 
         self._update_trajectories(train_gcm)
-        self.export_controllers()
 
         self._advance_iteration_variables()
 

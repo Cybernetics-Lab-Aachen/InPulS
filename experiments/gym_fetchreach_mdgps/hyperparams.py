@@ -19,8 +19,7 @@ from gps.algorithm.gps import GPS_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
-from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION
-from gps.algorithm.policy_opt.tf_model_example import example_tf_network
+from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
 
 SENSOR_DIMS = {
@@ -156,8 +155,10 @@ algorithm['policy_prior'] = {
 config = {
     'iterations': algorithm['iterations'],
     'num_samples': 5,
-    'num_pol_samples': 5,
-    'save_samples': False,
+    'num_lqr_samples_static': 1,
+    'num_lqr_samples_random': 5,
+    'num_pol_samples_static': 1,
+    'num_pol_samples_random': 20,
     'verbose_trials': 0,
     'common': common,
     'agent': agent,
@@ -175,6 +176,7 @@ param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
+param_str += '-h%r'%algorithm['policy_opt']['N_hidden']
 param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol' if not algorithm['sample_on_policy'] else '-gps_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 mkdir(common['data_files_dir'])

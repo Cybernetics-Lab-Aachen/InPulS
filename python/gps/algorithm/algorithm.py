@@ -286,38 +286,3 @@ class Algorithm(object):
             cov_label='$\\bar{\\Sigma}_t$',
             y_label='$\\bar{\\mathbf{u}}_t$'
         )
-
-    def export_controllers(self):
-        "Exports the local controller data"
-        dU, dX, T = self.dU, self.dX, self.T
-
-        X = []
-        K = []
-        k = []
-        prc = []
-
-        for m in range(self.M):
-            samples = self.cur[m].sample_list
-            X.append(samples.get_X())
-            N = len(samples)
-            traj = self.new_traj_distr[m]
-            K_ = np.empty((N, T, dU, dX))
-            k_ = np.empty((N, T, dU))
-            prc_ = np.empty((N, T, dU, dU))
-
-            for n in range(N):
-                K_[n] = traj.K
-                k_[n] = traj.k
-                prc_[n] = traj.inv_pol_covar
-
-            K.append(K_)
-            k.append(k_)
-            prc.append(prc_)
-
-        np.savez_compressed(
-            self._data_files_dir + 'ctr_%02d' % self.iteration_count,
-            X=np.concatenate(X),
-            K=np.concatenate(K),
-            k=np.concatenate(k),
-            prc=np.concatenate(prc)
-        )
