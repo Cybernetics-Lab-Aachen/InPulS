@@ -15,6 +15,7 @@ import time
 # Add gps/python to path so that imports work.
 sys.path.append('/'.join(str.split(__file__.replace('\\', '/'), '/')[:-2]))  # Replace backslashes for windows compability
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 def main():
     """ Main function to be run. """
