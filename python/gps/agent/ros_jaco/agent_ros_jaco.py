@@ -18,15 +18,6 @@ from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_
 from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
 
 
-# from gps_agent_pkg.proto.python_compiled.TrialCommand_pb2 import TrialCommand
-# from gps_agent_pkg.proto.python_compiled.SampleResult_pb2 import SampleResult
-# from gps_agent_pkg.proto.python_compiled.PositionCommand_pb2 import PositionCommand
-# from gps_agent_pkg.proto.python_compiled.RelaxCommand_pb2 import RelaxCommand
-# from gps_agent_pkg.proto.python_compiled.DataRequest_pb2 import DataRequest
-# from gps_agent_pkg.proto.python_compiled.TfActionCommand_pb2 import TfActionCommand
-# from gps_agent_pkg.proto.python_compiled.TfObsData_pb2 import TfObsData
-# from gps_agent_pkg.proto.python_compiled.DataType_pb2 import DataType
-# from gps_agent_pkg.proto.python_compiled.Image import Image
 import Command_pb2 as command_msgs
 
 from gps.utility.perpetual_timer import PerpetualTimer
@@ -175,7 +166,7 @@ class AgentROSJACO(Agent):
             self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
         except TimeoutException:
             self.relax_arm(arm)
-            wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
+            wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
             self.reset_arm(arm, mode, data)
 
         #TODO: Maybe verify that you reset to the correct position.
@@ -208,7 +199,7 @@ class AgentROSJACO(Agent):
             self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
         except TimeoutException:
             self.relax_arm(arm)
-            wait = raw_input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
+            wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
             self.reset_arm(arm, mode, data)
 
 
@@ -330,7 +321,6 @@ class AgentROSJACO(Agent):
             self.noise = None
 
         # Fill in trial command
-        action = policy.act(self.latest_sample.get_X(), None, None, self.noise)
         trial_command = command_msgs.Command()
         trial_command.id = self._get_next_seq_id()
         trial_command.command.extend(action)
@@ -362,62 +352,40 @@ class AgentROSJACO(Agent):
         self.active = False
         return sample
 
-    # def add_rgb_stream_to_sample(self, sample_msg):
-    #     img_data = DataType()
-    #     img_data.data_type = 11
-    #     img_data.shape = self.rgb_image_seq.shape
-    #     #print("img_data: ", img_data.shape)
-    #     #print("rgb_seq0: ", self.rgb_image_seq[0,:,:,:].shape)
-    #     #cv2.imshow('dst_rt', self.rgb_image_seq[0,:,:,:])
-    #     #cv2.waitKey(0)
-    #     #cv2.destroyAllWindows()
-    #     img_data.data = np.array(self.rgb_image_seq).reshape(-1)
-    #     sample_msg.sensor_data.append(img_data)
-    #     return sample_msg
-    #
-    # def _get_new_action(self, policy, obs, t=None):
-    #     return policy.act(obs, obs, t, self.noise)
-    #
-    # def _tf_callback(self, message):
-    #     obs = tf_obs_msg_to_numpy(message)
-    #     obs = self.extend_state_space(obs)
-    #     #ja_tgt = self._hyperparams['exp_x_tgts'][self.condition][0:6]
-    #     #obs = np.append(obs, ja_tgt)
-    #     if self.vision_enabled:
-    #         self.rgb_image_seq[self.current_action_id, :, :, :] = self.rgb_image
-    #         # self.stf_policy.update_task_context(obs, self.rgb_image)
-    #     if self.current_action_id > (self.T - 1):
-    #         print("self.T: ", self.T)
-    #         return
-    #     action_msg = \
-    #             tf_policy_to_action_msg(self.dU,
-    #                                     self._get_new_action(self.stf_policy,
-    #                                                          obs,
-    #                                                          self.current_action_id),
-    #                                     self.current_action_id + 1)
-    #     self._tf_publish(action_msg)
-    #     self.current_action_id += 1
-    #
-    #
-    # def _cv_callback(self, image_msg):
-    #     self.rgb_image = image_msg_to_cv(image_msg)
-    #     self.vision_enabled = True
-    #
-    #
-    # def _tf_publish(self, pub_msg):
-    #     """ Publish a message without waiting for response. """
-    #     self._pub.publish(pub_msg)
-    #
-    # def _init_tf(self, policy, dU):
-    #     """TODO: Image message proto type
-    #             check callback functions for proto message compatibility"""
-    #     if self.init_tf is False:  # init pub and sub if this init has not been called before.
-    #         self._pub = PublisherEmulator('/gps_controller_sent_robot_action_tf', TfActionCommand)
-    #         self._sub = SubscriberEmulator('/gps_obs_tf', TfObsData, self._tf_callback)
-    #         self._sub = SubscriberEmulator(self._hyperparams['rgb_topic'], Image, self._cv_callback)
-    #         time.sleep(1)
-    #         self.init_tf = True
-    #     self.stf_policy = policy
-    #     self.dU = dU
-    #     self.current_action_id = 0
+    def _get_new_action(self, policy, obs, t=None):
+        return policy.act(obs, obs, t, self.noise)
+
+    def _tf_callback(self, message):
+        obs = tf_obs_msg_to_numpy(message)
+        obs = self.extend_state_space(obs)
+        if self.current_action_id > (self.T - 1):
+            print("self.T: ", self.T)
+            return
+        # action_msg = \
+        #         tf_policy_to_action_msg(self.dU,
+        #                                 self._get_new_action(self.stf_policy,
+        #                                                      obs,
+        #                                                      self.current_action_id),
+        #                                 self.current_action_id + 1)
+        new_action = self._get_new_action(self.stf_policy, obs, self.cur_action_id)
+        action_msg = command_msgs.Command()
+        action_msg.id = self.cur_action_id()
+        action_msg.command.extend(new_action)
+        self._tf_publish(action_msg)
+        self.current_action_id += 1
+
+    def _tf_publish(self, pub_msg):
+        """ Publish a message without waiting for response. """
+        self._pub.publish(pub_msg)
+
+    def _init_tf(self, policy, dU):
+        """TODO: check callback functions for proto message compatibility"""
+        if self.init_tf is False:  # init pub and sub if this init has not been called before.
+            self._pub = PublisherEmulator('/gps_controller_sent_robot_action_tf', command_msgs.Command)
+            self._sub = SubscriberEmulator('/gps_obs_tf', command_msgs.State, self._tf_callback)
+            time.sleep(1)
+            self.init_tf = True
+        self.stf_policy = policy
+        self.dU = dU
+        self.current_action_id = 0
 
