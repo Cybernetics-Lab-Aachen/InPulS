@@ -24,7 +24,7 @@ class AlgorithmTrajOpt(Algorithm_NN):
                 self.cur[cond].traj_distr for cond in range(self.M)
             ]
         for cond in range(self.M):
-            self.new_traj_distr[cond], self.cur[cond].eta, _, _, _ = \
+            self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond], _ = \
                     self.traj_opt_update(cond)
 
     def backward(self, prev_traj_distr, traj_info, eta):
