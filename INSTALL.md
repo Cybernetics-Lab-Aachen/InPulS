@@ -5,12 +5,12 @@
 The following are required:
 
 * python (>=3.5)
-* python-numpy (>=1.7.0)
-* python-matplotlib (>=1.5.0)
-* python-scipy (>=0.11.0)
 * python-qt4
-* Tensorflow-gpu
 * Mujoco 1.50
+
+```sh
+python3 -m pip install --user --upgrade -r requirements.txt
+```
 
 ## Setup
 
