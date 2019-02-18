@@ -10,6 +10,7 @@ class Sample(object):
     single trajectory.
     Note: must be serializable for easy saving, no C++ references!
     """
+
     def __init__(self, agent):
         self.agent = agent
 
@@ -39,8 +40,7 @@ class Sample(object):
             self._meta.fill(np.nan)  # Invalidate existing meta data.
         else:
             if sensor_name not in self._data:
-                self._data[sensor_name] = \
-                        np.empty((self.T,) + sensor_data.shape)
+                self._data[sensor_name] = np.empty((self.T, ) + sensor_data.shape)
                 self._data[sensor_name].fill(np.nan)
             self._data[sensor_name][t, :] = sensor_data
             self._X[t, :].fill(np.nan)
@@ -50,8 +50,7 @@ class Sample(object):
         """ Get trajectory data for a particular sensor. """
         #print("Access to get::Sample")
         #print("dict with data types: ", self._data)
-        return (self._data[sensor_name] if t is None
-                else self._data[sensor_name][t, :])
+        return (self._data[sensor_name] if t is None else self._data[sensor_name][t, :])
 
     def get_X(self, t=None):
         """ Get the state. Put it together if not precomputed. """
@@ -60,8 +59,7 @@ class Sample(object):
             for data_type in self._data:
                 if data_type not in self.agent.x_data_types:
                     continue
-                data = (self._data[data_type] if t is None
-                        else self._data[data_type][t, :])
+                data = (self._data[data_type] if t is None else self._data[data_type][t, :])
                 self.agent.pack_data_x(X, data, data_types=[data_type])
         #print("shape X: ", X.shape)                     #shape: dTxdX = (100,32)
         #print("Access to get_X::sample")
@@ -69,7 +67,7 @@ class Sample(object):
         return X
 
     def update_X(self, data, t=None):
-        self._X = data if t is None else self._X[t,:]
+        self._X = data if t is None else self._X[t, :]
 
     def get_EEF_Position(self, t=None):
         return self.get(7, t)
@@ -87,8 +85,7 @@ class Sample(object):
                     continue
                 if data_type in self.agent.meta_data_types:
                     continue
-                data = (self._data[data_type] if t is None
-                        else self._data[data_type][t, :])
+                data = (self._data[data_type] if t is None else self._data[data_type][t, :])
                 self.agent.pack_data_obs(obs, data, data_types=[data_type])
         return obs
 

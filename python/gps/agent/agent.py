@@ -26,45 +26,29 @@ class Agent(object):
         # Store samples, along with size/index information for samples.
         self._samples = [[] for _ in range(self._hyperparams['conditions'])]
         self.T = self._hyperparams['T']
-        self.dU = self._hyperparams['sensor_dims'][ACTION]
 
         self.x_data_types = self._hyperparams['state_include']
         self.obs_data_types = self._hyperparams['obs_include']
-        if 'meta_include' in self._hyperparams:
-            self.meta_data_types = self._hyperparams['meta_include']
-        else:
-            self.meta_data_types = []
+        self.u_data_types = self._hyperparams['actions_include']
+        self.meta_data_types = self._hyperparams['meta_include'] if 'meta_include' in self._hyperparams else []
+        self.sensor_dims = self._hyperparams['sensor_dims']
 
-        # List of indices for each data type in state X.
-        self._state_idx, i = [], 0
-        for sensor in self.x_data_types:
-            dim = self._hyperparams['sensor_dims'][sensor]
-            self._state_idx.append(list(range(i, i+dim)))
-            i += dim
-        self.dX = i
+        # Construct indices for composite data
+        def data_idx(data_types, offset=0):
+            idx, i = [], 0
+            for sensor in data_types:
+                if sensor not in self.sensor_dims:
+                    raise ValueError('No sensor dimension for sensor %r' % sensor)
+                dim = self.sensor_dims[sensor]
+                idx.append(list(range(offset + i, offset + i + dim)))
+                i += dim
+            data_idx = {d: i for d, i in zip(data_types, idx)}
+            return i, data_idx
 
-        # List of indices for each data type in observation.
-        self._obs_idx, i = [], 0
-        for sensor in self.obs_data_types:
-            dim = self._hyperparams['sensor_dims'][sensor]
-            self._obs_idx.append(list(range(i, i+dim)))
-            i += dim
-        self.dO = i
-
-        # List of indices for each data type in meta data.
-        self._meta_idx, i = [], 0
-        for sensor in self.meta_data_types:
-            dim = self._hyperparams['sensor_dims'][sensor]
-            self._meta_idx.append(list(range(i, i+dim)))
-            i += dim
-        self.dM = i
-
-        self._x_data_idx = {d: i for d, i in zip(self.x_data_types,
-                                                 self._state_idx)}
-        self._obs_data_idx = {d: i for d, i in zip(self.obs_data_types,
-                                                   self._obs_idx)}
-        self._meta_data_idx = {d: i for d, i in zip(self.meta_data_types,
-                                                   self._meta_idx)}
+        self.dX, self._x_data_idx = data_idx(self.x_data_types)
+        self.dO, self._obs_data_idx = data_idx(self.obs_data_types)
+        self.dM, self._meta_data_idx = data_idx(self.meta_data_types)
+        self.dU, self._u_data_idx = data_idx(self.u_data_types)
 
         self._target_ja = []
         self._initial_ja = []

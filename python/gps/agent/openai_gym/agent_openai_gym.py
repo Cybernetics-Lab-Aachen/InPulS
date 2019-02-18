@@ -1,15 +1,12 @@
 """ This file defines an agent for the Kinova Jaco2 ROS environment. """
-import copy
 import numpy as np
-import logging
-import time
 
 import gym
 
 from gps.agent.agent import Agent
-from gps.agent.agent_utils import generate_noise, setup
+from gps.agent.agent_utils import generate_noise
 from gps.sample.sample import Sample
-from gps.proto.gps_pb2 import ACTION, END_EFFECTOR_POINTS
+from gps.proto.gps_pb2 import ACTION
 
 
 class AgentOpenAIGym(Agent):
@@ -17,6 +14,7 @@ class AgentOpenAIGym(Agent):
     All communication between the algorithms and ROS is done through
     this class.
     """
+
     def __init__(self, hyperparams):
         """
         Initialize agent.
@@ -35,22 +33,35 @@ class AgentOpenAIGym(Agent):
 
         self.env = gym.make(self._hyperparams['env'])
         self.sim = self.env.env.sim
-        self.env.env.render = types.MethodType(render, self.env.env)  # Dirty hack to work around the fixed 500x500 pixel recording
-        self.env._max_episode_steps = self.T-1 # So env is done with the last timestep
+        self.env.env.render = types.MethodType(
+            render, self.env.env
+        )  # Dirty hack to work around the fixed 500x500 pixel recording
+        self.env._max_episode_steps = self.T - 1  # So env is done with the last timestep
         if self._hyperparams.get('initial_step', 0) > 0:
             self.env._max_episode_steps += 1
-        self.env = gym.wrappers.Monitor(self.env , self._hyperparams['data_files_dir'], force=True)
+        self.env = gym.wrappers.Monitor(self.env, self._hyperparams['data_files_dir'], force=True)
         if is_goal_based(self.env):
-            dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces['desired_goal'].shape[0] 
+            dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces[
+                'desired_goal'].shape[0]
         else:
             dX = self.env.observation_space.shape[0]
         dU = self.env.action_space.shape[0]
 
-        assert self.dX == dX, 'expected dX=%d, got dX=%d'%(self.dX, dX)
-        assert self.dU == dU, 'expected dU=%d, got dU=%d'%(self.dU, dU)
+        assert self.dX == dX, 'expected dX=%d, got dX=%d' % (self.dX, dX)
+        assert self.dU == dU, 'expected dU=%d, got dU=%d' % (self.dU, dU)
 
-    def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, timeout=None, reset_cond=None, record=False):
+    def sample(
+        self,
+        policy,
+        condition,
+        verbose=True,
+        save=True,
+        noisy=True,
+        use_TfController=False,
+        timeout=None,
+        reset_cond=None,
+        record=False
+    ):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -78,7 +89,8 @@ class AgentOpenAIGym(Agent):
         obs = self.env.reset()
         if self._hyperparams.get('initial_step', 0) > 0:
             # Take one random step to get a slightly random initial state distribution
-            U_initial = (self.env.action_space.high - self.env.action_space.low)/12 * np.random.normal(size=self.dU) * self._hyperparams['initial_step']
+            U_initial = (self.env.action_space.high - self.env.action_space.low
+                        ) / 12 * np.random.normal(size=self.dU) * self._hyperparams['initial_step']
             obs = self.env.step(U_initial)[0]
         self.set_states(sample, obs, 0)
         U_0 = policy.act(sample.get_X(0), sample.get_obs(0), 0, noise)
@@ -88,15 +100,15 @@ class AgentOpenAIGym(Agent):
                 self.env.render(mode='human')  # TODO add hyperparam
 
             # Get state
-            obs, _, done, _ = self.env.step(sample.get_U(t-1))
+            obs, _, done, _ = self.env.step(sample.get_U(t - 1))
             self.set_states(sample, obs, t)
 
             # Get action
             U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
             sample.set(ACTION, U_t, t)
 
-            if done and t < self.T-1:
-                raise Exception('Iteration ended prematurely %d/%d' %(t+1, self.T))
+            if done and t < self.T - 1:
+                raise Exception('Iteration ended prematurely %d/%d' % (t + 1, self.T))
         if save:
             self._samples[condition].append(sample)
         self.active = False

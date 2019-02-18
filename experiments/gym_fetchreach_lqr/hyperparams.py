@@ -18,14 +18,12 @@ from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
-from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION
-from gps.algorithm.policy_opt.tf_model_example import example_tf_network
-from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
+from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 
 SENSOR_DIMS = {
-    'observation': 10, # FetchReach 10, Fetch 25
-    END_EFFECTOR_POINTS: 3, # 1*3, 15 hand
-    ACTION: 4, #4 , 20 Hand
+    'observation': 10,  # FetchReach 10, Fetch 25
+    END_EFFECTOR_POINTS: 3,  # 1*3, 15 hand
+    ACTION: 4,  #4 , 20 Hand
 }
 
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
@@ -47,28 +45,29 @@ if not os.path.exists(common['data_files_dir']):
     os.makedirs(common['data_files_dir'])
 
 scaler = StandardScaler()
-scaler.mean_ = [1.33554446e+00,  7.46866838e-01,  5.25169272e-01,  3.78054915e-06,
-                1.55438229e-06, -2.66267931e-04, -4.78114576e-05, -5.77911271e-05,
-                4.03657748e-04,  4.67200411e-04,  6.71023554e-03, -1.16670921e-02,
-               -6.79674174e-03]
-scaler.scale_ = [1.07650035e-01, 1.29246324e-01, 9.07454956e-02, 2.64638440e-05,
-                 1.08806760e-05, 7.48034005e-03, 7.69515138e-03, 7.54787489e-03,
-                 1.37551241e-03, 1.52642517e-03, 7.57966860e-02, 1.03377066e-01,
-                 6.24320497e-02]
+scaler.mean_ = [
+    1.33554446e+00, 7.46866838e-01, 5.25169272e-01, 3.78054915e-06, 1.55438229e-06, -2.66267931e-04, -4.78114576e-05,
+    -5.77911271e-05, 4.03657748e-04, 4.67200411e-04, 6.71023554e-03, -1.16670921e-02, -6.79674174e-03
+]
+scaler.scale_ = [
+    1.07650035e-01, 1.29246324e-01, 9.07454956e-02, 2.64638440e-05, 1.08806760e-05, 7.48034005e-03, 7.69515138e-03,
+    7.54787489e-03, 1.37551241e-03, 1.52642517e-03, 7.57966860e-02, 1.03377066e-01, 6.24320497e-02
+]
 
 agent = {
     'type': AgentOpenAIGym,
     'render': False,
     'T': 20,
     'random_reset': False,
-    'x0': [0, 1, 2, 3, 4, 5, 6, 7], # Random seeds for each initial condition
-    'dt': 1.0/25,
+    'x0': [0, 1, 2, 3, 4, 5, 6, 7],  # Random seeds for each initial condition
+    'dt': 1.0 / 25,
     'env': 'FetchReach-v1',
     'sensor_dims': SENSOR_DIMS,
     'target_state': scaler.transform([np.zeros(13)])[0, -3:],  # Target np.zeros(3), 
     'conditions': common['conditions'],
     'state_include': ['observation', END_EFFECTOR_POINTS],
     'obs_include': ['observation', END_EFFECTOR_POINTS],
+    'actions_include': [ACTION],
     'scaler': scaler,
 }
 
@@ -87,7 +86,7 @@ algorithm['init_traj_distr'] = {
 
 action_cost = {
     'type': CostAction,
-    'wu': np.ones(SENSOR_DIMS[ACTION])
+    'wu': np.ones(SENSOR_DIMS[ACTION]),
 }
 
 state_cost = {
@@ -97,10 +96,6 @@ state_cost = {
             'wp': np.ones(3),  # Target size
             'target_state': agent["target_state"],
         },
-        #'observation': {
-        #    'wp': [0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        #    'target_state': np.zeros(25),
-        #},
     },
 }
 
@@ -113,13 +108,14 @@ algorithm['cost'] = {
 algorithm['dynamics'] = {
     'type': DynamicsLRPrior,
     'regularization': 1e-6,
-    'prior': {
-        'type': DynamicsPriorGMM,
-        'max_clusters': 8,
-        'min_samples_per_cluster': 40,
-        'max_samples': 40,
-        'strength': 1,
-    },
+    'prior':
+        {
+            'type': DynamicsPriorGMM,
+            'max_clusters': 8,
+            'min_samples_per_cluster': 40,
+            'max_samples': 40,
+            'strength': 1,
+        },
 }
 
 algorithm['traj_opt'] = {
