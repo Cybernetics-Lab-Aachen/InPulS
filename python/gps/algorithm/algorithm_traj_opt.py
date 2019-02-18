@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import scipy as sp
 
+from gps.algorithm.algorithm import Timer
 from gps.algorithm.algorithm_NN import Algorithm_NN
 
 LOGGER = logging.getLogger(__name__)
@@ -20,12 +21,13 @@ class AlgorithmTrajOpt(Algorithm_NN):
         Compute new linear Gaussian controllers.
         """
         if not hasattr(self, 'new_traj_distr'):
-            self.new_traj_distr = [
-                self.cur[cond].traj_distr for cond in range(self.M)
-            ]
-        for cond in range(self.M):
-            self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond], _ = \
-                    self.traj_opt_update(cond)
+            self.new_traj_distr = [self.cur[cond].traj_distr for cond in range(self.M)]
+        with Timer(self.timers, 'traj_opt'):
+            for cond in range(self.M):
+                self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond], _ = \
+                        self.traj_opt_update(cond)
+
+        self.visualize_local_policy(0)
 
     def backward(self, prev_traj_distr, traj_info, eta):
         """
@@ -166,5 +168,3 @@ class AlgorithmTrajOpt(Algorithm_NN):
                     Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
                     dyn_covar[t, :, :]
         return mu, sigma
-
-

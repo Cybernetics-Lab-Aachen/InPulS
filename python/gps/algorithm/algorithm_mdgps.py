@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import scipy as sp
 
-from gps.algorithm.algorithm import Algorithm
+from gps.algorithm.algorithm import Algorithm, Timer
 from gps.algorithm.algorithm_utils import PolicyInfo
 from gps.algorithm.config import ALG_MDGPS
 from gps.sample.sample_list import SampleList
@@ -62,8 +62,9 @@ class AlgorithmMDGPS(Algorithm):
             self._update_policy()
 
         # Update policy linearizations.
-        for m in range(self.M):
-            self._update_policy_fit(m)
+        with Timer(self.algorithm.timers, 'pol_lin'):
+            for m in range(self.M):
+                self._update_policy_fit(m)
 
         # C-step
         if self.iteration_count > 0:
@@ -71,7 +72,8 @@ class AlgorithmMDGPS(Algorithm):
         self._update_trajectories()
 
         # S-step
-        self._update_policy()
+        with Timer(self.algorithm.timers, 'pol_update'):
+            self._update_policy()
 
         # Prepare for next iteration
         self._advance_iteration_variables()

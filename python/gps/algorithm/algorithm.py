@@ -1,8 +1,10 @@
 """ This file defines the base algorithm class. """
 
 import abc
+from collections import OrderedDict
 import copy
 import logging
+import time
 
 import numpy as np
 
@@ -21,6 +23,7 @@ class Algorithm(object):
         config = copy.deepcopy(ALG)
         config.update(hyperparams)
         self._hyperparams = config
+        self.timers = OrderedDict()
 
         if 'train_conditions' in hyperparams:
             self._cond_idx = hyperparams['train_conditions']
@@ -71,7 +74,7 @@ class Algorithm(object):
         self.base_kl_step = self._hyperparams['kl_step']
 
     @abc.abstractmethod
-    def iteration(self, sample_list, itr, train_gcm = False):
+    def iteration(self, sample_list, itr, train_gcm=False):
         """ Run iteration of the algorithm. """
         raise NotImplementedError("Must be implemented in subclass")
 
@@ -80,38 +83,38 @@ class Algorithm(object):
         Instantiate dynamics objects and update prior. Fit dynamics to
         current samples.
         """
-        for m in range(self.M):
-            cur_data = self.cur[m].sample_list
-            X = cur_data.get_X()
-            U = cur_data.get_U()
+        with Timer(self.timers, 'dynamics_fit'):
+            for m in range(self.M):
+                cur_data = self.cur[m].sample_list
+                X = cur_data.get_X()
+                U = cur_data.get_U()
 
-            # Update prior and fit dynamics.
-            if update_prior:
-                self.cur[m].traj_info.dynamics.update_prior(cur_data)
-            self.cur[m].traj_info.dynamics.fit(X, U, prior_only=prior_only)
+                # Update prior and fit dynamics.
+                if update_prior:
+                    self.cur[m].traj_info.dynamics.update_prior(cur_data)
+                self.cur[m].traj_info.dynamics.fit(X, U, prior_only=prior_only)
 
-            # Update mean and covariance
-            mu = np.concatenate((X[:, :, :], U[:, :, :]), axis=2)
-            #print("shape mu: ", mu.shape)
-            self.cur[m].traj_info.xmu = np.mean(mu, axis=0)
-            self.cur[m].traj_info.xmusigma = np.mean(X[:, :, :], axis=0)
+                # Update mean and covariance
+                mu = np.concatenate((X[:, :, :], U[:, :, :]), axis=2)
+                #print("shape mu: ", mu.shape)
+                self.cur[m].traj_info.xmu = np.mean(mu, axis=0)
+                self.cur[m].traj_info.xmusigma = np.mean(X[:, :, :], axis=0)
 
-            # Fit x0mu/x0sigma.
-            x0 = X[:, 0, :]
-            x0mu = np.mean(x0, axis=0)
-            self.cur[m].traj_info.x0mu = x0mu
-            self.cur[m].traj_info.x0sigma = np.diag(
-                np.maximum(np.var(x0, axis=0),
-                           self._hyperparams['initial_state_var'])
-            )
+                # Fit x0mu/x0sigma.
+                x0 = X[:, 0, :]
+                x0mu = np.mean(x0, axis=0)
+                self.cur[m].traj_info.x0mu = x0mu
+                self.cur[m].traj_info.x0sigma = np.diag(
+                    np.maximum(np.var(x0, axis=0), self._hyperparams['initial_state_var'])
+                )
 
-            prior = self.cur[m].traj_info.dynamics.get_prior()
-            if prior:
-                mu0, Phi, priorm, n0 = prior.initial_state()
-                N = len(cur_data)
-                self.cur[m].traj_info.x0sigma += \
-                        Phi + (N*priorm) / (N+priorm) * \
-                        np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
+                prior = self.cur[m].traj_info.dynamics.get_prior()
+                if prior:
+                    mu0, Phi, priorm, n0 = prior.initial_state()
+                    N = len(cur_data)
+                    self.cur[m].traj_info.x0sigma += Phi + (N * priorm) / (N +
+                                                                           priorm) * np.outer(x0mu - mu0,
+                                                                                              x0mu - mu0) / (N + n0)
 
         self.visualize_dynamics(0)
 
@@ -119,13 +122,11 @@ class Algorithm(object):
         """
         Compute new linear Gaussian controllers.
         """
-
         if not hasattr(self, 'new_traj_distr'):
-            self.new_traj_distr = [
-                self.cur[cond].traj_distr for cond in range(self.M)
-            ]
-        for cond in range(self.M):
-            self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond] = \
+            self.new_traj_distr = [self.cur[cond].traj_distr for cond in range(self.M)]
+        with Timer(self.timers, 'traj_opt'):
+            for cond in range(self.M):
+                self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond] = \
                     self.traj_opt.update(cond, self)
 
         self.visualize_local_policy(0)
@@ -286,3 +287,19 @@ class Algorithm(object):
             cov_label='$\\bar{\\Sigma}_t$',
             y_label='$\\bar{\\mathbf{u}}_t$'
         )
+
+
+class Timer:
+    """
+    Timer context to measure elapsed time
+    """
+    def __init__(self, timers, name):
+        self.timers = timers
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.timers[self.name] = time.time() - self.start
