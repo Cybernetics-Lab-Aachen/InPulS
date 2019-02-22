@@ -178,6 +178,9 @@ class TrajOptLQRPython(TrajOpt):
                         Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
                         dyn_covar[t, :, :]
                 mu[t+1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
+
+            # Symmetrize sigma
+            sigma[t] = (sigma[t] + sigma[t].T) / 2
         return mu, sigma
 
     def backward(self, prev_traj_distr, traj_info, eta, algorithm, m):
