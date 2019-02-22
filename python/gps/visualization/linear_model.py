@@ -99,7 +99,9 @@ def visualize_linear_model(
             alpha=0.25,
             interpolate=True
         )
-    fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
+
+    if file_name is not None:
+        fig.savefig(file_name + ".pdf", bbox_inches='tight', pad_inches=0)
     if show:
         plt.show()
     plt.close(fig)

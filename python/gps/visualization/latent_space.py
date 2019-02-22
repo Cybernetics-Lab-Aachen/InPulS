@@ -49,14 +49,23 @@ def visualize_latent_space(file_name, z_mean, z_std, x_label='$\\mathbf{z}$', y_
     ax1.legend()
 
     if file_name is not None:
-        fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
+        fig.savefig(file_name + ".pdf", bbox_inches='tight', pad_inches=0)
     if show:
         plt.show()
     plt.close(fig)
 
 
 def visualize_latent_space_tsne(
-    file_name, x_train, z_train, x_test, z_test, color_map='gist_rainbow', N_colors=16, perplexity_scale=5, show=False
+    file_name,
+    x_train,
+    z_train,
+    x_test,
+    z_test,
+    color_map='gist_rainbow',
+    N_colors=16,
+    perplexity_scale=5,
+    show=False,
+    export_data=True
 ):
     """
     Visualizes latent space via tsne.
@@ -77,12 +86,16 @@ def visualize_latent_space_tsne(
     N_test, _, _ = z_test.shape
 
     z = np.concatenate([z_train, z_test])
-    z_embedded = TSNE(n_components=2, perplexity=S * perplexity_scale, init='pca').fit_transform(z.reshape(-1, dZ))
+    z_embedded = TSNE(
+        n_components=2, perplexity=S * perplexity_scale, init='pca', n_iter=1000
+    ).fit_transform(z.reshape(-1, dZ))
 
     # Plot trained
     plt.scatter(
         x=z_embedded[:N_train * S, 0],
         y=z_embedded[:N_train * S, 1],
+        # x=z_train[:,0, 0],
+        # y=z_train[:, 0,1],
         c=np.repeat(kmeans.labels_, S),
         cmap=plt.cm.get_cmap(color_map, N_colors),
         edgecolor='',
@@ -95,6 +108,8 @@ def visualize_latent_space_tsne(
     plt.scatter(
         x=z_embedded[N_train * S:, 0],
         y=z_embedded[N_train * S:, 1],
+        # x=z_test[:,0, 0],
+        # y=z_test[:, 0,1],
         c=np.repeat(1 - nearest / np.amax(nearest), S),
         cmap=plt.cm.gray,
         edgecolor='black',
@@ -109,3 +124,5 @@ def visualize_latent_space_tsne(
     if show:
         plt.show()
     plt.close(fig)
+    if export_data:
+        np.savez_compressed(file_name, x_train=x_train, z_train=z_train, x_test=x_test, z_test=z_test)

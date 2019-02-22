@@ -12,7 +12,8 @@ def visualize_loss(
     log_scale=False,
     add_total=True,
     total_label='Total',
-    show=False
+    show=False,
+    export_data=True
 ):
     """
     Visualizes training losses.
@@ -38,7 +39,11 @@ def visualize_loss(
         ax1.plot(np.arange(T), np.sum(losses, axis=1), label=total_label)
 
     ax1.legend()
-    fig.savefig(file_name + ".png", bbox_inches='tight', pad_inches=0)
+
+    if file_name is not None:
+        fig.savefig(file_name + ".pdf", bbox_inches='tight', pad_inches=0)
     if show:
         plt.show()
     plt.close(fig)
+    if export_data:
+        np.savez_compressed(file_name, losses=losses, labels=labels)
