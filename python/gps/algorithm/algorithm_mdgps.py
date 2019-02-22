@@ -59,10 +59,10 @@ class AlgorithmMDGPS(Algorithm):
             self.new_traj_distr = [
                 self.cur[cond].traj_distr for cond in range(self.M)
             ]
-            self._update_policy()
+            self._update_policy(initial_policy=True)
 
         # Update policy linearizations.
-        with Timer(self.algorithm.timers, 'pol_lin'):
+        with Timer(self.timers, 'pol_lin'):
             for m in range(self.M):
                 self._update_policy_fit(m)
 
@@ -72,46 +72,44 @@ class AlgorithmMDGPS(Algorithm):
         self._update_trajectories()
 
         # S-step
-        with Timer(self.algorithm.timers, 'pol_update'):
+        with Timer(self.timers, 'pol_update'):
             self._update_policy()
 
         # Prepare for next iteration
         self._advance_iteration_variables()
 
-    def _update_policy(self):
+    def _update_policy(self, initial_policy=False):
         """ Compute the new policy. """
         dU, dO, T = self.dU, self.dO, self.T
-        # Compute target mean, cov, and weight for each sample.
-        obs_data, tgt_mu = np.zeros((0, T, dO)), np.zeros((0, T, dU))
-        tgt_prc, tgt_wt = np.zeros((0, T, dU, dU)), np.zeros((0, T))
+        N = len(self.cur[0].sample_list)
+
+        X = np.empty((self.M, N, T, dO))
+        mu = np.empty((self.M, N, T, dU))
+        K = np.empty((self.M, T, dU, dO))
+        k = np.empty((self.M, T, dU))
+        prc = np.empty((self.M, T, dU, dU))
+
         for m in range(self.M):
             samples = self.cur[m].sample_list
-            X = samples.get_X()
-            N = len(samples)
-            traj, pol_info = self.new_traj_distr[m], self.cur[m].pol_info
-            mu = np.zeros((N, T, dU))
-            prc = np.zeros((N, T, dU, dU))
-            wt = np.zeros((N, T))
+            traj = self.new_traj_distr[m]
+
+            K[m] = traj.K
+            k[m] = traj.k
+            prc[m] = traj.inv_pol_covar
+
             # Get time-indexed actions.
-            for t in range(T):
-                # Compute actions along this trajectory.
-                prc[:, t, :, :] = np.tile(traj.inv_pol_covar[t, :, :],
-                                          [N, 1, 1])
-                for i in range(N):
-                    mu[i, t, :] = (traj.K[t, :, :].dot(X[i, t, :]) + traj.k[t, :])
-                wt[:, t].fill(pol_info.pol_wt[t])
-            tgt_mu = np.concatenate((tgt_mu, mu))
-            tgt_prc = np.concatenate((tgt_prc, prc))
-            tgt_wt = np.concatenate((tgt_wt, wt))
-            obs_data = np.concatenate((obs_data, samples.get_obs()))
-        self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt)
+            for n in range(N):
+                X[m, n] = samples[n].get_X()
+                for t in range(self.T):
+                    mu[m, n, t] = K[m, t].dot(X[m, n, t]) + k[m, t]
+
+        self.policy_opt.update(X=X, mu=mu, prc=prc, K=K, k=k, initial_policy=initial_policy)
 
         # Visualize actions
-        sample = self.cur[0].sample_list.get_samples()[0].get_X()
-        u_approx = self.policy_opt.prob(sample[np.newaxis, :, :])[0][0]
+        u_approx = self.policy_opt.prob(X[0, :1, :, :])[0][0]
         visualize_approximation(
             self._data_files_dir + 'plot_gps_action-m%02d-%02d-%02d' % (0, 0, self.iteration_count),
-            tgt_mu[0],
+            mu[0, 0],
             u_approx,
             y_label='$\\mathbf{u}$',
             dim_label_pattern='$\\mathbf{u}_t[%d]$',

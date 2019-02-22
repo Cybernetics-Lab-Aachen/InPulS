@@ -15,7 +15,7 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.gps import GPS_Policy
+from gps.algorithm.gps.mu_policy import MU_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
@@ -29,10 +29,10 @@ SENSOR_DIMS = {
 }
 
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
-EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_mdgps2/'
+EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_mu/'
 
 common = {
-    'experiment_name': 'gym_fetchreach_mdgps2' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
+    'experiment_name': 'gym_fetchreach_mu' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
     'log_filename': EXP_DIR + 'log.txt',
@@ -125,7 +125,7 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': GPS_Policy,
+    'type': MU_Policy,
     'random_seed': 1,
     'init_var': 0.1,
     'ent_reg': 0.0,
@@ -133,6 +133,9 @@ algorithm['policy_opt'] = {
     'batch_size': 2 * 19,
     'weight_decay': 0.005,
     'N_hidden': 80,
+    'dZ': 4,
+    'beta_kl': 1,
+    'N': 5,
 }
 
 algorithm['policy_prior'] = {
@@ -159,7 +162,7 @@ config = {
 
 common['info'] = generate_experiment_info(config)
 
-param_str = 'fetchreach_gps2'
+param_str = 'fetchreach_mu'
 baseline = True
 param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']

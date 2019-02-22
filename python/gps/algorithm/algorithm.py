@@ -293,13 +293,14 @@ class Timer:
     """
     Timer context to measure elapsed time
     """
+
     def __init__(self, timers, name):
         self.timers = timers
         self.name = name
 
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
         return self
 
     def __exit__(self, *args):
-        self.timers[self.name] = time.time() - self.start
+        self.timers[self.name] = time.perf_counter() - self.start

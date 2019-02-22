@@ -82,88 +82,66 @@ class PolicyOptTf(PolicyOpt):
                                momentum=self._hyperparams['momentum'],
                                weight_decay=self._hyperparams['weight_decay'])
 
-    def update(self, obs, tgt_mu, tgt_prc, tgt_wt):
+    def update(self, X, mu, prc, **kwargs):
         """
         Update policy.
         Args:
             obs: Numpy array of observations, N x T x dO.
             tgt_mu: Numpy array of mean controller outputs, N x T x dU.
             tgt_prc: Numpy array of precision matrices, N x T x dU x dU.
-            tgt_wt: Numpy array of weights, N x T.
         Returns:
             A tensorflow object with updated weights.
         """
-        N, T = obs.shape[:2]
+        M, N, T = X.shape[:3]
+        N_train = M * N * T
         dU, dO = self._dU, self._dO
 
         # TODO - Make sure all weights are nonzero?
 
-        # Save original tgt_prc.
-        tgt_prc_orig = np.reshape(tgt_prc, [N*T, dU, dU])
-
-        # Renormalize weights.
-        tgt_wt *= (float(N * T) / np.sum(tgt_wt))
-        # Allow weights to be at most twice the robust median.
-        mn = np.median(tgt_wt[(tgt_wt > 1e-2).nonzero()])
-        for n in range(N):
-            for t in range(T):
-                tgt_wt[n, t] = min(tgt_wt[n, t], 2 * mn)
-        # Robust median should be around one.
-        tgt_wt /= mn
-
         # Reshape inputs.
-        obs = np.reshape(obs, (N*T, dO))
-        tgt_mu = np.reshape(tgt_mu, (N*T, dU))
-        tgt_prc = np.reshape(tgt_prc, (N*T, dU, dU))
-        tgt_wt = np.reshape(tgt_wt, (N*T, 1, 1))
-
-        # Fold weights into tgt_prc.
-        tgt_prc = tgt_wt * tgt_prc
+        X = np.reshape(X, (N_train, dO))
+        mu = np.reshape(mu, (N_train, dU))
+        prc = np.reshape(np.repeat(prc[:, None], N, axis=1), (N_train, dU, dU))
+        prc.setflags(write=False)
 
         # TODO: Find entries with very low weights?
 
-        # Normalize obs, but only compute normalzation at the beginning.
+        # Normalize X, but only compute normalzation at the beginning.
         if self.policy.scale is None or self.policy.bias is None:
             self.policy.x_idx = self.x_idx
             # 1e-3 to avoid infs if some state dimensions don't change in the
             # first batch of samples
-            self.policy.scale = np.diag(
-                1.0 / np.maximum(np.std(obs[:, self.x_idx], axis=0), 1e-3))
-            self.policy.bias = - np.mean(
-                obs[:, self.x_idx].dot(self.policy.scale), axis=0)
-        obs[:, self.x_idx] = obs[:, self.x_idx].dot(self.policy.scale) + self.policy.bias
+            self.policy.scale = np.diag(1.0 / np.maximum(np.std(X[:, self.x_idx], axis=0), 1e-3))
+            self.policy.bias = -np.mean(X[:, self.x_idx].dot(self.policy.scale), axis=0)
+        X[:, self.x_idx] = X[:, self.x_idx].dot(self.policy.scale) + self.policy.bias
 
         # Assuming that N*T >= self.batch_size.
-        batches_per_epoch = np.floor(N*T / self.batch_size)
-        idx = np.arange(N*T)
+        batches_per_epoch = int(N_train / self.batch_size)
+        assert batches_per_epoch * self.batch_size == N_train, \
+            '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_train)
+        idx = np.arange(N_train)
         average_loss = 0
         np.random.shuffle(idx)
 
         # actual training.
         for i in range(self._hyperparams['iterations']):
             # Load in data for this batch.
-            start_idx = int(i * self.batch_size %
-                            (batches_per_epoch * self.batch_size))
-            idx_i = idx[start_idx:start_idx+self.batch_size]
-            feed_dict = {self.obs_tensor: obs[idx_i],
-                         self.action_tensor: tgt_mu[idx_i],
-                         self.precision_tensor: tgt_prc[idx_i]}
+            start_idx = int(i * self.batch_size % (batches_per_epoch * self.batch_size))
+            idx_i = idx[start_idx:start_idx + self.batch_size]
+            feed_dict = {self.obs_tensor: X[idx_i], self.action_tensor: mu[idx_i], self.precision_tensor: prc[idx_i]}
             train_loss = self.solver(feed_dict, self.sess)
 
             average_loss += train_loss
-            if (i+1) % 500 == 0:
-                LOGGER.debug('tensorflow iteration %d, average loss %f',
-                             i+1, average_loss / 500)
-                print ('supervised tf loss is ' + str(average_loss))
+            if (i + 1) % 500 == 0:
+                LOGGER.debug('tensorflow iteration %d, average loss %f', i + 1, average_loss / 500)
+                print('supervised tf loss is ' + str(average_loss))
                 average_loss = 0
 
         # Keep track of tensorflow iterations for loading solver states.
         self.tf_iter += self._hyperparams['iterations']
 
         # Optimize variance.
-        A = np.sum(tgt_prc_orig, 0) + 2 * N * T * \
-                self._hyperparams['ent_reg'] * np.ones((dU, dU))
-        A = A / np.sum(tgt_wt)
+        A = (np.sum(prc, 0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((dU, dU))) / N_train
 
         # TODO - Use dense covariance?
         self.var = 1 / np.diag(A)

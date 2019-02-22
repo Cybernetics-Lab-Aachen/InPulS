@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import layers
 from tensorflow.contrib.framework import arg_scope
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 from gps.algorithm.policy_opt.policy_opt import PolicyOpt
@@ -37,7 +36,6 @@ class GPS_Policy(PolicyOpt):
             self.sess.run(tf.global_variables_initializer())
 
         self.policy = self  # Act method is contained in this class
-        self.scaler = None
 
     def init_network(self):
         # Placeholders for dataset
@@ -50,19 +48,25 @@ class GPS_Policy(PolicyOpt):
             self.precision_data,
         )).shuffle(10000).batch(self.batch_size).repeat()
 
+        # Other placeholders
+        self.is_training = tf.placeholder(tf.bool, ())
+
         # Batch iterator
         self.iterator = dataset.make_initializable_iterator()
         self.state_batch, self.action_batch, self.precision_batch = self.iterator.get_next()
+        state_batch_normalized = tf.layers.batch_normalization(
+            self.state_batch, training=self.is_training, center=False, scale=False, renorm=True
+        )
 
         with arg_scope(
             [layers.fully_connected],
             activation_fn=tf.nn.relu,
             weights_regularizer=layers.l2_regularizer(scale=self.weight_decay)
         ):
-            h = layers.fully_connected(self.state_batch, self.N_hidden)
+            h = layers.fully_connected(state_batch_normalized, self.N_hidden)
             h = layers.fully_connected(h, self.N_hidden)
             h = layers.fully_connected(h, self.N_hidden)
-        self.action_out = layers.fully_connected(h, self.dU, activation_fn=None)
+            self.action_out = layers.fully_connected(h, self.dU, activation_fn=None)
 
     def init_loss_function(self):
         # KL divergence loss
@@ -81,21 +85,17 @@ class GPS_Policy(PolicyOpt):
         self.solver_op = optimizer.minimize(self.loss)
         self.optimizer_reset_op = tf.variables_initializer(optimizer.variables())
 
-    def update(self, X, mu, prc, _):
+    def update(self, X, mu, prc, initial_policy=False, **kwargs):
         """
         Trains a GPS model on the dataset
         """
-        N, T, _ = X.shape
+        M, N, T = X.shape[:3]
+        N_train = M * N * (T - 1)
 
         # Reshape inputs.
-        X = X.reshape((N * T, self.dX))
-        mu = mu.reshape((N * T, self.dU))
-        prc = prc.reshape((N * T, self.dU, self.dU))
-
-        # Normalize X, but only compute normalization at the beginning.
-        if self.scaler is None:
-            self.scaler = StandardScaler().fit(X)
-        X = self.scaler.transform(X)
+        X = X[:, :, :-1].reshape((N_train, self.dX))
+        mu = mu[:, :, :-1].reshape((N_train, self.dU))
+        prc = np.reshape(np.repeat(prc[:, None, :-1], N, axis=1), (N_train, self.dU, self.dU))
 
         # Normalize precision
         prc = prc * (self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
@@ -112,18 +112,23 @@ class GPS_Policy(PolicyOpt):
             }
         )
 
-        batches_per_epoch = int(N * T / self.batch_size)
-        assert batches_per_epoch * self.batch_size == N * T, \
-            '%d * %d != %d * %d' % (batches_per_epoch, self.batch_size, N, T)
-        losses = np.zeros((self.epochs, 2))
-        pbar = tqdm(range(self.epochs))
+        batches_per_epoch = int(N_train / self.batch_size)
+        assert batches_per_epoch * self.batch_size == N_train, \
+            '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_train)
+        epochs = self.epochs if not initial_policy else 10
+        losses = np.zeros((epochs, 2))
+        pbar = tqdm(range(epochs))
         for epoch in pbar:
             for i in range(batches_per_epoch):
-                losses[epoch] += self.sess.run([
-                    self.solver_op,
-                    self.loss_kl,
-                    self.loss_reg,
-                ])[1:]
+                losses[epoch] += self.sess.run(
+                    [
+                        self.solver_op,
+                        self.loss_kl,
+                        self.loss_reg,
+                    ], feed_dict={
+                        self.is_training: True,
+                    }
+                )[1:]
             losses[epoch] /= batches_per_epoch
             pbar.set_description("GPS Loss: %.6f" % (np.sum(losses[epoch])))
 
@@ -144,7 +149,8 @@ class GPS_Policy(PolicyOpt):
     def act(self, x, _, t, noise):
         u = self.sess.run(
             self.action_out, feed_dict={
-                self.state_batch: self.scaler.transform([x]),
+                self.state_batch: [x],
+                self.is_training: False,
             }
         )[0]
         if noise is not None:
@@ -163,9 +169,11 @@ class GPS_Policy(PolicyOpt):
         N, T = X.shape[:2]
 
         action = self.sess.run(
-            self.action_out, feed_dict={
-                self.state_batch: self.scaler.transform(X.reshape(N * T, self.dX))
-            }
+            self.action_out,
+            feed_dict={
+                self.state_batch: X.reshape(N * T, self.dX),
+                self.is_training: False,
+            },
         ).reshape((N, T, self.dU))
         pol_sigma = np.tile(np.diag(self.var), [N, T, 1, 1])
         pol_prec = np.tile(np.diag(1.0 / self.var), [N, T, 1, 1])
