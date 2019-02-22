@@ -5,10 +5,11 @@
 The following are required:
 
 * python (>=3.5)
-* python-qt4
+* python-qt4/qt5
 * Mujoco 1.50
 
 ```sh
+sudo apt-get install python3-pyqt5
 python3 -m pip install --user --upgrade -r requirements.txt
 ```
 
@@ -51,3 +52,11 @@ python3 -m pip install --user --upgrade -r requirements.txt
    ```bash
    catkin_make
    ```
+
+sudo apt-get install python3-dev libglew-dev patchelf
+
+# Mujoco
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.mujoco/mjpro150/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-384
+# Required for GLEW, otheriwse it crashes at launch
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-384/libGL.so
