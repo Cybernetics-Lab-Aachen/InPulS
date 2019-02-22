@@ -15,12 +15,11 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.policy_opt.policy_opt_tf import PolicyOptTf
+from gps.algorithm.gps import GPS_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
-from gps.algorithm.policy_opt.tf_model_example import example_tf_network
 from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
 
 SENSOR_DIMS = {
@@ -30,10 +29,10 @@ SENSOR_DIMS = {
 }
 
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
-EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_mdgps/'
+EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_mdgps2/'
 
 common = {
-    'experiment_name': 'gym_fetchreach_mdgps' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
+    'experiment_name': 'gym_fetchreach_mdgps2' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
     'log_filename': EXP_DIR + 'log.txt',
@@ -81,9 +80,6 @@ algorithm = {
     'max_step_mult': 3.0,
     'policy_sample_mode': 'replace',
     'sample_on_policy': False,
-    #'tac_policy': {
-    #    'history': 10,
-    #},
 }
 
 algorithm['init_traj_distr'] = {
@@ -129,16 +125,14 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': PolicyOptTf,
-    'network_params': {
-        'obs_include': agent['obs_include'],
-        'obs_vector_data': agent['obs_include'],
-        'sensor_dims': SENSOR_DIMS,
-    },
-    'save_path': common['data_files_dir'],
-    'network_model': example_tf_network,
-    'iterations': 1500,
-    'weights_file_prefix': EXP_DIR + 'policy',
+    'type': GPS_Policy,
+    'random_seed': 1,
+    'init_var': 0.1,
+    'ent_reg': 0.0,
+    'epochs': 100,
+    'batch_size': 25,
+    'weight_decay': 0.005,
+    'N_hidden': 80,
 }
 
 algorithm['policy_prior'] = {
@@ -165,13 +159,14 @@ config = {
 
 common['info'] = generate_experiment_info(config)
 
-param_str = 'fetchreach_gps'
+param_str = 'fetchreach_gps2'
 baseline = True
 param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
+param_str += '-h%r' % algorithm['policy_opt']['N_hidden']
 param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol' if not algorithm['sample_on_policy'] else '-gps_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 mkdir(common['data_files_dir'])
