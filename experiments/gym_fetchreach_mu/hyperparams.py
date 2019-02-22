@@ -129,7 +129,7 @@ algorithm['policy_opt'] = {
     'random_seed': 1,
     'init_var': 0.1,
     'ent_reg': 0.0,
-    'epochs': 100,
+    'epochs': 250,
     'batch_size': 2 * 19,
     'weight_decay': 0.005,
     'N_hidden': 80,

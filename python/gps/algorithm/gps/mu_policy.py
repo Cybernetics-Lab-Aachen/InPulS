@@ -180,8 +180,9 @@ class MU_Policy(PolicyOpt):
         assert batches_per_epoch * self.batch_size == N_ctr, (
             '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_ctr)
         )
-        losses = np.zeros((self.epochs, 3))
-        pbar = tqdm(range(self.epochs))
+        epochs = self.epochs if not initial_policy else 10
+        losses = np.zeros((epochs, 3))
+        pbar = tqdm(range(epochs))
         for epoch in pbar:
             for i in range(batches_per_epoch):
                 losses[epoch] += self.sess.run(

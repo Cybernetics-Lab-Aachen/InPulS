@@ -82,7 +82,8 @@ class GPS_Policy(PolicyOpt):
 
     def init_solver(self):
         optimizer = tf.train.AdamOptimizer()
-        self.solver_op = optimizer.minimize(self.loss)
+        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+            self.solver_op = optimizer.minimize(self.loss)
         self.optimizer_reset_op = tf.variables_initializer(optimizer.variables())
 
     def update(self, X, mu, prc, initial_policy=False, **kwargs):
@@ -141,7 +142,7 @@ class GPS_Policy(PolicyOpt):
         )
 
         # Optimize variance.
-        A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
+        A = (np.sum(prc, 0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))) / N_train
 
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))

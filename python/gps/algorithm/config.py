@@ -64,3 +64,12 @@ ALG_MDGPS = {
     # Whether to use 'laplace' or 'mc' cost in step adjusment
     'step_rule': 'laplace',
 }
+
+# AlgorithmMD
+ALG_SOFT_MDGPS = {
+    # TODO: remove need for init_pol_wt in MDGPS
+    'init_pol_wt': 0.01,
+    'policy_sample_mode': 'add',
+    # Whether to use 'laplace' or 'mc' cost in step adjusment
+    'step_rule': 'laplace',
+}
