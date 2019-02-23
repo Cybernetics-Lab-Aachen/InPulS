@@ -60,19 +60,28 @@ class MU_Policy(PolicyOpt):
         self.iterator = dataset.make_initializable_iterator()
         state_batch, self.K_batch, self.k_batch, self.precision_batch = self.iterator.get_next()
 
+        # Compose and normalize state batch
+        state_batch = tf.concat(
+            values=[
+                state_batch,
+            ], axis=1
+        )
+
         # Other placeholders
+        self.state_batch = tf.reshape(state_batch, (-1, self.dX))
+
         self.is_training = tf.placeholder(tf.bool, ())
 
-        self.state_batch = tf.reshape(state_batch, (-1, self.dX))
-        state_batch_normalized = tf.layers.batch_normalization(
-            self.state_batch, training=self.is_training, center=False, scale=False, renorm=True
-        )
+        with tf.variable_scope('state_normalization'):
+            state_batch_normalized = tf.layers.batch_normalization(
+                self.state_batch, training=self.is_training, center=False, scale=False, renorm=True
+            )
 
         # Action estimator
         with tf.variable_scope('action_estimator'), arg_scope(
-            [layers.fully_connected],
-            activation_fn=tf.nn.leaky_relu,
-            weights_regularizer=layers.l2_regularizer(scale=self.weight_decay)
+                [layers.fully_connected],
+                activation_fn=tf.nn.leaky_relu,
+                weights_regularizer=layers.l2_regularizer(scale=self.weight_decay)
         ):
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
             h = layers.fully_connected(h, self.N_hidden)
@@ -81,14 +90,18 @@ class MU_Policy(PolicyOpt):
 
         # Stabilizer estimator
         with tf.variable_scope('stabilizer_estimator'), arg_scope(
-            [layers.fully_connected],
-            activation_fn=tf.nn.leaky_relu,
-            weights_regularizer=layers.l2_regularizer(scale=self.weight_decay),
-            biases_initializer=None
+                [layers.fully_connected],
+                activation_fn=tf.nn.leaky_relu,
+                weights_regularizer=layers.l2_regularizer(scale=self.weight_decay),
+                # biases_initializer=None
         ):
+            # Encoder
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
-            self.latent = layers.fully_connected(h, self.dZ)
-            h = layers.fully_connected(self.latent, self.N_hidden)
+            self.latent = layers.fully_connected(h, self.dZ, activation_fn=None)
+
+            # Stabilizer Translation
+            h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
+            h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),
                 (-1, self.dU, self.dX)
@@ -140,9 +153,12 @@ class MU_Policy(PolicyOpt):
             )
             solver_op_stabilizer = optimizer_stabilizer.minimize(
                 loss=self.loss_stabilizer,
-                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='stabilizer_estimator')
+                var_list=[tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='stabilizer_estimator'),
+                          tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')]
             )
-        self.solver_op = tf.group(solver_op_action, solver_op_stabilizer)
+
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        self.solver_op = tf.group(solver_op_stabilizer, solver_op_action, update_ops)
         self.optimizer_reset_op = tf.variables_initializer(
             optimizer_action.variables() + optimizer_stabilizer.variables()
         )
@@ -151,16 +167,98 @@ class MU_Policy(PolicyOpt):
         """
         Trains a GPS model on the dataset
         """
+
+        # Shape K:      4,20,4,13           cond, time, action, state
+        # Shape prc:    4,20,4,4            cond, time, action, action
+        # Shape X:      4,5,20,13           cond, sample, time, state
+        # Shape mu:     4,5,20,4            cond, sample, time, action
+
         M, N, T = X.shape[:3]
         N_ctr = M * (T - 1)
 
+        X_ = X[:, :, :-1].transpose((0, 2, 1, 3)).copy()
         X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX).copy()
-        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX)
-        k = k[:, :-1].reshape(N_ctr, self.dU)
-        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU)
+        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX).copy()
+        k = k[:, :-1].reshape(N_ctr, self.dU).copy()
+        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU).copy()
 
         # Normalize precision
-        prc = prc * (self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
+        prc = prc * (10 * self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
+        # prc = prc * (self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
+
+        # Reset optimizer
+        self.sess.run(self.optimizer_reset_op)
+
+        # Initialize dataset iterator
+        self.sess.run(
+            self.iterator.initializer,
+            feed_dict={
+                self.state_data: X,
+                self.K_data: K,
+                self.k_data: k,
+                self.precision_data: prc,
+                # self.g_data: np.ones(N_ctr).reshape(-1, 1),
+            }
+        )
+
+        batches_per_epoch = int(N_ctr / self.batch_size)
+        assert batches_per_epoch * self.batch_size == N_ctr, (
+            '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_ctr)
+        )
+        epochs = self.epochs if not initial_policy else 10
+        losses = np.zeros((self.epochs, 3))
+        pbar = tqdm(range(self.epochs))
+        for epoch in pbar:
+            for i in range(batches_per_epoch):
+                losses[epoch] += self.sess.run(
+                    [
+                        self.solver_op,
+                        self.loss_action,
+                        self.loss_stabilizer,
+                        self.loss_latent,
+                    ],
+                    feed_dict={
+                        self.is_training: True,
+                    }
+                )[1:]
+            losses[epoch] /= batches_per_epoch
+            pbar.set_description("Loss: %.6f/%.6f/%.6f" % (losses[epoch, 0], losses[epoch, 1], losses[epoch, 2]))
+
+        # Visualize training loss
+        from gps.visualization import visualize_loss
+        visualize_loss(
+            self._data_files_dir + 'plot_gps_training-%02d' % (self.iteration_count),
+            losses,
+            labels=['Action Estimator', 'Stabilizer', 'Latent']
+        )
+
+        # Optimize variance.
+        A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
+
+        self.var = 1 / np.diag(A)
+        self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
+
+    def _update(self, X, mu, prc, K, k, initial_policy=False, **kwargs):
+        """
+        Trains a GPS model on the dataset
+        """
+
+        # Shape K:      4,20,4,13           cond, time, action, state
+        # Shape prc:    4,20,4,4            cond, time, action, action
+        # Shape X:      4,5,20,13           cond, sample, time, state
+        # Shape mu:     4,5,20,4            cond, sample, time, action
+
+        M, N, T = X.shape[:3]
+        N_ctr = M * (T - 1)
+
+        X_ = X[:, :, :-1].transpose((0, 2, 1, 3)).copy()
+        X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX).copy()
+        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX).copy()
+        k = k[:, :-1].reshape(N_ctr, self.dU).copy()
+        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU).copy()
+
+        # Normalize precision
+        prc = prc * (10 * self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
 
         # Reset optimizer
         self.sess.run(self.optimizer_reset_op)
@@ -188,8 +286,8 @@ class MU_Policy(PolicyOpt):
                 losses[epoch] += self.sess.run(
                     [
                         self.solver_op,
-                        self.loss_kl_action_estimation,
-                        self.loss_mse_stabilizer,
+                        self.loss_action,
+                        self.loss_stabilizer,
                         self.loss_latent,
                     ],
                     feed_dict={
@@ -212,6 +310,7 @@ class MU_Policy(PolicyOpt):
 
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
+
 
     def act(self, x, _, t, noise):
         u = self.sess.run(
@@ -246,7 +345,6 @@ class MU_Policy(PolicyOpt):
         pol_det_sigma = np.tile(np.prod(self.var), [N, T])
 
         return action, pol_sigma, pol_prec, pol_det_sigma
-
 
 def tf_cov(x):
     mean_x = tf.reduce_mean(x, axis=0, keepdims=True)

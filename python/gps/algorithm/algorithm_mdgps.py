@@ -89,20 +89,30 @@ class AlgorithmMDGPS(Algorithm):
         k = np.empty((self.M, T, dU))
         prc = np.empty((self.M, T, dU, dU))
 
+        # Iterate over conditions m
         for m in range(self.M):
             samples = self.cur[m].sample_list
             traj = self.new_traj_distr[m]
 
+            # Shape traj.K: 20,4,13
+            # Shape traj.k: 20,4
             K[m] = traj.K
             k[m] = traj.k
             prc[m] = traj.inv_pol_covar
 
+            # Iterate over samples n
             # Get time-indexed actions.
             for n in range(N):
                 X[m, n] = samples[n].get_X()
+
+                # Iterate over time t
                 for t in range(self.T):
                     mu[m, n, t] = K[m, t].dot(X[m, n, t]) + k[m, t]
 
+        # Shape K:      4,20,4,13           cond, time, action, state
+        # Shape prc:    4,20,4,4            cond, time, action, action
+        # Shape X:      4,5,20,13           cond, sample, time, state
+        # Shape mu:     4,5,20,4            cond, sample, time, action
         self.policy_opt.update(X=X, mu=mu, prc=prc, K=K, k=k, initial_policy=initial_policy)
 
         # Visualize actions
