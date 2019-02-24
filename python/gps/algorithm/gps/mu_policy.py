@@ -101,7 +101,9 @@ class MU_Policy(PolicyOpt):
 
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
+            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
             h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
+            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),
                 (-1, self.dU, self.dX)
@@ -146,6 +148,7 @@ class MU_Policy(PolicyOpt):
     def init_solver(self):
         optimizer_action = tf.train.AdamOptimizer()
         optimizer_stabilizer = tf.train.AdamOptimizer()
+        #optimizer_stabilizer = tf.train.AdagradOptimizer(learning_rate=0.01)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             solver_op_action = optimizer_action.minimize(
                 loss=self.loss_action,
@@ -176,7 +179,6 @@ class MU_Policy(PolicyOpt):
         M, N, T = X.shape[:3]
         N_ctr = M * (T - 1)
 
-        X_ = X[:, :, :-1].transpose((0, 2, 1, 3)).copy()
         X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX).copy()
         K = K[:, :-1].reshape(N_ctr, self.dU, self.dX).copy()
         k = k[:, :-1].reshape(N_ctr, self.dU).copy()
@@ -197,7 +199,6 @@ class MU_Policy(PolicyOpt):
                 self.K_data: K,
                 self.k_data: k,
                 self.precision_data: prc,
-                # self.g_data: np.ones(N_ctr).reshape(-1, 1),
             }
         )
 
@@ -237,80 +238,6 @@ class MU_Policy(PolicyOpt):
 
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
-
-    def _update(self, X, mu, prc, K, k, initial_policy=False, **kwargs):
-        """
-        Trains a GPS model on the dataset
-        """
-
-        # Shape K:      4,20,4,13           cond, time, action, state
-        # Shape prc:    4,20,4,4            cond, time, action, action
-        # Shape X:      4,5,20,13           cond, sample, time, state
-        # Shape mu:     4,5,20,4            cond, sample, time, action
-
-        M, N, T = X.shape[:3]
-        N_ctr = M * (T - 1)
-
-        X_ = X[:, :, :-1].transpose((0, 2, 1, 3)).copy()
-        X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX).copy()
-        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX).copy()
-        k = k[:, :-1].reshape(N_ctr, self.dU).copy()
-        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU).copy()
-
-        # Normalize precision
-        prc = prc * (10 * self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
-
-        # Reset optimizer
-        self.sess.run(self.optimizer_reset_op)
-
-        # Initialize dataset iterator
-        self.sess.run(
-            self.iterator.initializer,
-            feed_dict={
-                self.state_data: X,
-                self.K_data: K,
-                self.k_data: k,
-                self.precision_data: prc,
-            }
-        )
-
-        batches_per_epoch = int(N_ctr / self.batch_size)
-        assert batches_per_epoch * self.batch_size == N_ctr, (
-            '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_ctr)
-        )
-        epochs = self.epochs if not initial_policy else 10
-        losses = np.zeros((epochs, 3))
-        pbar = tqdm(range(epochs))
-        for epoch in pbar:
-            for i in range(batches_per_epoch):
-                losses[epoch] += self.sess.run(
-                    [
-                        self.solver_op,
-                        self.loss_action,
-                        self.loss_stabilizer,
-                        self.loss_latent,
-                    ],
-                    feed_dict={
-                        self.is_training: True,
-                    }
-                )[1:]
-            losses[epoch] /= batches_per_epoch
-            pbar.set_description("MU Loss: %.6f/%.6f/%.6f" % (losses[epoch, 0], losses[epoch, 1], losses[epoch, 2]))
-
-        # Visualize training loss
-        from gps.visualization import visualize_loss
-        visualize_loss(
-            self._data_files_dir + 'plot_gps_training-%02d' % (self.iteration_count),
-            losses,
-            labels=['Action Estimator', 'Stabilizer', 'Latent']
-        )
-
-        # Optimize variance.
-        A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
-
-        self.var = 1 / np.diag(A)
-        self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
-
 
     def act(self, x, _, t, noise):
         u = self.sess.run(
