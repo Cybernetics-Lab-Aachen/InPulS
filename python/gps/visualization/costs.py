@@ -19,7 +19,6 @@ def __plot_costs(ax, samples, cf, weight=1.0):
         costs_mean = np.mean(costs, axis=0)
         costs_min = np.amin(costs, axis=0)
         costs_max = np.amax(costs, axis=0)
-        print(cf)
         line, = ax.plot(np.arange(T), costs_mean, label=cf._hyperparams['name'])
         c = line.get_color()
         ax.fill_between(np.arange(T), costs_min, costs_max, facecolor=c, alpha=0.25, interpolate=True)
