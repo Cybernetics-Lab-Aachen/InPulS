@@ -26,6 +26,7 @@ class MU_Policy(PolicyOpt):
         self.dZ = self._hyperparams['dZ']
         self.beta_kl = self._hyperparams['beta_kl']
         self.N = self._hyperparams['N']
+        self.dropout_rate = self._hyperparams['dropout_rate']
 
         self.graph = tf.Graph()  # Encapsulate model in own graph
         with self.graph.as_default():
@@ -98,12 +99,16 @@ class MU_Policy(PolicyOpt):
             # Encoder
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
             self.latent = layers.fully_connected(h, self.dZ, activation_fn=None)
+            #self.latent_std = tf.sqrt(tf.linalg.diag_part(tf_cov(self.latent)))
+            #epsilon = tf.random_normal(tf.shape(self.latent))
+            #self.latent = self.latent + self.latent_std * epsilon * tf.cast(self.is_training, tf.float32)
+
 
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
-            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
-            h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
-            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
+            h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
+            h = layers.fully_connected(h,  self.N_hidden * 2, biases_initializer=None)
+            h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),
                 (-1, self.dU, self.dX)
@@ -148,7 +153,6 @@ class MU_Policy(PolicyOpt):
     def init_solver(self):
         optimizer_action = tf.train.AdamOptimizer()
         optimizer_stabilizer = tf.train.AdamOptimizer()
-        #optimizer_stabilizer = tf.train.AdagradOptimizer(learning_rate=0.01)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             solver_op_action = optimizer_action.minimize(
                 loss=self.loss_action,
@@ -160,8 +164,8 @@ class MU_Policy(PolicyOpt):
                           tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')]
             )
 
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        self.solver_op = tf.group(solver_op_stabilizer, solver_op_action, update_ops)
+        #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        self.solver_op = tf.group(solver_op_stabilizer, solver_op_action)
         self.optimizer_reset_op = tf.variables_initializer(
             optimizer_action.variables() + optimizer_stabilizer.variables()
         )
