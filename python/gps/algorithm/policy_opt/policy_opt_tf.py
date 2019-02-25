@@ -60,6 +60,7 @@ class PolicyOptTf(PolicyOpt):
                 self.x_idx = self.x_idx + list(range(i, i+dim))
             i += dim
         init_op = tf.initialize_all_variables()
+        self.saver = tf.train.Saver()
         self.sess.run(init_op)
 
     def init_network(self):
@@ -207,3 +208,11 @@ class PolicyOptTf(PolicyOpt):
         saver = tf.train.Saver()
         check_file = self.checkpoint_file
         saver.restore(self.sess, check_file)
+
+    def restore_model(self, data_files_dir, iteration_count):
+        self._data_files_dir = data_files_dir
+        self.iteration_count = iteration_count
+        self.saver.restore(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
+
+    def store_model(self):
+        self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
