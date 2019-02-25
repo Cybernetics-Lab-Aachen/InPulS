@@ -87,6 +87,7 @@ algorithm['init_traj_distr'] = {
 action_cost = {
     'type': CostAction,
     'wu': np.ones(SENSOR_DIMS[ACTION]),
+    'name': 'Action',
 }
 
 state_cost = {
@@ -97,6 +98,7 @@ state_cost = {
             'target_state': agent["target_state"],
         },
     },
+    'name': 'EE dist',
 }
 
 algorithm['cost'] = {

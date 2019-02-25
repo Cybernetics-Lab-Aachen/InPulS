@@ -182,7 +182,7 @@ class AgentOPCUAAZO(Agent):
             self.active = False
             self.finalize_sample()
 
-            sample_ok = input('Continue?') == 'y'
+            sample_ok = self.debug or input('Continue?') == 'y'
             if not sample_ok:
                 print('Repeating')
         return sample
