@@ -47,9 +47,11 @@ class CostState(Cost):
             wp = wp * np.expand_dims(wpm, axis=-1)
             # Compute state penalty.
             dist = x - tgt
+            if 'scale' in config:
+                dist *= config['scale'](sample)
 
             # Evaluate penalty term.
-            l, ls, lss = evall1l2term(
+            l, ls, lss = self._hyperparams['evalnorm'](
                 wp, dist, np.tile(np.eye(dim_sensor), [T, 1, 1]),
                 np.zeros((T, dim_sensor, dim_sensor, dim_sensor)),
                 self._hyperparams['l1'], self._hyperparams['l2'],
