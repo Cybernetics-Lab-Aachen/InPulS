@@ -274,4 +274,5 @@ class Agent(object):
             sample.set(sensor, X[:, idx])
         for actuator, idx in self._u_data_idx.items():
             sample.set(actuator, U[:, idx])
+        sample.set(ACTION, U)
         return sample
