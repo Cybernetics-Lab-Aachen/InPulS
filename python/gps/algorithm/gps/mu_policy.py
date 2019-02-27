@@ -26,6 +26,7 @@ class MU_Policy(PolicyOpt):
         self.dZ = self._hyperparams['dZ']
         self.beta_kl = self._hyperparams['beta_kl']
         self.N = self._hyperparams['N']
+        self.dropout_rate = self._hyperparams['dropout_rate']
 
         self.graph = tf.Graph()  # Encapsulate model in own graph
         with self.graph.as_default():
@@ -103,9 +104,9 @@ class MU_Policy(PolicyOpt):
 
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
-            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
+            h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
             h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
-            h = layers.dropout(h, keep_prob=0.9, is_training=self.is_training)
+            h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),
                 (-1, self.dU, self.dX)
@@ -150,7 +151,6 @@ class MU_Policy(PolicyOpt):
     def init_solver(self):
         optimizer_action = tf.train.AdamOptimizer()
         optimizer_stabilizer = tf.train.AdamOptimizer()
-        #optimizer_stabilizer = tf.train.AdagradOptimizer(learning_rate=0.01)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             solver_op_action = optimizer_action.minimize(
                 loss=self.loss_action,
@@ -162,8 +162,7 @@ class MU_Policy(PolicyOpt):
                           tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')]
             )
 
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        self.solver_op = tf.group(solver_op_stabilizer, solver_op_action, update_ops)
+        self.solver_op = tf.group(solver_op_stabilizer, solver_op_action)
         self.optimizer_reset_op = tf.variables_initializer(
             optimizer_action.variables() + optimizer_stabilizer.variables()
         )
@@ -209,8 +208,8 @@ class MU_Policy(PolicyOpt):
             '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_ctr)
         )
         epochs = self.epochs if not initial_policy else 10
-        losses = np.zeros((self.epochs, 3))
-        pbar = tqdm(range(self.epochs))
+        losses = np.zeros((epochs, 3))
+        pbar = tqdm(range(epochs))
         for epoch in pbar:
             for i in range(batches_per_epoch):
                 losses[epoch] += self.sess.run(
