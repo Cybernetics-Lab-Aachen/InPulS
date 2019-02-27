@@ -257,7 +257,10 @@ class AlgorithmMDGPS(Algorithm):
             PKLv[t, :] = np.concatenate([
                 KB.T.dot(inv_pol_S).dot(kB), -inv_pol_S.dot(kB)
             ])
-            fCm[t, :, :] = (Cm[t, :, :] + PKLm[t, :, :] * eta) / (eta)
+            fCm[t, :, :] = (
+                Cm[t, :, :] + self._hyperparams['K_regularization'] * np.linalg.norm(traj_distr.K[t], np.inf) +
+                PKLm[t, :, :] * eta
+            ) / (eta)
             fcv[t, :] = (cv[t, :] + PKLv[t, :] * eta) / (eta)
 
         return fCm, fcv
