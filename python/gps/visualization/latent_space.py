@@ -87,7 +87,7 @@ def visualize_latent_space_tsne(
 
     z = np.concatenate([z_train, z_test])
     z_embedded = TSNE(
-        n_components=2, perplexity=S * perplexity_scale, init='pca', n_iter=1000
+        n_components=2, perplexity=S * perplexity_scale, init='pca', n_iter=2000
     ).fit_transform(z.reshape(-1, dZ))
 
     # Plot trained

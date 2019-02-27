@@ -233,6 +233,7 @@ class MU_Policy(PolicyOpt):
             losses,
             labels=['Action Estimator', 'Stabilizer', 'Latent']
         )
+        self.sample_latent_space(X, N_test=50)
 
         # Optimize variance.
         A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
@@ -273,6 +274,47 @@ class MU_Policy(PolicyOpt):
         pol_det_sigma = np.tile(np.prod(self.var), [N, T])
 
         return action, pol_sigma, pol_prec, pol_det_sigma
+
+    def sample_latent_space(self, x_train, N_test):
+        from gps.visualization.latent_space import visualize_latent_space_tsne
+
+        N, T = x_train.shape[:2]
+        x_train = x_train.reshape(N * T, self.dX)
+
+        z_train = self.sess.run(
+            self.latent, feed_dict={
+                self.state_batch: x_train,
+                self.is_training: False,
+            }
+        )[:, None]
+
+        # Compute latent states for random states
+        x_test = np.random.multivariate_normal(np.mean(x_train, axis=0), np.cov(x_train, rowvar=0) * 2, size=N_test)
+        z_test = self.sess.run(
+            self.latent, feed_dict={
+                self.state_batch: x_test,
+                self.is_training: False,
+            }
+        )[:, None]
+
+        np.savez_compressed(
+            self._data_files_dir + 'latent_space-%02d' % (self.iteration_count),
+            x_train=x_train,
+            z_train=z_train,
+            x_test=x_test,
+            z_test=z_test
+        )
+
+        for perp in [10, 25, 50]:
+            visualize_latent_space_tsne(
+                self._data_files_dir + 'plot_latent_space_perp=%d' % perp,
+                x_train,
+                z_train,
+                x_test,
+                z_test,
+                perplexity_scale=perp,
+                export_data=False,
+            )
 
     def restore_model(self, data_files_dir, iteration_count):
         self._data_files_dir = data_files_dir
