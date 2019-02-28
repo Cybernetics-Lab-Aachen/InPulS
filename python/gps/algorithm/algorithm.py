@@ -252,6 +252,7 @@ class Algorithm(object):
 
     def visualize_local_policy(self, m, title='pol_lqr'):
         from gps.visualization import visualize_linear_model
+        from gps.visualization.linear_model import visualize_K
 
         traj_info = self.cur[m].traj_info
         traj_distr = self.new_traj_distr[m]
@@ -268,6 +269,12 @@ class Algorithm(object):
             cov_label='$\\Sigma_t$',
             y_label='$\\mathbf{u}_t$'
         )
+        for dim in range(self.dU):
+            visualize_K(
+                file_name=self._data_files_dir + 'plot_%s_K%d-m%d-%02d' % (title, dim, m, self.iteration_count),
+                K=traj_distr.K[:, dim],
+                labels=self.X_labels
+            )
 
     def visualize_policy_linearization(self, m, title='pol_lin'):
         from gps.visualization import visualize_linear_model

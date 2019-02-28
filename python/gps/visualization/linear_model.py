@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from sklearn.preprocessing import Normalizer
 
 
 def visualize_linear_model(
@@ -107,3 +108,40 @@ def visualize_linear_model(
     plt.close(fig)
     if export_data:
         np.savez_compressed(file_name, coeff=coeff, intercept=intercept, cov=cov, y=y, y_mean=y_mean, y_std=y_std)
+
+
+def visualize_K(file_name, K, labels=None, show=False):
+    """
+    Visualizes training losses.
+    Args:
+        file_name: File name without extension.
+        losses: ndarray (N_epochs, N_losses) with losses.
+        labels: list (N_losses, ) with labels for each loss.
+    """
+    fig = plt.figure(figsize=(16, 9))
+    ax1 = fig.add_subplot(111)
+    ax1.set_xlabel('$t$')
+    ax1.set_ylabel('%')
+    ax1.grid(linestyle=':')
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    T, dX = K.shape
+
+    K = np.abs(Normalizer(norm='l1').fit_transform(K))
+
+    if labels is None:
+        labels = ['$\\mathbf{x}_{%d}$' % dim for dim in range(dX)]
+
+    ax1.stackplot(
+        np.arange(T), K.T, labels=labels, colors=plt.cm.nipy_spectral((1 + np.arange(dX, dtype=float)) / (dX + 1))
+    )
+
+    ax1.legend()
+    ax1.set_xlim(left=0, right=T - 1)
+    ax1.set_ylim(bottom=0, top=1)
+
+    if file_name is not None:
+        fig.savefig(file_name + ".pdf", bbox_inches='tight', pad_inches=0)
+    if show:
+        plt.show()
+    plt.close(fig)
