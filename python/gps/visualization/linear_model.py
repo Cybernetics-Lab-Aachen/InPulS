@@ -52,7 +52,7 @@ def visualize_linear_model(
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax1.grid(linestyle=':')
     for dim in range(dY):
-        line, = ax1.plot(np.arange(T), intercept[:, dim])
+        line, = ax1.plot(np.arange(T), intercept[:, dim], linewidth=1)
 
     # Coefficients
     ax2 = fig.add_subplot(222)
@@ -62,7 +62,7 @@ def visualize_linear_model(
     ax2.grid(linestyle=':')
     for dim1 in range(dY):
         for dim2 in range(dX):
-            line, = ax2.plot(np.arange(T, dtype=int), coeff[:, dim1, dim2])
+            line, = ax2.plot(np.arange(T, dtype=int), coeff[:, dim1, dim2], linewidth=1)
 
     # Covariance
     ax3 = fig.add_subplot(223)
@@ -72,7 +72,7 @@ def visualize_linear_model(
     ax3.grid(linestyle=':')
     for dim1 in range(dY):
         for dim2 in range(dY):
-            line, = ax3.plot(np.arange(T), cov[:, dim1, dim2])
+            line, = ax3.plot(np.arange(T), cov[:, dim1, dim2], linewidth=1)
 
     # Approximation
     y_ = np.empty((N, T, dY))  # Approx y using the model
@@ -86,12 +86,12 @@ def visualize_linear_model(
     ax4.set_ylabel(y_label)
     ax4.set_xlabel(time_label)
     ax4.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax1.grid(linestyle=':')
+    ax4.grid(linestyle=':')
     for dim in range(dY):
-        line, = ax4.plot(np.arange(T), y_mean[:, dim])
+        line, = ax4.plot(np.arange(T), y_mean[:, dim], linewidth=1)
         c = line.get_color()
         if y is not None:
-            ax4.plot(np.arange(T), y[:, dim], ':')
+            ax4.plot(np.arange(T), y[:, dim], ':', color=c)
         ax4.fill_between(
             np.arange(T),
             y_mean[:, dim] - y_std[:, dim],
