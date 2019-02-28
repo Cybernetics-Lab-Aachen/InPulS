@@ -352,18 +352,13 @@ class Algorithm_NN(Algorithm):
 
         # Add in the trajectory divergence term.
         for t in range(self.T - 1, -1, -1):
-            Cm_ext[t, :, :] += np.vstack([
-                np.hstack([
-                    K[t, :, :].T.dot(ipc[t, :, :]).dot(K[t, :, :]),
-                    -K[t, :, :].T.dot(ipc[t, :, :])
-                ]),
-                np.hstack([
-                    -ipc[t, :, :].dot(K[t, :, :]), ipc[t, :, :]
-                ])
-            ])
-            cv_ext[t, :] += np.hstack([
-                K[t, :, :].T.dot(ipc[t, :, :]).dot(k[t, :]),
-                -ipc[t, :, :].dot(k[t, :])
-            ])
+            Cm_ext[t, :, :] += np.vstack(
+                [
+                    np.hstack([K[t, :, :].T.dot(ipc[t, :, :]).dot(K[t, :, :]), -K[t, :, :].T.dot(ipc[t, :, :])]),
+                    np.hstack([-ipc[t, :, :].dot(K[t, :, :]), ipc[t, :, :]])
+                ]
+            ) + self._hyperparams['K_regularization'] * np.linalg.norm(traj_distr.K[t],
+                                                                       np.inf) * np.eye(self.dX + self.dU)
+            cv_ext[t, :] += np.hstack([K[t, :, :].T.dot(ipc[t, :, :]).dot(k[t, :]), -ipc[t, :, :].dot(k[t, :])])
 
         return Cm_ext, cv_ext

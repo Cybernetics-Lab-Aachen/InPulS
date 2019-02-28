@@ -65,9 +65,9 @@ class TrajOptLQRPython(TrajOpt):
                                    traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
-            #print("kl_step: ", kl_step)
-            #print("con: ", con)
-            #print("kl_div: ", kl_div)
+            print("kl_step: ", kl_step)
+            print("con: ", con)
+            print("kl_div: ", kl_div)
 
             # Convergence check - constraint satisfaction.
             if (abs(con) < 0.1*kl_step):
@@ -91,6 +91,8 @@ class TrajOptLQRPython(TrajOpt):
 
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
+
+            print("eta_1: ", eta)
 
         if minAdvantage:
             traj_distr = self._compute_advantage_stabilizing_controller(traj_distr, copy.deepcopy(prev_traj_distr),
