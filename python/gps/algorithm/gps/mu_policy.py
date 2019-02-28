@@ -40,7 +40,7 @@ class MU_Policy(PolicyOpt):
             self.sess = tf.Session(config=config)
             self.sess.run(tf.global_variables_initializer())
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.train.Saver(max_to_keep=None)
 
         self.policy = self  # Act method is contained in this class
 

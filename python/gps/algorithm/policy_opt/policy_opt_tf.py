@@ -60,7 +60,7 @@ class PolicyOptTf(PolicyOpt):
                 self.x_idx = self.x_idx + list(range(i, i+dim))
             i += dim
         init_op = tf.initialize_all_variables()
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=None)
         self.sess.run(init_op)
 
     def init_network(self):
