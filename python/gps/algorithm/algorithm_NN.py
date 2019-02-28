@@ -291,6 +291,7 @@ class Algorithm_NN(Algorithm):
         max_eta = self.traj_opt_hyperparams['max_eta']
 
         LOGGER.debug("Running DGD for trajectory %d, eta: %f", m, eta)
+        mus = []
         for itr in range(DGD_MAX_ITER):
 
             LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)",
@@ -301,6 +302,7 @@ class Algorithm_NN(Algorithm):
             traj_distr = self.backward(prev_traj_distr, traj_info,
                                                 eta)
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
+            mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
             kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma,
@@ -338,6 +340,14 @@ class Algorithm_NN(Algorithm):
             LOGGER.warning(
                 "Final KL divergence after DGD convergence is too high."
             )
+
+        from gps.visualization.traj_opt import visualize_traj_opt
+        visualize_traj_opt(
+            file_name=self._data_files_dir + 'traj_opt_m%d-%02d' % (m, self.iteration_count),
+            mu=np.asarray(mus),
+            dX=traj_distr.dX,
+            dU=traj_distr.dU
+        )
 
         return traj_distr, eta, new_mu, new_sigma, kl_div_t
 
