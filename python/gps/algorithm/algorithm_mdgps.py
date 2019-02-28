@@ -240,26 +240,25 @@ class AlgorithmMDGPS(Algorithm):
         T, dU, dX = traj_distr.T, traj_distr.dU, traj_distr.dX
         Cm, cv = np.copy(traj_info.Cm), np.copy(traj_info.cv)
 
-        PKLm = np.zeros((T, dX+dU, dX+dU))
-        PKLv = np.zeros((T, dX+dU))
+        PKLm = np.zeros((T, dX + dU, dX + dU))
+        PKLv = np.zeros((T, dX + dU))
         fCm, fcv = np.zeros(Cm.shape), np.zeros(cv.shape)
         for t in range(T):
             # Policy KL-divergence terms.
             inv_pol_S = np.linalg.solve(
-                pol_info.chol_pol_S[t, :, :],
-                np.linalg.solve(pol_info.chol_pol_S[t, :, :].T, np.eye(dU))
+                pol_info.chol_pol_S[t, :, :], np.linalg.solve(pol_info.chol_pol_S[t, :, :].T, np.eye(dU))
             )
             KB, kB = pol_info.pol_K[t, :, :], pol_info.pol_k[t, :]
-            PKLm[t, :, :] = np.vstack([
-                np.hstack([KB.T.dot(inv_pol_S).dot(KB), -KB.T.dot(inv_pol_S)]),
-                np.hstack([-inv_pol_S.dot(KB), inv_pol_S])
-            ])
-            PKLv[t, :] = np.concatenate([
-                KB.T.dot(inv_pol_S).dot(kB), -inv_pol_S.dot(kB)
-            ])
+            PKLm[t, :, :] = np.vstack(
+                [
+                    np.hstack([KB.T.dot(inv_pol_S).dot(KB), -KB.T.dot(inv_pol_S)]),
+                    np.hstack([-inv_pol_S.dot(KB), inv_pol_S])
+                ]
+            )
+            PKLv[t, :] = np.concatenate([KB.T.dot(inv_pol_S).dot(kB), -inv_pol_S.dot(kB)])
             fCm[t, :, :] = (
-                Cm[t, :, :] + self._hyperparams['K_regularization'] * np.linalg.norm(traj_distr.K[t], np.inf) +
-                PKLm[t, :, :] * eta
+                Cm[t, :, :] + self._hyperparams['K_regularization'] * np.linalg.norm(traj_distr.K[t], np.inf) *
+                np.eye(dX + dU) + PKLm[t, :, :] * eta
             ) / (eta)
             fcv[t, :] = (cv[t, :] + PKLv[t, :] * eta) / (eta)
 
