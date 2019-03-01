@@ -136,7 +136,7 @@ class AgentOPCUAAZO(Agent):
             if noisy:
                 noise = generate_noise(self.T, self.dU, self._hyperparams)
             else:
-                noise = np.zeros((self.T, self.dU))
+                noise = None
 
             # Execute policy over a time period of [0,T]
             start = time.time()

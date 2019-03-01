@@ -185,9 +185,7 @@ class GPS_Policy(PolicyOpt):
         return action, pol_sigma, pol_prec, pol_det_sigma
 
     def restore_model(self, data_files_dir, iteration_count):
-        self._data_files_dir = data_files_dir
-        self.iteration_count = iteration_count
-        self.saver.restore(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
+        self.saver.restore(self.sess, data_files_dir + 'model-%02d' % (iteration_count))
 
     def store_model(self):
         self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
