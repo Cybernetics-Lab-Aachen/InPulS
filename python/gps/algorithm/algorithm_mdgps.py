@@ -152,6 +152,13 @@ class AlgorithmMDGPS(Algorithm):
         # Fit linearization and store in pol_info.
         pol_info.pol_K, pol_info.pol_k, pol_info.pol_S = \
                 policy_prior.fit(X, pol_mu, pol_sig)
+
+        # Overwrite lineariziation within the first iteration
+        if self.iteration_count == 0:
+            pol_info.pol_K = self.cur[m].traj_distr.K
+            pol_info.pol_k = self.cur[m].traj_distr.k
+            pol_info.pol_S = self.cur[m].traj_distr.pol_covar
+
         for t in range(T):
             pol_info.chol_pol_S[t, :, :] = \
                     sp.linalg.cholesky(pol_info.pol_S[t, :, :])

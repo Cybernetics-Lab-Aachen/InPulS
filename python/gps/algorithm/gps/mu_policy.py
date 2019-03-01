@@ -150,7 +150,7 @@ class MU_Policy(PolicyOpt):
 
     def init_solver(self):
         optimizer_action = tf.train.AdamOptimizer()
-        optimizer_stabilizer = tf.train.AdamOptimizer()
+        optimizer_stabilizer = tf.train.AdamOptimizer(learning_rate=0.00001)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             solver_op_action = optimizer_action.minimize(
                 loss=self.loss_action,
@@ -307,7 +307,7 @@ class MU_Policy(PolicyOpt):
 
         for perp in [10, 25, 50]:
             visualize_latent_space_tsne(
-                self._data_files_dir + 'plot_latent_space_perp=%d' % perp,
+                self._data_files_dir + 'plot_latent_space-%02d_perp=%d' % (self.iteration_count, perp),
                 x_train,
                 z_train,
                 x_test,
