@@ -125,6 +125,7 @@ agent = {
     'obs_include': [],
     'rgb_topic': '/usb_cam/image_raw',
     'rgb_shape': [IMAGE_WIDTH,IMAGE_HEIGHT,IMAGE_CHANNELS],
+    'random_reset': False,
 }
 
 
