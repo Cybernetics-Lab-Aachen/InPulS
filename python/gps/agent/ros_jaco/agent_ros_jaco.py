@@ -5,9 +5,6 @@ import numpy as np
 from random import random
 from math import pi
 
-
-import cv2
-
 from threading import Timer
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
@@ -15,7 +12,7 @@ from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
         tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
         image_msg_to_cv
-from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM
+from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM, JOINT_ANGLES
 
 
 import Command_pb2 as command_msgs
@@ -146,9 +143,9 @@ class AgentROSJACO(Agent):
         # relax_command.arm = arm
         relax_command.is_position_command = False
         relax_command.command.extend([0, 0, 0, 0, 0, 0])
-        self.latest_sample = self._relax_service.publish_and_wait(relax_command)
+        self.latest_sample = msg_to_sample(self._relax_service.publish_and_wait(relax_command), self)
 
-    def reset_arm(self, arm, mode, data):
+    def reset_arm(self, arm, mode, data, position_command=False):
         """
         Issues a position command to an arm.
         Args:
@@ -158,12 +155,13 @@ class AgentROSJACO(Agent):
         """
         reset_command = command_msgs.Command()
         reset_command.command.extend(data)
+        reset_command.is_position_command = position_command
         #reset_command.pd_gains = self._hyperparams['pid_params']
         #reset_command.arm = arm
         timeout = self._hyperparams['trial_timeout']
         #reset_command.id = self._get_next_seq_id()
         try:
-            self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+            self.latest_sample = msg_to_sample(self._reset_service.publish_and_wait(reset_command, timeout=timeout), self)
         except TimeoutException:
             self.relax_arm(arm)
             wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
@@ -196,7 +194,7 @@ class AgentROSJACO(Agent):
         timeout = self._hyperparams['trial_timeout']
         reset_command.id = self._get_next_seq_id()
         try:
-            self.latest_sample = self._reset_service.publish_and_wait(reset_command, timeout=timeout)
+            self.latest_sample = msg_to_sample(self._reset_service.publish_and_wait(reset_command, timeout=timeout), self)
         except TimeoutException:
             self.relax_arm(arm)
             wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
@@ -223,67 +221,6 @@ class AgentROSJACO(Agent):
         time.sleep(0.2)  # useful for the real robot, so it stops completely
 
 
-    def independent_sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, first_itr=False):
-        """
-                Reset and execute a policy and collect a sample.
-                Args:
-                    policy: A Policy object.
-                    condition: Which condition setup to run.
-                    verbose: Unused for this agent.
-                    save: Whether or not to store the trial into the samples.
-                    noisy: Whether or not to use noise during sampling.
-                    use_TfController: Whether to use the syncronous TfController
-                Returns:
-                    sample: A Sample object.
-                """
-
-        if use_TfController:
-            self._init_tf(policy, policy.dU)
-            self.use_tf = True
-            self.cur_timestep = 0
-            self.sample_save = save
-            self.active = True
-
-        #self.condition = condition
-
-        # Generate noise.
-        if noisy:
-            noise = generate_noise(self.T, self.dU, self._hyperparams)
-            self.noise = noise
-        else:
-            self.noise = None
-
-        # Fill in trial command
-        action = policy.act(self.latest_sample.get_X(), None, None, self.noise)
-        trial_command = command_msgs.Command()
-        trial_command.id = self._get_next_seq_id()
-        trial_command.command.extend(action)
-        # trial_command.controller = \
-        #     policy_to_msg(policy, noise, use_TfController=use_TfController)
-        # trial_command.T = self.T
-        # trial_command.id = self._get_next_seq_id()
-        # trial_command.frequency = self._hyperparams['frequency']
-        # ee_points = self._hyperparams['end_effector_points']
-        # trial_command.command = ee_points.reshape(ee_points.size).tolist()
-        # trial_command.ee_points_tgt = \
-        #     self._hyperparams['ee_points_tgt'][condition].tolist()
-        # trial_command.state_datatypes = self._hyperparams['state_include']
-        # trial_command.obs_datatypes = self._hyperparams['state_include']
-
-        # Execute trial.
-        sample_msg = self._trial_service.publish_and_wait(
-            trial_command, timeout=self._hyperparams['trial_timeout']
-        )
-        if self.vision_enabled:
-            sample_msg = self.add_rgb_stream_to_sample(sample_msg)
-        sample = msg_to_sample(sample_msg, self)
-        # sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
-        if save:
-            self._samples[condition].append(sample)
-        self.active = False
-        return sample
-
     def sample(self, policy, condition, verbose=True, save=True, noisy=True,
                use_TfController=False, first_itr=False, timeout=None, reset=True, rnd=None):
         """
@@ -298,94 +235,23 @@ class AgentROSJACO(Agent):
         Returns:
             sample: A Sample object.
         """
-        if use_TfController:
-            self._init_tf(policy, policy.dU)
-            self.use_tf = True
-            self.cur_timestep = 0
-            self.sample_save = save
-            self.active = True
-
         self.policy = policy
 
-        if reset:
-            self.reset(condition, rnd=rnd)
-            self.condition = condition
-
-
-        # Generate noise.
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
-            self.noise = noise
         else:
             noise = np.zeros((self.T, self.dU))
-            self.noise = None
 
-        # Fill in trial command
-        trial_command = command_msgs.Command()
-        trial_command.id = self._get_next_seq_id()
-        trial_command.command.extend(action)
-        # trial_command.controller = \
-        #         policy_to_msg(policy, noise, use_TfController=use_TfController)
-        # if timeout is not None:
-        #     trial_command.T = timeout
-        # else:
-        #     trial_command.T = self.T
-        # trial_command.id = self._get_next_seq_id()
-        # trial_command.frequency = self._hyperparams['frequency']
-        # ee_points = self._hyperparams['end_effector_points']
-        # trial_command.command = ee_points.reshape(ee_points.size).tolist()
-        # trial_command.ee_points_tgt = \
-        #         self._hyperparams['ee_points_tgt'][self.condition].tolist()
-        # trial_command.state_datatypes = self._hyperparams['state_include']
-        # trial_command.obs_datatypes = self._hyperparams['state_include']
 
-        # Execute trial.
-        sample_msg = self._trial_service.publish_and_wait(
-            trial_command, timeout=(trial_command.T + self._hyperparams['trial_timeout'])
-        )
-        if self.vision_enabled:
-            sample_msg = self.add_rgb_stream_to_sample(sample_msg)
-        sample = msg_to_sample(sample_msg, self)
-        #sample = self.replace_samplestates_with_errorstates(sample, self.x_tgt[condition])
-        if save:
-            self._samples[condition].append(sample)
-        self.active = False
+        sample = Sample(self)
+
+        self.get_data()
+        for timestep in range(self.T):
+            print("starting timestep %s" % (timestep))
+            #get states-> needs to be implemented
+            for sensor_type in self.x_data_types:
+                sample.set(sensor_type, self.latest_sample.get(sensor_type), timestep)
+            actions = policy.act(sample.get_X(timestep), sample.get_obs(timestep), timestep, noise)
+            self.reset_arm(None, None, actions)
+
         return sample
-
-    def _get_new_action(self, policy, obs, t=None):
-        return policy.act(obs, obs, t, self.noise)
-
-    def _tf_callback(self, message):
-        obs = tf_obs_msg_to_numpy(message)
-        obs = self.extend_state_space(obs)
-        if self.current_action_id > (self.T - 1):
-            print("self.T: ", self.T)
-            return
-        # action_msg = \
-        #         tf_policy_to_action_msg(self.dU,
-        #                                 self._get_new_action(self.stf_policy,
-        #                                                      obs,
-        #                                                      self.current_action_id),
-        #                                 self.current_action_id + 1)
-        new_action = self._get_new_action(self.stf_policy, obs, self.cur_action_id)
-        action_msg = command_msgs.Command()
-        action_msg.id = self.cur_action_id()
-        action_msg.command.extend(new_action)
-        self._tf_publish(action_msg)
-        self.current_action_id += 1
-
-    def _tf_publish(self, pub_msg):
-        """ Publish a message without waiting for response. """
-        self._pub.publish(pub_msg)
-
-    def _init_tf(self, policy, dU):
-        """TODO: check callback functions for proto message compatibility"""
-        if self.init_tf is False:  # init pub and sub if this init has not been called before.
-            self._pub = PublisherEmulator('/gps_controller_sent_robot_action_tf', command_msgs.Command)
-            self._sub = SubscriberEmulator('/gps_obs_tf', command_msgs.State, self._tf_callback)
-            time.sleep(1)
-            self.init_tf = True
-        self.stf_policy = policy
-        self.dU = dU
-        self.current_action_id = 0
-
