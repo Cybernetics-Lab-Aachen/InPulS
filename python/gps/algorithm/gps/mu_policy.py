@@ -40,6 +40,8 @@ class MU_Policy(PolicyOpt):
             self.sess = tf.Session(config=config)
             self.sess.run(tf.global_variables_initializer())
 
+            self.saver = tf.train.Saver(max_to_keep=None)
+
         self.policy = self  # Act method is contained in this class
 
     def init_network(self):
@@ -107,7 +109,7 @@ class MU_Policy(PolicyOpt):
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
             h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
-            h = layers.fully_connected(h,  self.N_hidden * 2, biases_initializer=None)
+            h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
             h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),
@@ -164,7 +166,6 @@ class MU_Policy(PolicyOpt):
                           tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')]
             )
 
-        #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         self.solver_op = tf.group(solver_op_stabilizer, solver_op_action)
         self.optimizer_reset_op = tf.variables_initializer(
             optimizer_action.variables() + optimizer_stabilizer.variables()
@@ -211,8 +212,8 @@ class MU_Policy(PolicyOpt):
             '%d * %d != %d' % (batches_per_epoch, self.batch_size, N_ctr)
         )
         epochs = self.epochs if not initial_policy else 10
-        losses = np.zeros((self.epochs, 3))
-        pbar = tqdm(range(self.epochs))
+        losses = np.zeros((epochs, 3))
+        pbar = tqdm(range(epochs))
         for epoch in pbar:
             for i in range(batches_per_epoch):
                 losses[epoch] += self.sess.run(
@@ -236,6 +237,7 @@ class MU_Policy(PolicyOpt):
             losses,
             labels=['Action Estimator', 'Stabilizer', 'Latent']
         )
+        self.sample_latent_space(X, N_test=50)
 
         # Optimize variance.
         A = np.mean(prc, axis=0) + 2 * N * T * self._hyperparams['ent_reg'] * np.ones((self.dU, self.dU))
@@ -276,6 +278,54 @@ class MU_Policy(PolicyOpt):
         pol_det_sigma = np.tile(np.prod(self.var), [N, T])
 
         return action, pol_sigma, pol_prec, pol_det_sigma
+
+    def sample_latent_space(self, x_train, N_test):
+        from gps.visualization.latent_space import visualize_latent_space_tsne
+
+        N, T = x_train.shape[:2]
+        x_train = x_train.reshape(N * T, self.dX)
+
+        z_train = self.sess.run(
+            self.latent, feed_dict={
+                self.state_batch: x_train,
+                self.is_training: False,
+            }
+        )[:, None]
+
+        # Compute latent states for random states
+        x_test = np.random.multivariate_normal(np.mean(x_train, axis=0), np.cov(x_train, rowvar=0) * 2, size=N_test)
+        z_test = self.sess.run(
+            self.latent, feed_dict={
+                self.state_batch: x_test,
+                self.is_training: False,
+            }
+        )[:, None]
+
+        np.savez_compressed(
+            self._data_files_dir + 'latent_space-%02d' % (self.iteration_count),
+            x_train=x_train,
+            z_train=z_train,
+            x_test=x_test,
+            z_test=z_test
+        )
+
+        for perp in [10, 25, 50]:
+            visualize_latent_space_tsne(
+                self._data_files_dir + 'plot_latent_space-%02d_perp=%d' % (self.iteration_count, perp),
+                x_train,
+                z_train,
+                x_test,
+                z_test,
+                perplexity_scale=perp,
+                export_data=False,
+            )
+
+    def restore_model(self, data_files_dir, iteration_count):
+        self.saver.restore(self.sess, data_files_dir + 'model-%02d' % (iteration_count))
+
+    def store_model(self):
+        self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
+
 
 def tf_cov(x):
     mean_x = tf.reduce_mean(x, axis=0, keepdims=True)

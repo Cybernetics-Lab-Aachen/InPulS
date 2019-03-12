@@ -1,7 +1,7 @@
 """ Default configuration and hyperparameter values for costs. """
 import numpy as np
 
-from gps.algorithm.cost.cost_utils import RAMP_CONSTANT, evallogl2term
+from gps.algorithm.cost.cost_utils import RAMP_CONSTANT, evallogl2term, evall1l2term
 
 
 # CostFK
@@ -31,6 +31,7 @@ COST_STATE = {
             'wp': None,  # State weights - must be set.
         },
     },
+    'evalnorm': evall1l2term,
 }
 
 

@@ -20,3 +20,31 @@ def init_azo_pol(hyperparams):
         inv_pol_covar[t] = np.linalg.inv(PSig[t])
 
     return LinearGaussianPolicy(K, k, PSig, cholPSig, inv_pol_covar)
+
+
+def init_pol_ctr(hyperparams):
+    dU, dX = hyperparams['dU'], hyperparams['dX']
+    T = hyperparams['T']
+    data = np.load(hyperparams['ctr_file'])
+
+    K = np.empty((T, dU, dX))
+    k = np.empty((T, dU))
+    prc = np.empty((T, dU, dU))
+
+    K[:-1] = data['K'][0]
+    K[-1] = np.zeros((dU, dX))
+    k[:-1] = data['k'][0]
+    k[-1] = np.zeros((dU))
+    prc[:-1] = data['prc'][0]
+    prc[-1] = np.eye(dU)
+
+    PSig = np.empty((T, dU, dU))
+    cholPSig = np.empty((T, dU, dU))
+    inv_pol_covar = np.empty((T, dU, dU))
+
+    for t in range(T):
+        PSig[t] = np.linalg.inv(prc[t])
+        cholPSig[t] = np.linalg.cholesky(PSig[t])
+        inv_pol_covar[t] = np.linalg.inv(PSig[t])
+
+    return LinearGaussianPolicy(K, k, PSig, cholPSig, inv_pol_covar)

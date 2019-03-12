@@ -276,10 +276,10 @@ class Algorithm_NN(Algorithm):
         """ Run dual gradient decent to optimize trajectories. """
         T = self.T
         eta = self.cur[m].eta
-        print("eta_0: ", eta)
+        # print("eta_0: ", eta)
         step_mult = self.cur[m].step_mult
         traj_info = self.cur[m].traj_info
-        print("step_mult: ", step_mult)
+        # print("step_mult: ", step_mult)
 
         prev_traj_distr = self.cur[m].traj_distr
 
@@ -291,6 +291,7 @@ class Algorithm_NN(Algorithm):
         max_eta = self.traj_opt_hyperparams['max_eta']
 
         LOGGER.debug("Running DGD for trajectory %d, eta: %f", m, eta)
+        mus = []
         for itr in range(DGD_MAX_ITER):
 
             LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)",
@@ -301,13 +302,14 @@ class Algorithm_NN(Algorithm):
             traj_distr = self.backward(prev_traj_distr, traj_info,
                                                 eta)
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
+            mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
             kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma,
                                    traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
-            print("kl_div - kl_step: ", con)
+            # print("kl_div - kl_step: ", con)
             # Convergence check - constraint satisfaction.
             if (abs(con) < 0.1*kl_step):
                 LOGGER.debug("KL: %f / %f, converged iteration %i",
@@ -331,13 +333,21 @@ class Algorithm_NN(Algorithm):
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
 
-            print("eta_1: ", eta)
-            print("kl_step: ", kl_step)
+            # print("eta_1: ", eta)
+            # print("kl_step: ", kl_step)
 
         if kl_div > kl_step and abs(kl_div - kl_step) > 0.1*kl_step:
             LOGGER.warning(
                 "Final KL divergence after DGD convergence is too high."
             )
+
+        from gps.visualization.traj_opt import visualize_traj_opt
+        visualize_traj_opt(
+            file_name=self._data_files_dir + 'traj_opt_m%d-%02d' % (m, self.iteration_count),
+            mu=np.asarray(mus),
+            dX=traj_distr.dX,
+            dU=traj_distr.dU
+        )
 
         return traj_distr, eta, new_mu, new_sigma, kl_div_t
 

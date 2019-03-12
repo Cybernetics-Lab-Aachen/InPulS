@@ -260,3 +260,19 @@ class Agent(object):
             index[axes[i]] = slice(self._x_data_idx[data_types[i]][0],
                                    self._x_data_idx[data_types[i]][-1] + 1)
         return existing_mat[tuple(index)]
+
+    def pack_sample(self, X, U):
+        from gps.sample.sample import Sample
+
+        assert X.shape[0] == self.T
+        assert U.shape[0] == self.T
+        assert X.shape[1] == self.dX
+        assert U.shape[1] == self.dU
+
+        sample = Sample(self)
+        for sensor, idx in self._x_data_idx.items():
+            sample.set(sensor, X[:, idx])
+        for actuator, idx in self._u_data_idx.items():
+            sample.set(actuator, U[:, idx])
+        sample.set(ACTION, U)
+        return sample

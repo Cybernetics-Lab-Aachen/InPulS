@@ -20,7 +20,7 @@ class CostAction(Cost):
         Args:
             sample: A single sample
         """
-        sample_u = sample.get_U()
+        sample_u = sample.get_U() - self._hyperparams['target_state']
         T = sample.T
         Du = sample.dU
         Dx = sample.dX

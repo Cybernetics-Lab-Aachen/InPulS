@@ -35,6 +35,8 @@ class GPS_Policy(PolicyOpt):
             self.sess = tf.Session(config=config)
             self.sess.run(tf.global_variables_initializer())
 
+            self.saver = tf.train.Saver(max_to_keep=None)
+
         self.policy = self  # Act method is contained in this class
 
     def init_network(self):
@@ -181,3 +183,9 @@ class GPS_Policy(PolicyOpt):
         pol_det_sigma = np.tile(np.prod(self.var), [N, T])
 
         return action, pol_sigma, pol_prec, pol_det_sigma
+
+    def restore_model(self, data_files_dir, iteration_count):
+        self.saver.restore(self.sess, data_files_dir + 'model-%02d' % (iteration_count))
+
+    def store_model(self):
+        self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))

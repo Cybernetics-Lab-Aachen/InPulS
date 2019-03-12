@@ -31,10 +31,11 @@ class AgentOPCUAAZO(Agent):
 
         self.dt = self._hyperparams['dt']
         self.scaler = self._hyperparams['scaler']
+        self.action_scaler = self._hyperparams['action_scaler']
         self.actuator_overrides = self._hyperparams['override_actuator']
         self.sensor_overrides = self._hyperparams['override_sensor']
         self.signals = self._hyperparams['send_signal']
-        self.sensors = self.x_data_types
+        self.sensors = self._hyperparams['opc_ua_states_include']
         self.actuators = self.u_data_types
         #self.__init_opcua()
         self.client = None
@@ -76,6 +77,13 @@ class AgentOPCUAAZO(Agent):
         data_idx = self._x_data_idx[sensor]
         return (sensor_data - self.scaler.mean_[data_idx]) / self.scaler.scale_[data_idx]
 
+    def inverse_transform(self, actuator, actuator_data):
+        """
+        Inverse actions according to the scaler.
+        """
+        data_idx = self._u_data_idx[actuator]
+        return actuator_data * self.action_scaler.scale_[data_idx] + self.action_scaler.mean_[data_idx]
+
     def read_sensor(self, sensor):
         sensor_data = self.opcua_vars[sensor].get_value()
         if np.isscalar(sensor_data):  # Wrap scalars into single element arrays
@@ -85,7 +93,7 @@ class AgentOPCUAAZO(Agent):
     def write_actuator(self, actuator, data):
         if len(data) == 1:
             data = data.item()  # TODO Maybe keep original dimension?
-        data = ua.Variant(data, ua.VariantType.Float)
+        data = ua.Variant(self.inverse_transform(actuator, data), ua.VariantType.Float)
         try:
             self.opcua_vars[actuator].set_data_value(data)
         except ua.uaerrors._auto.BadTypeMismatch:
@@ -128,7 +136,7 @@ class AgentOPCUAAZO(Agent):
             if noisy:
                 noise = generate_noise(self.T, self.dU, self._hyperparams)
             else:
-                noise = np.zeros((self.T, self.dU))
+                noise = None
 
             # Execute policy over a time period of [0,T]
             start = time.time()
@@ -142,7 +150,7 @@ class AgentOPCUAAZO(Agent):
                 for override in self.sensor_overrides:
                     if override['condition'](t):
                         sensor = override['sensor']
-                        sample.set(sensor, np.copy(override['value']), t)
+                        sample.set(sensor, override['value'](sample, t), t)
 
                 print('X_%02d' % t, sample.get_X(t))
 
@@ -182,7 +190,7 @@ class AgentOPCUAAZO(Agent):
             self.active = False
             self.finalize_sample()
 
-            sample_ok = input('Continue?') == 'y'
+            sample_ok = self.debug or input('Continue?') == 'y'
             if not sample_ok:
                 print('Repeating')
         return sample
