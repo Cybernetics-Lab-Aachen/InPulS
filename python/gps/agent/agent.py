@@ -69,6 +69,8 @@ class Agent(object):
         self._target_ja = []
         self._initial_ja = []
 
+        self.ee_points = hyperparams["ee_points"]
+
 
     def is_active(self):
         return self.active

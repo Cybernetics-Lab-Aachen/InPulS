@@ -156,6 +156,7 @@ class AgentROSJACO(Agent):
         reset_command = command_msgs.Command()
         reset_command.command.extend(data)
         reset_command.is_position_command = position_command
+        reset_command.ee_offsets.extend(self.ee_points.reshape(-1))
         #reset_command.pd_gains = self._hyperparams['pid_params']
         #reset_command.arm = arm
         timeout = self._hyperparams['trial_timeout']
@@ -245,7 +246,7 @@ class AgentROSJACO(Agent):
 
         sample = Sample(self)
 
-        self.get_data()
+        self.get_data()     #  set new self.latest_sample
         for timestep in range(self.T):
             print("starting timestep %s" % (timestep))
             #get states-> needs to be implemented
