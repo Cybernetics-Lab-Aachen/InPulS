@@ -58,7 +58,8 @@ class Algorithm(object):
         dynamics = self._hyperparams['dynamics']
         for m in range(self.M):
             self.cur[m].traj_info = TrajectoryInfo()
-            self.cur[m].traj_info.dynamics = dynamics['type'](dynamics)
+            if dynamics is not None:
+                self.cur[m].traj_info.dynamics = dynamics['type'](dynamics)
             init_traj_distr = extract_condition(
                 self._hyperparams['init_traj_distr'], self._cond_idx[0] # TODO Global x0
             )

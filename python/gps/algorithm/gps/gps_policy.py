@@ -36,6 +36,7 @@ class GPS_Policy(PolicyOpt):
             self.sess.run(tf.global_variables_initializer())
 
             self.saver = tf.train.Saver(max_to_keep=None)
+            self.graph.finalize()
 
         self.policy = self  # Act method is contained in this class
 
