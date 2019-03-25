@@ -3,6 +3,6 @@ scikit-learn
 gym
 mujoco-py
 matplotlib
-tensorflow-gpu 
+tensorflow-gpu~=1.12.0
 tensorflow-probability
 tqdm
