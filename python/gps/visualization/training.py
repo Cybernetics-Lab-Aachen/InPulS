@@ -20,7 +20,7 @@ def eval_samples(experiment, metric, sample_type='samples_pol-random'):
         itr += 1
 
     iterations = len(pol_samples)
-    assert iterations > 0
+    assert iterations > 0, experiment
 
     data = np.load(pol_samples[0])
     M, N, T, _ = data['X'].shape
@@ -34,17 +34,16 @@ def eval_samples(experiment, metric, sample_type='samples_pol-random'):
     return evals
 
 
-def visualize_iterations(
+def visualize_training(
     file_name,
-    evals,
-    labels,
+    experiments,
+    metric,
     target=None,
     mode='auto',
-    x_label='iteration',
+    x_label='iterations',
     y_label='distance',
     show=False,
     figsize=(16, 9),
-    export_data=False,
 ):
     """
     Visualizes training iterations.
@@ -53,9 +52,6 @@ def visualize_iterations(
         losses: ndarray (N_epochs, N_losses) with losses.
         labels: list (N_losses, ) with labels for each loss.
     """
-
-    assert len(evals) == len(labels)
-
     fig = plt.figure(figsize=figsize)
     ax1 = fig.add_subplot(111)
     ax1.set_xlabel(x_label)
@@ -66,17 +62,17 @@ def visualize_iterations(
     if target is not None:
         ax1.axhline(target, linestyle='--', color='grey', label='target')
 
-    for i, ev in enumerate(evals):
-        T, _ = ev.shape
-        eval_mean, eval_min, eval_max = aggregate(ev, axis=1, mode=mode)
-        line, = ax1.plot(np.arange(T), eval_mean, label=labels[i])
+    for ex in experiments:
+        data = eval_samples(ex['experiment'], metric)
+        T, _ = data.shape
+        xs = (np.arange(T) + 1) * ex.get('N_per_itr', 1)
+        eval_mean, eval_min, eval_max = aggregate(data, axis=1, mode=mode)
+        line, = ax1.plot(xs, eval_mean, label=ex['label'])
         c = line.get_color()
-        ax1.fill_between(np.arange(T), eval_min, eval_max, facecolor=c, alpha=0.25, interpolate=True)
+        ax1.fill_between(xs, eval_min, eval_max, facecolor=c, alpha=0.25, interpolate=True)
 
     ax1.legend()
 
-    if export_data:
-        np.savez_compressed(file_name, evals, labels=labels)
     if file_name is not None:
         fig.savefig(file_name + ".pdf", bbox_inches='tight', pad_inches=0)
     if show:
