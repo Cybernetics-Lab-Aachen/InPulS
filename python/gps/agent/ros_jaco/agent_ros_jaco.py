@@ -12,7 +12,7 @@ from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
         tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
         image_msg_to_cv
-from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM, JOINT_ANGLES
+from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM, JOINT_ANGLES, ACTION
 
 
 import Command_pb2 as command_msgs
@@ -143,6 +143,7 @@ class AgentROSJACO(Agent):
         # relax_command.arm = arm
         relax_command.is_position_command = False
         relax_command.command.extend([0, 0, 0, 0, 0, 0])
+        relax_command.ee_offsets.extend(self.ee_points.reshape(-1))
         self.latest_sample = msg_to_sample(self._relax_service.publish_and_wait(relax_command), self)
 
     def reset_arm(self, arm, mode, data, position_command=False):
@@ -170,7 +171,7 @@ class AgentROSJACO(Agent):
 
         #TODO: Maybe verify that you reset to the correct position.
 
-    def reset_arm_rnd(self, arm, mode, data):
+    def reset_arm_rnd(self, arm, mode, data, position_command=False):
         """
         Issues a position command to an arm.
         Args:
@@ -192,6 +193,8 @@ class AgentROSJACO(Agent):
             (random() * 2 - 1) * pi])
         #reset_command.pd_gains = self._hyperparams['pid_params']
         #reset_command.arm = arm
+        reset_command.is_position_command = position_command
+        reset_command.ee_offsets.extend(self.ee_points.reshape(-1))
         timeout = self._hyperparams['trial_timeout']
         reset_command.id = self._get_next_seq_id()
         try:
@@ -199,7 +202,7 @@ class AgentROSJACO(Agent):
         except TimeoutException:
             self.relax_arm(arm)
             wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
-            self.reset_arm(arm, mode, data)
+            self.reset_arm(arm, mode, data, position_command)
 
 
     def reset(self, condition, rnd=None):
@@ -218,7 +221,7 @@ class AgentROSJACO(Agent):
                                condition_data[TRIAL_ARM]['data'])
         else:
             self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
-                           condition_data[TRIAL_ARM]['data'])
+                           condition_data[TRIAL_ARM]['data'], True)
         time.sleep(0.2)  # useful for the real robot, so it stops completely
 
 
@@ -245,14 +248,22 @@ class AgentROSJACO(Agent):
 
 
         sample = Sample(self)
-
+        self.reset(condition)
         self.get_data()     #  set new self.latest_sample
+        last = time.time()
+        actions = np.array([0, 0, 0, 0, 0, 0]) #set action to zeros for first iteration
         for timestep in range(self.T):
-            print("starting timestep %s" % (timestep))
+            next = last+self._hyperparams["dt"]
+            time.sleep(max(0, next-time.time()))
+            last = next
+            #print("starting timestep %s" % (timestep))
             #get states-> needs to be implemented
+            sample.set(ACTION, actions, timestep)
             for sensor_type in self.x_data_types:
                 sample.set(sensor_type, self.latest_sample.get(sensor_type), timestep)
             actions = policy.act(sample.get_X(timestep), sample.get_obs(timestep), timestep, noise)
             self.reset_arm(None, None, actions)
 
+        self._samples[condition].append(sample)
+        self.reset(condition)
         return sample

@@ -58,7 +58,7 @@ common = {
     'log_filename': EXP_DIR + 'log.txt',
     #'train_conditions': [0, 1],
     #'test_conditions': [1,2],
-    'conditions': 2,
+    'conditions': 1,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -75,21 +75,25 @@ for i in xrange(common['conditions']):
     ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
         common['target_filename'], 'trial_arm', str(i), 'target'
     )
-    x_tgt = np.zeros(12)
+    ee_tgt = np.ndarray.flatten(
+        # get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
+        ee_pos_tgt
+    )
+
+    x_tgt = np.zeros(21)
     jv_tgt = np.zeros(6)
     x_tgt[:6] = ja_tgt
     x_tgt[6:12] = jv_tgt
+    x_tgt[12:21] = ee_tgt
 
     ja_x0 = ja_x0_[:6]
-    x0 = np.zeros(12)
+    x0 = np.zeros(21)
     x0[:6] = ja_x0
     #x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
     #    get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
     #)
 
-    ee_tgt = np.ndarray.flatten(
-        get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
-    )
+
 
     reset_condition = {
         TRIAL_ARM: {
@@ -120,7 +124,7 @@ agent = {
     'ee_points_tgt': ee_tgts,
     'reset_conditions': reset_conditions,
     'sensor_dims': SENSOR_DIMS,
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES],
+    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS],
     'end_effector_points': EE_POINTS,
     'obs_include': [],
     'rgb_topic': '/usb_cam/image_raw',
@@ -140,6 +144,9 @@ algorithm = {
     'dee_tgt': agent['dee_tgt'],
     'ee_points_tgt': agent['ee_points_tgt'],
     'iterations': 25,
+    'kl_step': 0.5,
+    'min_step_mult': 0.01,
+    'max_step_mult': 10.0,
 }
 
 
@@ -201,9 +208,12 @@ algorithm['cost'] = {
 state_cost = {
     'type': CostState,
     'data_types' : {
-        JOINT_ANGLES: {
-            'wp': np.array([1, 1, 1, 1, 1, 1]),
-            'target_state': agent["exp_x_tgts"][0][:6],
+        END_EFFECTOR_POINTS: {
+            'wp': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            'target_state': agent["ee_points_tgt"][0][:9],
+            'l1': 0.1,
+            'l2': 10.0,
+            'alpha': 1e-6,
         },
     },
 }
