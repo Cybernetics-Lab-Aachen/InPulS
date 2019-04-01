@@ -15,7 +15,7 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.gps.mu_policy import MU_Policy
+from gps.algorithm.gps.mu_policy2 import MU_Policy2
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
@@ -131,7 +131,7 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': MU_Policy,
+    'type': MU_Policy2,
     'random_seed': 1,
     'init_var': 0.1,
     'ent_reg': 0.0,

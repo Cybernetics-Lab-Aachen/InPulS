@@ -30,11 +30,11 @@ class AgentOpenAIGym(Agent):
 
     def __init_gym(self):
         self.env = gym.make(self._hyperparams['env'])
-        self.sim = self.env.env.sim
-        self.env._max_episode_steps = self.T - 1  # So env is done with the last timestep
-        if self._hyperparams.get('initial_step', 0) > 0:
-            self.env._max_episode_steps += 1
-        self.env = gym.wrappers.Monitor(self.env, self._hyperparams['data_files_dir'], force=True)
+        if isinstance(self.env, gym.wrappers.TimeLimit):
+            self.env = self.env.env
+
+        self.sim = self.env.sim
+        #self.env = gym.wrappers.Monitor(self.env, self._hyperparams['data_files_dir'], force=True) # Required to capture video
         if is_goal_based(self.env):
             dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces[
                 'desired_goal'].shape[0]
@@ -55,6 +55,7 @@ class AgentOpenAIGym(Agent):
         use_TfController=False,
         timeout=None,
         reset_cond=None,
+        randomize_initial_state=0,
         record=False
     ):
         """
@@ -82,11 +83,13 @@ class AgentOpenAIGym(Agent):
         # Get initial state
         self.env.seed(None if reset_cond is None else self.x0[reset_cond])
         obs = self.env.reset()
-        if self._hyperparams.get('initial_step', 0) > 0:
-            # Take one random step to get a slightly random initial state distribution
-            U_initial = (self.env.action_space.high - self.env.action_space.low
-                        ) / 12 * np.random.normal(size=self.dU) * self._hyperparams['initial_step']
-            obs = self.env.step(U_initial)[0]
+        if randomize_initial_state > 0:
+            # Take random steps randomize initial state distribution
+            self.env._set_action((self.env.action_space.high - self.env.action_space.low
+                            ) / 12 * np.random.normal(size=self.dU)*randomize_initial_state)
+            for _ in range(5):
+                self.sim.step()
+            obs = self.env.step(np.zeros(self.dU))[0]
         self.set_states(sample, obs, 0)
         U_0 = policy.act(sample.get_X(0), sample.get_obs(0), 0, noise)
         sample.set(ACTION, U_0, 0)
