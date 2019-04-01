@@ -24,7 +24,7 @@ class DDPG_Policy(PolicyOpt):
         self.pol = DDPG(
             Actor(dU, network=hyperparams['network'], **hyperparams['network_kwargs']),
             Critic(network=hyperparams['network'], **hyperparams['network_kwargs']),
-            Memory(limit=int(1e6), action_shape=(dU, ), observation_shape=(dX, )),
+            Memory(limit=hyperparams['memory_limit'], action_shape=(dU, ), observation_shape=(dX, )),
             observation_shape=(dX, ),
             action_shape=(dU, ),
             param_noise=AdaptiveParamNoiseSpec(initial_stddev=0.2, desired_action_stddev=0.2),
@@ -74,9 +74,4 @@ class DDPG_Policy(PolicyOpt):
             self.pol.reset()
 
         u = self.pol.step(x, apply_noise=np.any(noise), compute_Q=False)[0][0]
-        # if noise is not None:
-        #     if t is None:
-        #         u += self.chol_pol_covar.T.dot(noise[0])
-        #     else:
-        #         u += self.chol_pol_covar.T.dot(noise[t])
         return u

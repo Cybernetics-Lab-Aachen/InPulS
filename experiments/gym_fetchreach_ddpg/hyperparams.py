@@ -6,6 +6,7 @@ from os import mkdir
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
 
 from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
@@ -69,7 +70,7 @@ agent = {
 algorithm = {
     'type': AlgorithmBaseline,
     'conditions': common['conditions'],
-    'iterations': 5000,
+    'iterations': 50,
     'sample_on_policy': True,
 }
 
@@ -106,11 +107,16 @@ algorithm['cost'] = {
 
 algorithm['policy_opt'] = {
     'type': DDPG_Policy,
-    'epochs': 50,
+    'epochs': 500,
     'param_noise_adaption_interval': 50,
     'seed': None,
+    'memory_limit': int(1e6),
     'network': 'mlp',
-    'network_kwargs': {},
+    'network_kwargs': {
+        'num_layers': 3,
+        'num_hidden': 80,
+        'activation': tf.nn.relu
+    },
     'ddpg_kwargs':
         {
             'gamma': 0.99,
@@ -124,7 +130,7 @@ algorithm['policy_opt'] = {
 
 config = {
     'iterations': algorithm['iterations'],
-    'num_samples': 5,
+    'num_samples': 50,
     'num_lqr_samples_static': 0,
     'num_lqr_samples_random': 0,
     'num_pol_samples_static': 1,
@@ -135,6 +141,7 @@ config = {
     'gui_on': False,
     'algorithm': algorithm,
     'random_seed': 0,
+    'traing_progress_metric': lambda X: np.linalg.norm(scaler.inverse_transform(X[-1:])[0, -3:]),
 }
 
 param_str = 'fetchreach_ddpg'
@@ -143,5 +150,7 @@ param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
+param_str += '-h%r' % algorithm['policy_opt']['network_kwargs']['num_hidden']
+param_str += '-l%d' % algorithm['policy_opt']['memory_limit']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
-#mkdir(common['data_files_dir'])
+mkdir(common['data_files_dir'])
