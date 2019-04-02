@@ -2,11 +2,11 @@
 from __future__ import division
 
 import os.path
-from os import mkdir
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from __main__ import __file__ as main_filepath
 from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
@@ -29,10 +29,8 @@ SENSOR_DIMS = {
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
 EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_lqr/'
 
-
 common = {
-    'experiment_name': 'gym_fetchreach_lqr' + '_' + \
-            datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
+    'experiment_name': 'gym_fetchreach_lqr' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
     'log_filename': EXP_DIR + 'log.txt',
@@ -151,4 +149,11 @@ param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
-mkdir(common['data_files_dir'])
+
+if main_filepath[-11:] == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+    from os import mkdir
+    from shutil import copy2
+
+    # Make expirement folder and copy hyperparams
+    mkdir(common['data_files_dir'])
+    copy2(EXP_DIR + 'hyperparams.py', common['data_files_dir'])

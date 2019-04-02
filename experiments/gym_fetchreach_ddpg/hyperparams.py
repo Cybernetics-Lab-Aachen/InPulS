@@ -2,13 +2,12 @@
 from __future__ import division
 
 import os.path
-from os import mkdir
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 
-from gps import __file__ as gps_filepath
+from __main__ import __file__ as main_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_baseline import AlgorithmBaseline
 from gps.algorithm.cost.cost_state import CostState
@@ -153,4 +152,11 @@ param_str += '-T%d' % agent['T']
 param_str += '-h%r' % algorithm['policy_opt']['network_kwargs']['num_hidden']
 param_str += '-l%d' % algorithm['policy_opt']['memory_limit']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
-mkdir(common['data_files_dir'])
+
+if main_filepath[-11:] == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+    from os import mkdir
+    from shutil import copy2
+
+    # Make expirement folder and copy hyperparams
+    mkdir(common['data_files_dir'])
+    copy2(EXP_DIR + 'hyperparams.py', common['data_files_dir'])
