@@ -1,6 +1,7 @@
 """ This file defines an agent for the Kinova Jaco2 ROS environment. """
 import copy
 import time
+import sys
 import numpy as np
 from random import random
 from math import pi
@@ -123,6 +124,7 @@ class AgentROSJACO(Agent):
         request.id = self._get_next_seq_id()
         #request.arm = arm
         #request.stamp = time.time()
+        request.ee_offsets.extend(self.ee_points.reshape(-1))
         result_msg = self._data_service.publish_and_wait(request)
         # TODO - Make IDs match, assert that they match elsewhere here.
         sample = msg_to_sample(result_msg, self)
@@ -263,6 +265,15 @@ class AgentROSJACO(Agent):
                 sample.set(sensor_type, self.latest_sample.get(sensor_type), timestep)
             actions = policy.act(sample.get_X(timestep), sample.get_obs(timestep), timestep, noise)
             self.reset_arm(None, None, actions)
+
+        #for afterburner in range(5):
+        #    next = last + self._hyperparams["dt"]
+        #    time.sleep(max(0, next - time.time()))
+        #    last = next
+        #    print("sampling terminated")
+        #    sys.stdout.flush()
+        #    actions = [0, 0, 0, 0, 0, 0]
+        #    self.reset_arm(None, None, actions)
 
         self._samples[condition].append(sample)
         self.reset(condition)
