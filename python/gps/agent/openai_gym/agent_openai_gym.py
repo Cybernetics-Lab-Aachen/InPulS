@@ -32,9 +32,9 @@ class AgentOpenAIGym(Agent):
         self.env = gym.make(self._hyperparams['env'])
         if isinstance(self.env, gym.wrappers.TimeLimit):
             self.env = self.env.env
+        #self.env.render(mode='human')  # Render once to init opengl TODO: Add video capute hyperparam
 
         self.sim = self.env.sim
-        #self.env = gym.wrappers.Monitor(self.env, self._hyperparams['data_files_dir'], force=True) # Required to capture video
         if is_goal_based(self.env):
             dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces[
                 'desired_goal'].shape[0]
@@ -85,17 +85,31 @@ class AgentOpenAIGym(Agent):
         obs = self.env.reset()
         if randomize_initial_state > 0:
             # Take random steps randomize initial state distribution
-            self.env._set_action((self.env.action_space.high - self.env.action_space.low
-                            ) / 12 * np.random.normal(size=self.dU)*randomize_initial_state)
+            self.env._set_action(
+                (self.env.action_space.high - self.env.action_space.low) / 12 * np.random.normal(size=self.dU) *
+                randomize_initial_state
+            )
             for _ in range(5):
                 self.sim.step()
             obs = self.env.step(np.zeros(self.dU))[0]
+
+        if record:
+            from gym.wrappers.monitoring.video_recorder import ImageEncoder
+
+            rgb = self.env.render(mode='rgb_array')
+            encoder = ImageEncoder(
+                self._hyperparams['data_files_dir'] + capture_name + '.mp4', rgb.shape, 1 / self._hyperparams['dt']
+            )
+            encoder.capture_frame(rgb)
+
         self.set_states(sample, obs, 0)
         U_0 = policy.act(sample.get_X(0), sample.get_obs(0), 0, noise)
         sample.set(ACTION, U_0, 0)
         for t in range(1, self.T):
-            if not record and self.render:
-                self.env.render(mode='human')  # TODO add hyperparam
+            if self.render:
+                self.env.render(mode='human')
+            if record:
+                encoder.capture_frame(self.env.render(mode='rgb_array'))
 
             # Get state
             obs, _, done, _ = self.env.step(sample.get_U(t - 1))
@@ -107,6 +121,8 @@ class AgentOpenAIGym(Agent):
 
             if done and t < self.T - 1:
                 raise Exception('Iteration ended prematurely %d/%d' % (t + 1, self.T))
+        if record:
+            encoder.close()
         if save:
             self._samples[condition].append(sample)
         self.active = False

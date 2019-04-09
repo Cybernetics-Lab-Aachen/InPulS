@@ -83,9 +83,9 @@ class MU_Policy(PolicyOpt):
 
         # Action estimator
         with tf.variable_scope('action_estimator'), arg_scope(
-                [layers.fully_connected],
-                activation_fn=tf.nn.leaky_relu,
-                weights_regularizer=layers.l2_regularizer(scale=self.weight_decay)
+            [layers.fully_connected],
+            activation_fn=tf.nn.leaky_relu,
+            weights_regularizer=layers.l2_regularizer(scale=self.weight_decay)
         ):
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
             h = layers.fully_connected(h, self.N_hidden)
@@ -94,10 +94,9 @@ class MU_Policy(PolicyOpt):
 
         # Stabilizer estimator
         with tf.variable_scope('stabilizer_estimator'), arg_scope(
-                [layers.fully_connected],
-                activation_fn=tf.nn.leaky_relu,
-                weights_regularizer=layers.l2_regularizer(scale=self.weight_decay),
-                # biases_initializer=None
+            [layers.fully_connected],
+            activation_fn=tf.nn.leaky_relu,
+            weights_regularizer=layers.l2_regularizer(scale=self.weight_decay),
         ):
             # Encoder
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
@@ -105,7 +104,6 @@ class MU_Policy(PolicyOpt):
             #self.latent_std = tf.sqrt(tf.linalg.diag_part(tf_cov(self.latent)))
             #epsilon = tf.random_normal(tf.shape(self.latent))
             #self.latent = self.latent + self.latent_std * epsilon * tf.cast(self.is_training, tf.float32)
-
 
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
@@ -163,8 +161,10 @@ class MU_Policy(PolicyOpt):
             )
             solver_op_stabilizer = optimizer_stabilizer.minimize(
                 loss=self.loss_stabilizer,
-                var_list=[tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='stabilizer_estimator'),
-                          tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')]
+                var_list=[
+                    tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='stabilizer_estimator'),
+                    tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='state_normalization')
+                ]
             )
 
         self.solver_op = tf.group(solver_op_stabilizer, solver_op_action)

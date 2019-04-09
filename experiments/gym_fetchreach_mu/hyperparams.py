@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from __main__ import __file__ as main_filepath
+from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
 from gps.algorithm.cost.cost_state import CostState
@@ -14,7 +15,7 @@ from gps.algorithm.cost.cost_action import CostAction
 from gps.algorithm.cost.cost_sum import CostSum
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.gps.mu_policy2 import MU_Policy2
+from gps.algorithm.gps.mu_policy import MU_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.gui.config import generate_experiment_info
@@ -73,7 +74,7 @@ agent = {
 algorithm = {
     'type': AlgorithmMDGPS,
     'conditions': common['conditions'],
-    'iterations': 10,
+    'iterations': 20,
     'kl_step': 1.0,
     'min_step_mult': 0.5,
     'max_step_mult': 3.0,
@@ -130,17 +131,18 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': MU_Policy2,
+    'type': MU_Policy,
     'random_seed': 1,
     'init_var': 0.1,
     'ent_reg': 0.0,
     'epochs': 250,
-    'batch_size': 2 * 19,
+    'batch_size': (agent['T'] - 1) * min(2, common['conditions']), # batch size must be divisor of (T-1) * M * N
     'weight_decay': 0.005,
     'N_hidden': 80,
     'dZ': 4,
     'beta_kl': 1,
     'N': 5,
+    'dropout_rate': 0.1
 }
 
 algorithm['policy_prior'] = {

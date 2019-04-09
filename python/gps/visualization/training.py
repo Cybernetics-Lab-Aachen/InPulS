@@ -5,7 +5,7 @@ from gps.visualization.visualization_utils import aggregate
 from os.path import isfile
 
 
-def eval_samples(experiment, metric, sample_type='samples_pol-random'):
+def eval_samples(experiment, metric, sample_type='samples_pol-random', cond=None):
     """
     Finds pol samples files and evaluate trajectories
     """
@@ -22,9 +22,12 @@ def eval_samples(experiment, metric, sample_type='samples_pol-random'):
     iterations = len(pol_samples)
     assert iterations > 0, experiment
 
-    data = np.load(pol_samples[0])
-    M, N, T, _ = data['X'].shape
-    assert M == 1
+    X = np.load(pol_samples[0])['X']
+    M, N, T, dX = X.shape
+    if cond is None:
+        X = X.reshape(M * N, T, dX)
+    else:
+        X = X[cond]
 
     evals = np.empty((iterations, N))
     for i in range(iterations):
@@ -63,7 +66,7 @@ def visualize_training(
         ax1.axhline(target, linestyle='--', color='grey', label='target')
 
     for ex in experiments:
-        data = eval_samples(ex['experiment'], metric)
+        data = eval_samples(ex['experiment'], metric, sample_type=ex['sample_type'])
         T, _ = data.shape
         xs = (np.arange(T) + 1) * ex.get('N_per_itr', 1)
         eval_mean, eval_min, eval_max = aggregate(data, axis=1, mode=mode)
