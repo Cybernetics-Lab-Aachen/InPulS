@@ -25,9 +25,6 @@ from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         TRIAL_ARM, AUXILIARY_ARM, JOINT_SPACE, RGB_IMAGE, RGB_IMAGE_SIZE
 from gps.utility.general_utils import get_ee_points
 
-
-
-
 EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
 
 IMAGE_WIDTH = 320
@@ -58,7 +55,7 @@ common = {
     'log_filename': EXP_DIR + 'log.txt',
     #'train_conditions': [0, 1],
     #'test_conditions': [1,2],
-    'conditions': 2,
+    'conditions': 1,
     'experiment_ID': '1' + time.ctime(),
 }
 
@@ -69,27 +66,25 @@ ee_tgts = []
 reset_conditions = []
 for i in xrange(common['conditions']):
 
-    ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
-        common['target_filename'], 'trial_arm', str(i), 'initial'
+    ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(common['target_filename'], 'trial_arm', str(i), 'initial')
+    ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(common['target_filename'], 'trial_arm', str(i), 'target')
+    ee_tgt = np.ndarray.flatten(
+        # get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
+        ee_pos_tgt
     )
-    ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
-        common['target_filename'], 'trial_arm', str(i), 'target'
-    )
-    x_tgt = np.zeros(12)
+
+    x_tgt = np.zeros(21)
     jv_tgt = np.zeros(6)
     x_tgt[:6] = ja_tgt
     x_tgt[6:12] = jv_tgt
+    x_tgt[12:21] = ee_tgt
 
     ja_x0 = ja_x0_[:6]
-    x0 = np.zeros(12)
+    x0 = np.zeros(21)
     x0[:6] = ja_x0
     #x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
     #    get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
     #)
-
-    ee_tgt = np.ndarray.flatten(
-        get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
-    )
 
     reset_condition = {
         TRIAL_ARM: {
@@ -120,13 +115,14 @@ agent = {
     'ee_points_tgt': ee_tgts,
     'reset_conditions': reset_conditions,
     'sensor_dims': SENSOR_DIMS,
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES],
+    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS],
+    'actions_include': [ACTION],
     'end_effector_points': EE_POINTS,
     'obs_include': [],
     'rgb_topic': '/usb_cam/image_raw',
-    'rgb_shape': [IMAGE_WIDTH,IMAGE_HEIGHT,IMAGE_CHANNELS],
+    'rgb_shape': [IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNELS],
+    'random_reset': False,
 }
-
 
 algorithm = {
     'type': AlgorithmTrajOpt,
@@ -139,12 +135,14 @@ algorithm = {
     'dee_tgt': agent['dee_tgt'],
     'ee_points_tgt': agent['ee_points_tgt'],
     'iterations': 25,
+    'kl_step': 0.5,
+    'min_step_mult': 0.01,
+    'max_step_mult': 10.0,
 }
-
 
 algorithm['init_traj_distr'] = {
     'type': init_lqr,
-    'init_gains':  1.0 / PR2_GAINS,
+    'init_gains': 1.0 / PR2_GAINS,
     'init_acc': np.zeros(SENSOR_DIMS[ACTION]),
     'init_var': 1.0,
     'stiffness': 1.0,
@@ -162,7 +160,6 @@ torque_cost = {
     'type': CostAction,
     'wu': 5e-3 / PR2_GAINS,
 }
-
 '''
 fk_cost1 = {
    'type': CostFK,
@@ -199,12 +196,17 @@ algorithm['cost'] = {
 
 state_cost = {
     'type': CostState,
-    'data_types' : {
-        JOINT_ANGLES: {
-            'wp': np.array([1, 1, 1, 1, 1, 1]),
-            'target_state': agent["exp_x_tgts"][0][:6],
+    'data_types':
+        {
+            END_EFFECTOR_POINTS:
+                {
+                    'wp': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+                    'target_state': agent["ee_points_tgt"][0][:9],
+                    'l1': 0.1,
+                    'l2': 10.0,
+                    'alpha': 1e-6,
+                },
         },
-    },
 }
 
 algorithm['cost'] = {
@@ -225,24 +227,28 @@ algorithm['dynamics'] = {
 
 config = {
     'iterations': algorithm['iterations'],
+    'num_samples': 5,
+    'num_lqr_samples_static': 1,
+    'num_lqr_samples_random': 0,
+    'num_pol_samples_static': 1,
+    'num_pol_samples_random': 20,
+    'verbose_trials': 0,
     'common': common,
-    'verbose_trials': 10,
-    'verbose_policy_trials': 1,
-    'min_iteration_for_testing' : 15,
+    'min_iteration_for_testing': 15,
     'agent': agent,
     'gui_on': True,
     'algorithm': algorithm,
     'num_samples': 5,
     'experiment_ID': common['experiment_ID'],
-    'dir':common['cost_log_dir'],
+    'dir': common['cost_log_dir'],
 }
 
 common['info'] = (
-    'exp_name: ' + str(common['experiment_name'])              + '\n'
-    'alg_type: ' + str(algorithm['type'].__name__)             + '\n'
+    'exp_name: ' + str(common['experiment_name']) + '\n'
+    'alg_type: ' + str(algorithm['type'].__name__) + '\n'
     'alg_dyn:  ' + str(algorithm['dynamics']['type'].__name__) + '\n'
-    'alg_cost: ' + str(algorithm['cost']['type'].__name__)     + '\n'
-    'iterations: ' + str(config['iterations'])                   + '\n'
-    'conditions: ' + str(algorithm['conditions'])                + '\n'
-    'samples:    ' + str(config['num_samples'])                  + '\n'
+    'alg_cost: ' + str(algorithm['cost']['type'].__name__) + '\n'
+    'iterations: ' + str(config['iterations']) + '\n'
+    'conditions: ' + str(algorithm['conditions']) + '\n'
+    'samples:    ' + str(config['num_samples']) + '\n'
 )
