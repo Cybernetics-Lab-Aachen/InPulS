@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package jaco_hw_interface;
+
+message Command {
+    repeated double command = 1;
+    bool is_position_command = 2; //default value is false for boolean vars
+    repeated double ee_offsets = 3;
+    int32 id = 4;
+}
+
+message State {
+    repeated double velocity = 1;
+    repeated double joint_angles = 2;
+    repeated double effort = 3;
+    repeated double ee_pos = 4;
+    repeated double ee_orient = 5;
+    int32 id = 6;
+}
+
+message Request {
+    repeated double ee_offsets = 1;
+    int32 id = 2;
+}

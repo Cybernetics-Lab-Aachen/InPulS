@@ -176,7 +176,7 @@ class AgentOPCUAAZO(Agent):
                 # Check if agent is keeping up
                 sleep_time = start + (t + 1) * self.dt - time.time()
                 if sleep_time < 0:
-                    logging.critical("Agent can't keep up. %fs bedind." % sleep_time)
+                    logging.critical("Agent can't keep up. %fs behind." % sleep_time)
                 elif sleep_time < self.dt / 2:
                     logging.warning(
                         "Agent may not keep up (%.0f percent busy)" % (((self.dt - sleep_time) / self.dt) * 100)

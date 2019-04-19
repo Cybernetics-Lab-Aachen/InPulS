@@ -403,7 +403,6 @@ def main():
         sys.exit()
 
     if args.targetsetup:
-        try:
             import matplotlib.pyplot as plt
             from gps.agent.ros_jaco.agent_ros_jaco import AgentROSJACO
             from gps.gui.target_setup_gui import TargetSetupGUI
@@ -413,10 +412,6 @@ def main():
 
             plt.ioff()
             plt.show()
-        except ImportError:
-            sys.exit('ROS required for target setup.')
-        except:
-            sys.exit('The right agent class needs to be imported.')
     elif test_policy_N:
         import random
         import numpy as np

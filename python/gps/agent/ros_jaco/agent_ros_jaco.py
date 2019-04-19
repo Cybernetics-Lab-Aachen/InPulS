@@ -1,36 +1,30 @@
 """ This file defines an agent for the Kinova Jaco2 ROS environment. """
 import copy
+import logging
 import time
-import sys
 import numpy as np
-from random import random
-from math import pi
+import scipy as sp
 
-from threading import Timer
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
-from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample, \
-        tf_obs_msg_to_numpy, PublisherEmulator, SubscriberEmulator, \
-        image_msg_to_cv
-from gps.proto.gps_pb2 import TRIAL_ARM, AUXILIARY_ARM, JOINT_ANGLES, ACTION
+from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample
 
+from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS
 
-import Command_pb2 as command_msgs
-
-from gps.utility.perpetual_timer import PerpetualTimer
+import gps.proto.Command_pb2 as command_msgs
 
 from gps.sample.sample import Sample
-from multiprocessing.pool import ThreadPool
 
-try:
-    from gps.algorithm.policy.tf_policy import TfPolicy
-    from gps.algorithm.agmp.agmp_controller import AGMP_Controller
-    from gps.algorithm.gcm.gcm_controller import GCMController
-    from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
-    from gps.proto.gps_pb2 import RGB_IMAGE, END_EFFECTOR_POINTS, END_EFFECTOR_POSITIONS, END_EFFECTOR_ROTATIONS, JOINT_ANGLES, JOINT_SPACE
-except ImportError:  # user does not have tf installed.
-    TfPolicy = None
+# Approximation of Jaco EE Jacobian
+JAC = np.array(
+    [
+        -0.29052, -0.0456493, -0.232069, 0.0490652, 0.0297493, 0, 0.294644, -0.0288231, -0.136461, 0.0604075,
+        -0.00100644, 0, 6.09391e-14, -0.402527, 0.156064, -0.0512757, 0.016437, 0, 0, 0.508486, -0.508486, 0.486912,
+        -0.401568, -0.0127389, 2.06823e-13, -0.856, 0.856, 0.292873, 0.509841, 0.99136, -1, -1.76985e-13, 3.01313e-13,
+        0.814991, 0.759208, 0.0832759
+    ]
+).reshape(6, 6)
 
 
 class AgentROSJACO(Agent):
@@ -38,6 +32,7 @@ class AgentROSJACO(Agent):
     All communication between the algorithms and ROS is done through
     this class.
     """
+
     def __init__(self, hyperparams, init_node=True):
         """
         Initialize agent.
@@ -48,8 +43,6 @@ class AgentROSJACO(Agent):
         config = copy.deepcopy(AGENT_ROS_JACO)
         config.update(hyperparams)
         Agent.__init__(self, config)
-        # if init_node:
-        #     rospy.init_node('gps_agent_ros_node')
         self._init_pubs_and_subs()
         self._seq_id = 0  # Used for setting seq in ROS commands.
 
@@ -57,99 +50,56 @@ class AgentROSJACO(Agent):
 
         self.x0 = []
         for field in ('x0', 'ee_points_tgt', 'reset_conditions'):
-            self._hyperparams[field] = setup(self._hyperparams[field],
-                                             conditions)
+            self._hyperparams[field] = setup(self._hyperparams[field], conditions)
         self.x0 = self._hyperparams['x0']
-        #self.x_tgt = self._hyperparams['exp_x_tgts']
-        self.target_state = np.zeros(self.dX)
         self.dt = self._hyperparams['dt']
 
-        self.gui = None
-
-        self.condition = None
-        self.policy = None
-        time.sleep(1)
-
-        self.stf_policy = None
-        self.init_tf = False
-        self.use_tf = False
-        self.observations_stale = True
-        self.noise = None
-        self.cur_timestep = None
-        self.vision_enabled = False
-        img_width = self._hyperparams['rgb_shape'][0]
-        img_height = self._hyperparams['rgb_shape'][1]
-        img_channel = self._hyperparams['rgb_shape'][2]
-        self.rgb_image = np.empty([img_height, img_width, img_channel])
-        self.rgb_image_seq = np.empty([self.T, img_height, img_width, img_channel], dtype=np.uint8)
-
-        self.sample_processing = False
-        self.sample_save = False
-
-        self.latest_sample = Sample(self)
-        
         self.ee_points = hyperparams["ee_points"]
 
+        self.scaler = self._hyperparams.get('scaler', None)
+
+        # EE Jacobian
+        self.jac = JAC
+        if self.scaler is not None:  # Scale jacobians
+            self.jac[:3] *= self.scaler.scale_[:6].reshape(1, 6)
+            self.jac[:3] /= self.scaler.scale_[-9:-6].reshape(3, 1)
 
     def _init_pubs_and_subs(self):
         ports = [5555, 5556, 5557, 5558, 5559]
         self._trial_service = ServiceEmulator(
-            self._hyperparams['trial_command_topic'], command_msgs.Command,
-        self._hyperparams['sample_result_topic'], command_msgs.State, ports[0], ports
+            self._hyperparams['trial_command_topic'], command_msgs.Command, self._hyperparams['sample_result_topic'],
+            command_msgs.State, ports[0], ports
         )
         self._reset_service = ServiceEmulator(
-            self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State, ports[1], ports
+            self._hyperparams['trial_command_topic'], command_msgs.Command, self._hyperparams['sample_result_topic'],
+            command_msgs.State, ports[1], ports
         )
         self._relax_service = ServiceEmulator(
-            self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State, ports[2], ports
+            self._hyperparams['trial_command_topic'], command_msgs.Command, self._hyperparams['sample_result_topic'],
+            command_msgs.State, ports[2], ports
         )
         self._data_service = ServiceEmulator(
-            self._hyperparams['data_request_topic'], command_msgs.Request,
-            self._hyperparams['sample_result_topic'], command_msgs.State, ports[3], ports
+            self._hyperparams['data_request_topic'], command_msgs.Request, self._hyperparams['sample_result_topic'],
+            command_msgs.State, ports[3], ports
         )
 
-
     def _get_next_seq_id(self):
-        self._seq_id = (self._seq_id + 1) % (2 ** 30)
+        self._seq_id = (self._seq_id + 1) % (2**30)
         return self._seq_id
 
-    def get_data(self, arm=TRIAL_ARM):
+    def get_data(self):
         """
         Request for the most recent value for data/sensor readings.
         Returns entire sample report (all available data) in sample.
         Args:
-            arm: TRIAL_ARM or AUXILIARY_ARM.
         """
         # TODO: check what is needed as response!
         request = command_msgs.Request()
         request.id = self._get_next_seq_id()
-        #request.arm = arm
-        #request.stamp = time.time()
         request.ee_offsets.extend(self.ee_points.reshape(-1))
-        result_msg = self._data_service.publish_and_wait(request)
+        result_msg = self._data_service.publish_and_wait(request, poll_delay=0.001)
         # TODO - Make IDs match, assert that they match elsewhere here.
-        sample = msg_to_sample(result_msg, self)
-        self.latest_sample = sample
-        return sample
-
-    # TODO - The following could be more general by being relax_actuator
-    #        and reset_actuator.
-    def relax_arm(self, arm):
-        """
-        Relax one of the arms of the robot.
-        Args:
-            arm: Either TRIAL_ARM or AUXILIARY_ARM.
-        """
-        relax_command = command_msgs.Command()
-        # relax_command.id = self._get_next_seq_id()
-        # relax_command.stamp = time.time()
-        # relax_command.arm = arm
-        relax_command.is_position_command = False
-        relax_command.command.extend([0, 0, 0, 0, 0, 0])
-        relax_command.ee_offsets.extend(self.ee_points.reshape(-1))
-        self.latest_sample = msg_to_sample(self._relax_service.publish_and_wait(relax_command), self)
+        return msg_to_sample(result_msg, self)
 
     def reset_arm(self, arm, mode, data, position_command=False):
         """
@@ -163,121 +113,96 @@ class AgentROSJACO(Agent):
         reset_command.command.extend(data)
         reset_command.is_position_command = position_command
         reset_command.ee_offsets.extend(self.ee_points.reshape(-1))
-        #reset_command.pd_gains = self._hyperparams['pid_params']
-        #reset_command.arm = arm
-        timeout = self._hyperparams['trial_timeout']
-        #reset_command.id = self._get_next_seq_id()
-        try:
-            self.latest_sample = msg_to_sample(self._reset_service.publish_and_wait(reset_command, timeout=timeout), self)
-        except TimeoutException:
-            self.relax_arm(arm)
-            wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
-            self.reset_arm(arm, mode, data)
+        if position_command:
+            try:
+                self._reset_service.publish_and_wait(
+                    reset_command,
+                    timeout=self._hyperparams['trial_timeout'],
+                )
+            except TimeoutException:
+                input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
+                self.reset_arm(arm, mode, data, position_command)
+        else:
+            self._reset_service.publish(reset_command)
 
-        #TODO: Maybe verify that you reset to the correct position.
-
-    def reset_arm_rnd(self, arm, mode, data, position_command=False):
-        """
-        Issues a position command to an arm.
-        Args:
-            arm: Either TRIAL_ARM or AUXILIARY_ARM.
-            mode: An integer code (defined in gps_pb2).
-            data: An array of floats.
-        """
-        reset_command = command_msgs.Command()
-        # reset_command.mode = mode
-        # Reset to uniform random state
-        # Joints 1, 4, 5 and 6 have a range of -10,000 to +10,000 degrees. Joint 2 has a range of +42 to +318 degrees. Joint 3 has a range of +17 to +343 degrees. (see http://wiki.ros.org/jaco)
-        reset_command.command.extend([
-            (random() * 2 - 1) * pi,
-            pi + (random() * 2 - 1) * pi / 2,
-            # Limit elbow joints to 180 +/-90 degrees to prevent getting stuck in the ground
-            pi + (random() * 2 - 1) * pi / 2,
-            (random() * 2 - 1) * pi,
-            (random() * 2 - 1) * pi,
-            (random() * 2 - 1) * pi])
-        #reset_command.pd_gains = self._hyperparams['pid_params']
-        #reset_command.arm = arm
-        reset_command.is_position_command = position_command
-        reset_command.ee_offsets.extend(self.ee_points.reshape(-1))
-        timeout = self._hyperparams['trial_timeout']
-        reset_command.id = self._get_next_seq_id()
-        try:
-            self.latest_sample = msg_to_sample(self._reset_service.publish_and_wait(reset_command, timeout=timeout), self)
-        except TimeoutException:
-            self.relax_arm(arm)
-            wait = input('The robot arm seems to be stuck. Unstuck it and press <ENTER> to continue.')
-            self.reset_arm(arm, mode, data, position_command)
-
-
-    def reset(self, condition, rnd=None):
+    def reset(self, condition):
         """
         Reset the agent for a particular experiment condition.
         Args:
             condition: An index into hyperparams['reset_conditions'].
         """
-        self.condition = condition
-        #print("condition: ", condition)
         condition_data = self._hyperparams['reset_conditions'][condition]
-        #print("condition data: ", condition_data)
-        #print("rnd: ", rnd)
-        if rnd:
-            self.reset_arm_rnd(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
-                               condition_data[TRIAL_ARM]['data'])
+        if condition is None:
+            raise NotImplementedError()
         else:
-            self.reset_arm(TRIAL_ARM, condition_data[TRIAL_ARM]['mode'],
-                           condition_data[TRIAL_ARM]['data'], True)
-        time.sleep(0.2)  # useful for the real robot, so it stops completely
+            self.reset_arm(None, None, condition_data[TRIAL_ARM]['data'], True)
+        time.sleep(0.5)  # useful for the real robot, so it stops completely
 
+    def transform(self, sensor_type, data):
+        idx = self._x_data_idx[sensor_type]
+        return (data - self.scaler.mean_[idx]) / self.scaler.scale_[idx]
 
-    def sample(self, policy, condition, verbose=True, save=True, noisy=True,
-               use_TfController=False, first_itr=False, timeout=None, reset=True, rnd=None):
+    def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
         """
         Reset and execute a policy and collect a sample.
         Args:
             policy: A Policy object.
             condition: Which condition setup to run.
-            verbose: Unused for this agent.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
-            use_TfController: Whether to use the syncronous TfController
         Returns:
             sample: A Sample object.
         """
-        self.policy = policy
-
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
         else:
             noise = np.zeros((self.T, self.dU))
 
-
         sample = Sample(self)
-        self.reset(condition)
-        self.get_data()     #  set new self.latest_sample
-        last = time.time()
-        actions = np.array([0, 0, 0, 0, 0, 0]) #set action to zeros for first iteration
-        for timestep in range(self.T):
-            next = last+self._hyperparams["dt"]
-            time.sleep(max(0, next-time.time()))
-            last = next
-            #print("starting timestep %s" % (timestep))
-            #get states-> needs to be implemented
-            sample.set(ACTION, actions, timestep)
+        self.reset(reset_cond)
+
+        # Execute policy over a time period of [0,T]
+        start = time.time()
+        for t in range(self.T):
+            # Read sensors and store sensor data in sample
+            latest_sample = self.get_data()
             for sensor_type in self.x_data_types:
-                sample.set(sensor_type, self.latest_sample.get(sensor_type), timestep)
-            actions = policy.act(sample.get_X(timestep), sample.get_obs(timestep), timestep, noise)
-            self.reset_arm(None, None, actions)
+                data = latest_sample.get(sensor_type)
+                if self.scaler is not None:
+                    data = self.transform(sensor_type, data)
+                sample.set(sensor_type, data, t)
 
-        #for afterburner in range(5):
-        #    next = last + self._hyperparams["dt"]
-        #    time.sleep(max(0, next - time.time()))
-        #    last = next
-        #    print("sampling terminated")
-        #    sys.stdout.flush()
-        #    actions = [0, 0, 0, 0, 0, 0]
-        #    self.reset_arm(None, None, actions)
+            # Compute site Jacobians
+            jac = np.tile(self.jac[:3], (3, 1))
+            rotation = sp.spatial.transform.Rotation.from_euler("XYZ", -latest_sample.get(END_EFFECTOR_ROTATIONS))
+            for i in range(3):
+                rot_ee = rotation.apply(self.ee_points[i])
+                for k in range(6):
+                    jac[i * 3:(i + 1) * 3, k] += np.cross(self.jac[3:, k], rot_ee)
+            sample.set(END_EFFECTOR_POINT_JACOBIANS, jac, t=t)
 
-        self._samples[condition].append(sample)
-        self.reset(condition)
+            # Get action
+            U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
+            U_t = np.clip(U_t, -4, 4)
+
+            # Perform action
+            self.reset_arm(None, None, U_t, False)
+            sample.set(ACTION, U_t, t)
+
+            # Check if agent is keeping up
+            sleep_time = start + (t + 1) * self.dt - time.time()
+            if sleep_time < 0:
+                logging.critical("Agent can't keep up. %fs behind." % sleep_time)
+            elif sleep_time < self.dt / 2:
+                logging.warning(
+                    "Agent may not keep up (%.0f percent busy)" % (((self.dt - sleep_time) / self.dt) * 100)
+                )
+
+            # Wait for next timestep
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+
+        if save:
+            self._samples[condition].append(sample)
+        self.reset(reset_cond)
         return sample

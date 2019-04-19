@@ -28,14 +28,14 @@ class TrajOptLQRPython(TrajOpt):
         TrajOpt.__init__(self, config)
 
     # TODO - Add arg and return spec on this function.
-    def update(self, m, algorithm, minAdvantage=False):
+    def update(self, m, algorithm, minAdvantage=False, initial_update=False):
         """ Run dual gradient decent to optimize trajectories. """
         T = algorithm.T
         eta = algorithm.cur[m].eta
         step_mult = algorithm.cur[m].step_mult
         traj_info = algorithm.cur[m].traj_info
 
-        if isinstance(algorithm, AlgorithmMDGPS) or isinstance(algorithm, AlgorithmMDGGCS):
+        if (isinstance(algorithm, AlgorithmMDGPS) or isinstance(algorithm, AlgorithmMDGGCS)) and not initial_update:
             # For MDGPS, constrain to previous NN linearization
             prev_traj_distr = algorithm.cur[m].pol_info.traj_distr()
         else:

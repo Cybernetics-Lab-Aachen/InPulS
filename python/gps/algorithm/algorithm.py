@@ -128,7 +128,7 @@ class Algorithm(object):
         with Timer(self.timers, 'traj_opt'):
             for cond in range(self.M):
                 self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond] = \
-                    self.traj_opt.update(cond, self)
+                    self.traj_opt.update(cond, self, initial_update=itr == 0)
 
         self.visualize_local_policy(0)
 

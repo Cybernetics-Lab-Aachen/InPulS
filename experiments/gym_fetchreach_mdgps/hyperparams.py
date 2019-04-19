@@ -1,7 +1,6 @@
 """ Hyperparameters for Box2d Point Mass."""
 from __future__ import division
 
-import os.path
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -42,9 +41,6 @@ common = {
     # 'test_conditions': [0, 1, 2, 3],
 }
 
-if not os.path.exists(common['data_files_dir']):
-    os.makedirs(common['data_files_dir'])
-
 scaler = StandardScaler()
 scaler.mean_ = [
     1.33554446e+00, 7.46866838e-01, 5.25169272e-01, 3.78054915e-06, 1.55438229e-06, -2.66267931e-04, -4.78114576e-05,
@@ -81,9 +77,6 @@ algorithm = {
     'max_step_mult': 3.0,
     'policy_sample_mode': 'replace',
     'sample_on_policy': False,
-    #'tac_policy': {
-    #    'history': 10,
-    #},
 }
 
 algorithm['init_traj_distr'] = {
