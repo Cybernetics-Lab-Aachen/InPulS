@@ -100,13 +100,13 @@ class MU_Policy(PolicyOpt):
             weights_regularizer=layers.l2_regularizer(scale=self.weight_decay),
         ):
             # Encoder
-            h = layers.fully_connected(state_batch_normalized, self.N_hidden)
+            h = layers.fully_connected(state_batch_normalized, self.N_hidden * self.dX)
             self.latent = layers.fully_connected(h, self.dZ, activation_fn=None)
 
             # Stabilizer Translation
-            h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
+            h = layers.fully_connected(self.latent, self.N_hidden * self.dX, biases_initializer=None)
             h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
-            h = layers.fully_connected(h, self.N_hidden * 2, biases_initializer=None)
+            h = layers.fully_connected(h, self.N_hidden * self.dX, biases_initializer=None)
             h = layers.dropout(h, keep_prob=1 - self.dropout_rate, is_training=self.is_training)
             self.stabilizer_estimation = tf.reshape(
                 layers.fully_connected(h, self.dX * self.dU, activation_fn=None, biases_initializer=None),

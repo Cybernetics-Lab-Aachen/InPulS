@@ -186,7 +186,7 @@ state_cost = {
     'type': CostFK,
     'wp': np.tile([1, 0.1, 1], 3),
     'target_end_effector': (ee_tgts[0] - scaler.mean_[-9:]) / scaler.scale_[-9:],
-    'l1': 1.0,
+    'l1': 0.1,
     'l2': 10.0,
     'alpha': 1e-6,
     'evalnorm': evallogl2term,
