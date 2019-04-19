@@ -7,7 +7,6 @@ import numpy as np
 from gps.algorithm.dynamics.config import DYN_PRIOR_GMM
 from gps.utility.gmm import GMM
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -19,6 +18,7 @@ class DynamicsPriorGMM(object):
         training of Deep Visuomotor Policies", arXiv:1504.00702,
         Appendix A.3.
     """
+
     def __init__(self, hyperparams):
         """
         Hyperparameters:
@@ -38,6 +38,7 @@ class DynamicsPriorGMM(object):
         self._max_samples = self._hyperparams['max_samples']
         self._max_clusters = self._hyperparams['max_clusters']
         self._strength = self._hyperparams['strength']
+        self.regularization = self._hyperparams.get('regularization', 0)
 
     def initial_state(self):
         """ Return dynamics prior for initial time step. """
@@ -84,14 +85,10 @@ class DynamicsPriorGMM(object):
 
         # Create dataset.
         N = self.X.shape[0]
-        xux = np.reshape(
-            np.c_[self.X[:, :T, :], self.U[:, :T, :], self.X[:, 1:(T+1), :]],
-            [T * N, Do]
-        )
+        xux = np.reshape(np.c_[self.X[:, :T, :], self.U[:, :T, :], self.X[:, 1:(T + 1), :]], [T * N, Do])
 
         # Choose number of clusters.
-        K = int(max(2, min(self._max_clusters,
-                           np.floor(float(N * T) / self._min_samp))))
+        K = int(max(2, min(self._max_clusters, np.floor(float(N * T) / self._min_samp))))
         LOGGER.debug('Generating %d clusters for dynamics GMM.', K)
 
         # Update GMM.
@@ -116,4 +113,9 @@ class DynamicsPriorGMM(object):
 
         # Multiply Phi by m (since it was normalized before).
         Phi *= m
+
+        # Regularize prior
+        if self.regularization > 0:
+            Phi += np.eye(Dx + Du + Dx) * self.regularization
+
         return mu0, Phi, m, n0

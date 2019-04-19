@@ -26,6 +26,7 @@ class AgentOpenAIGym(Agent):
         self.record = False
         self.render = self._hyperparams['render']
         self.scaler = self._hyperparams.get('scaler', None)
+        self.action_noise_clip = self._hyperparams.get('action_noise_clip', None)
         self.__init_gym()
 
     def __init_gym(self):
@@ -116,7 +117,7 @@ class AgentOpenAIGym(Agent):
             self.set_states(sample, obs, t)
 
             # Get action
-            U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
+            U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise, self.action_noise_clip)
             sample.set(ACTION, U_t, t)
 
             if done and t < self.T - 1:

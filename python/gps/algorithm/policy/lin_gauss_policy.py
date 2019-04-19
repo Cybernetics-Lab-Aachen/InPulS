@@ -10,6 +10,7 @@ class LinearGaussianPolicy(Policy):
     Time-varying linear Gaussian policy.
     U = K*x + k + noise, where noise ~ N(0, chol_pol_covar)
     """
+
     def __init__(self, K, k, pol_covar, chol_pol_covar, inv_pol_covar):
         Policy.__init__(self)
 
@@ -25,15 +26,15 @@ class LinearGaussianPolicy(Policy):
 
         self.K = K
         self.k = k
-        self.jac_K = np.ones((self.T,self.dU*self.dX,self.dX))
-        self.jac_k = np.ones((self.T,self.dU,self.dX))
+        self.jac_K = np.ones((self.T, self.dU * self.dX, self.dX))
+        self.jac_k = np.ones((self.T, self.dU, self.dX))
         self.pol_covar = pol_covar
         self.chol_pol_covar = chol_pol_covar
         self.inv_pol_covar = inv_pol_covar
         self.Qm = np.zeros((self.T, self.dU + self.dX, self.dU + self.dX))
         self.qv = np.zeros((self.T, self.dU + self.dX))
 
-    def act(self, x, obs, t, noise=None):
+    def act(self, x, obs, t, noise=None, noise_clip=None):
         """
         Return an action for a state.
         Args:
@@ -44,7 +45,11 @@ class LinearGaussianPolicy(Policy):
         """
         u = self.K[t].dot(x) + self.k[t]
         if noise is not None:
-            u += self.chol_pol_covar[t].T.dot(noise[t])
+            covar = self.chol_pol_covar[t].T
+            if noise_clip is not None:
+                covar = np.clip(covar, *noise_clip)
+
+            u += covar.dot(noise[t])
         return u
 
     def fold_k(self, noise):
@@ -68,9 +73,11 @@ class LinearGaussianPolicy(Policy):
             but all values filled with NaNs.
         """
         policy = LinearGaussianPolicy(
-            np.zeros_like(self.K), np.zeros_like(self.k),
-            np.zeros_like(self.pol_covar), np.zeros_like(self.chol_pol_covar),
-            np.zeros_like(self.inv_pol_covar)
+            np.zeros_like(self.K),
+            np.zeros_like(self.k),
+            np.zeros_like(self.pol_covar),
+            np.zeros_like(self.chol_pol_covar),
+            np.zeros_like(self.inv_pol_covar),
         )
         policy.K.fill(np.nan)
         policy.k.fill(np.nan)

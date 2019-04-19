@@ -150,7 +150,7 @@ class GPS_Policy(PolicyOpt):
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
 
-    def act(self, x, _, t, noise):
+    def act(self, x, _, t, noise, noise_clip=None):
         u = self.sess.run(
             self.action_out, feed_dict={
                 self.state_batch: [x],

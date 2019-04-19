@@ -73,8 +73,9 @@ class MU_Policy(PolicyOpt):
 
         # Other placeholders
         self.state_batch = tf.reshape(state_batch, (-1, self.dX))
-
         self.is_training = tf.placeholder(tf.bool, ())
+        self.K_center = tf.placeholder(tf.float32, (self.dU, self.dX))
+        self.K_scale = tf.placeholder(tf.float32, (self.dU, self.dX))
 
         with tf.variable_scope('state_normalization'):
             state_batch_normalized = tf.layers.batch_normalization(
@@ -101,9 +102,6 @@ class MU_Policy(PolicyOpt):
             # Encoder
             h = layers.fully_connected(state_batch_normalized, self.N_hidden)
             self.latent = layers.fully_connected(h, self.dZ, activation_fn=None)
-            #self.latent_std = tf.sqrt(tf.linalg.diag_part(tf_cov(self.latent)))
-            #epsilon = tf.random_normal(tf.shape(self.latent))
-            #self.latent = self.latent + self.latent_std * epsilon * tf.cast(self.is_training, tf.float32)
 
             # Stabilizer Translation
             h = layers.fully_connected(self.latent, self.N_hidden * 2, biases_initializer=None)
@@ -115,7 +113,11 @@ class MU_Policy(PolicyOpt):
                 (-1, self.dU, self.dX)
             )
 
-        self.action_regulation = tf.einsum('inm,im->in', self.stabilizer_estimation, self.state_batch)
+        self.action_regulation = tf.einsum(
+            'inm,im->in',
+            self.stabilizer_estimation * self.K_scale + self.K_center,  # Reverse K standardization
+            self.state_batch,
+        )
         self.action_out = self.action_estimation + self.action_regulation
 
     def init_loss_function(self):
@@ -133,7 +135,7 @@ class MU_Policy(PolicyOpt):
         self.loss_mse_stabilizer = tf.reduce_mean(
             tf.square(
                 tf.reshape(self.stabilizer_estimation, (self.batch_size, self.N, self.dU, self.dX)) -
-                tf.reshape(self.K_batch, (self.batch_size, 1, self.dU, self.dX))
+                tf.reshape((self.K_batch - self.K_center) / self.K_scale, (self.batch_size, 1, self.dU, self.dX))
             )
         )
 
@@ -185,14 +187,16 @@ class MU_Policy(PolicyOpt):
         M, N, T = X.shape[:3]
         N_ctr = M * (T - 1)
 
-        X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX).copy()
-        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX).copy()
-        k = k[:, :-1].reshape(N_ctr, self.dU).copy()
-        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU).copy()
+        X = X[:, :, :-1].transpose((0, 2, 1, 3)).reshape(N_ctr, N, self.dX)
+        K = K[:, :-1].reshape(N_ctr, self.dU, self.dX)
+        k = k[:, :-1].reshape(N_ctr, self.dU)
+        prc = prc[:, :-1].reshape(N_ctr, self.dU, self.dU)
+
+        # Standardize K
+        self.K_scaler = StandardScaler().fit(K.reshape(N_ctr, self.dU * self.dX))
 
         # Normalize precision
         prc = prc * (10 * self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
-        # prc = prc * (self.dU / np.mean(np.trace(prc, axis1=-2, axis2=-1)))
 
         # Reset optimizer
         self.sess.run(self.optimizer_reset_op)
@@ -226,6 +230,8 @@ class MU_Policy(PolicyOpt):
                     ],
                     feed_dict={
                         self.is_training: True,
+                        self.K_scale: self.K_scaler.scale_.reshape(self.dU, self.dX),
+                        self.K_center: self.K_scaler.mean_.reshape(self.dU, self.dX),
                     }
                 )[1:]
             losses[epoch] /= batches_per_epoch
@@ -246,11 +252,14 @@ class MU_Policy(PolicyOpt):
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
 
-    def act(self, x, _, t, noise):
+    def act(self, x, _, t, noise, noise_clip=None):
         u = self.sess.run(
-            self.action_out, feed_dict={
+            self.action_out,
+            feed_dict={
                 self.state_batch: [x],
                 self.is_training: False,
+                self.K_scale: self.K_scaler.scale_.reshape(self.dU, self.dX),
+                self.K_center: self.K_scaler.mean_.reshape(self.dU, self.dX),
             }
         )[0]
         if noise is not None:
@@ -269,9 +278,12 @@ class MU_Policy(PolicyOpt):
         N, T = X.shape[:2]
 
         action = self.sess.run(
-            self.action_out, feed_dict={
+            self.action_out,
+            feed_dict={
                 self.state_batch: X.reshape(N * T, self.dX),
                 self.is_training: False,
+                self.K_scale: self.K_scaler.scale_.reshape(self.dU, self.dX),
+                self.K_center: self.K_scaler.mean_.reshape(self.dU, self.dX),
             }
         ).reshape((N, T, self.dU))
         pol_sigma = np.tile(np.diag(self.var), [N, T, 1, 1])

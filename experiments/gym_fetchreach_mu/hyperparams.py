@@ -69,6 +69,7 @@ agent = {
     'obs_include': ['observation', END_EFFECTOR_POINTS],
     'actions_include': [ACTION],
     'scaler': scaler,
+    'action_noise_clip': None,
 }
 
 algorithm = {
@@ -123,6 +124,7 @@ algorithm['dynamics'] = {
             'min_samples_per_cluster': 40,
             'max_samples': 40,
             'strength': 1,
+            'regularization': 0,  # 1e-4
         },
 }
 
@@ -136,13 +138,13 @@ algorithm['policy_opt'] = {
     'init_var': 0.1,
     'ent_reg': 0.0,
     'epochs': 250,
-    'batch_size': (agent['T'] - 1) * min(2, common['conditions']), # batch size must be divisor of (T-1) * M * N
+    'batch_size': agent['T'] - 1,
     'weight_decay': 0.005,
-    'N_hidden': 80,
-    'dZ': 4,
-    'beta_kl': 1,
+    'N_hidden': 20,
+    'dZ': 8,
+    'beta_kl': 15,
     'N': 5,
-    'dropout_rate': 0.1
+    'dropout_rate': 0.1,
 }
 
 algorithm['policy_prior'] = {
@@ -150,6 +152,7 @@ algorithm['policy_prior'] = {
     'max_clusters': 20,
     'min_samples_per_cluster': 40,
     'max_samples': 40,
+    'strength': 2,
 }
 
 config = {
@@ -165,18 +168,22 @@ config = {
     'gui_on': False,
     'algorithm': algorithm,
     'random_seed': 0,
+    'traing_progress_metric': lambda X: np.linalg.norm(scaler.inverse_transform(X[-1:])[0, -3:]),
 }
 
 common['info'] = generate_experiment_info(config)
 
 param_str = 'fetchreach_mu'
-baseline = True
 param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 param_str += '-h%r' % algorithm['policy_opt']['N_hidden']
+if algorithm['dynamics']['prior']['regularization'] > 0:
+    param_str += '-Preg%r' % algorithm['dynamics']['prior']['regularization']
+if agent['action_noise_clip'] is not None:
+    param_str += '-Uclip(%.2f,%.2f)' % agent['action_noise_clip']
 param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol' if not algorithm['sample_on_policy'] else '-gps_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 

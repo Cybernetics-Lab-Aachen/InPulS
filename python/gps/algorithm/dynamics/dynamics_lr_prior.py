@@ -40,7 +40,7 @@ class DynamicsLRPrior(Dynamics):
         dwts = (1.0 / N) * np.ones(N)
         D = np.diag((1.0 / (N - 1)) * np.ones(N))
 
-        # Allocate 
+        # Allocate
         self.Fm = np.zeros([T, dimX, dimX + dimU])
         self.fv = np.zeros([T, dimX])
         self.dyn_covar = np.zeros([T, dimX, dimX])
@@ -176,4 +176,3 @@ class DynamicsLRPrior(Dynamics):
             # raw_input("wait")
 
         return self.Fm, self.fv, self.dyn_covar
-

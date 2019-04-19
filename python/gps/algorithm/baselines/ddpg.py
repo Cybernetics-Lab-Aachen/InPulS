@@ -69,7 +69,7 @@ class DDPG_Policy(PolicyOpt):
             labels=['critic', 'actor'],
         )
 
-    def act(self, x, _, t, noise):
+    def act(self, x, _, t, noise, noise_clip=None):
         if t == 0:
             self.pol.reset()
 
