@@ -10,7 +10,7 @@ from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample
 
-from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS
+from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS
 
 import gps.proto.Command_pb2 as command_msgs
 
@@ -55,6 +55,7 @@ class AgentROSJACO(Agent):
         self.dt = self._hyperparams['dt']
 
         self.ee_points = hyperparams["ee_points"]
+        self.ee_points_tgt = self._hyperparams['ee_points_tgt']
 
         self.scaler = self._hyperparams.get('scaler', None)
 
@@ -180,6 +181,13 @@ class AgentROSJACO(Agent):
                 for k in range(6):
                     jac[i * 3:(i + 1) * 3, k] += np.cross(self.jac[3:, k], rot_ee)
             sample.set(END_EFFECTOR_POINT_JACOBIANS, jac, t=t)
+
+            # Use END_EFFECTOR_POINTS as distance to target
+            sample.set(
+                END_EFFECTOR_POINTS,
+                sample.get(END_EFFECTOR_POINTS, t) - self.ee_points_tgt / self.scaler.scale_[-9:],
+                t=t
+            )
 
             # Get action
             U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
