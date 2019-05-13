@@ -70,12 +70,14 @@ class AgentPanda(Agent):
 
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State, ports[0], [ports[2]]
-        )
+            self._hyperparams['sample_result_topic'], command_msgs.State, self._hyperparams["trial_pub_url"],
+            self._hyperparams["sub_url"])
+
         self._data_service = ServiceEmulator(
             self._hyperparams['data_request_topic'], command_msgs.Request,
-            self._hyperparams['sample_result_topic'], command_msgs.State, ports[1], [ports[2]]
-        )
+            self._hyperparams['sample_result_topic'], command_msgs.State, self._hyperparams["request_pub_url"],
+            self._hyperparams["sub_url"])
+
         time.sleep(1) # wait for sub/pub to set up before publishing a message
 
     def _get_next_seq_id(self):

@@ -77,11 +77,11 @@ class ServiceEmulator(object):
         sub_topic: Subscriber topic.
         sub_type: Subscriber message type.
     """
-    def __init__(self, pub_topic, pub_type, sub_topic, sub_type, pub_port, sub_ports):
+    def __init__(self, pub_topic, pub_type, sub_topic, sub_type, pub_url, sub_url):
 
-        self._pub = PublisherEmulator(pub_topic, pub_type, pub_port)
+        self._pub = PublisherEmulator(pub_topic, pub_type, pub_url)
 
-        self._sub = SubscriberEmulator(sub_topic, sub_type, self._callback, sub_ports)
+        self._sub = SubscriberEmulator(sub_topic, sub_type, self._callback, sub_url)
 
         self._waiting = False
         self._subscriber_msg = None
@@ -128,13 +128,13 @@ class ServiceEmulator(object):
 
 class PublisherEmulator:
 
-    def __init__(self, pub_topic, pub_type, port):
+    def __init__(self, pub_topic, pub_type, url):
         self._pub_topic = pub_topic
         self._pub_type = pub_type
         context = zmq.Context()
         self._pub = context.socket(zmq.PUB)
-        self._pub.bind("tcp://127.0.0.1:%s" % port)
-        print("bind pub to file tcp://127.0.0.1:%s" % port)
+        self._pub.bind(url)
+        print("bind pub to url %s" % url)
 
     def publish(self, message):
         assert type(message) == self._pub_type
@@ -146,16 +146,15 @@ class PublisherEmulator:
 
 class SubscriberEmulator:
 
-    def __init__(self, sub_topic, sub_type, callback, ports):
+    def __init__(self, sub_topic, sub_type, callback, url):
         self._sub_topic = sub_topic
         self._sub_type = sub_type
         self._callback = callback
 
         context = zmq.Context()
         self._sub = context.socket(zmq.SUB)
-        for port in ports:
-            self._sub.connect("tcp://127.0.0.1:%s" % port)
-            print("connect sub to file tcp://127.0.0.1:%s" % port)
+        self._sub.connect(url)
+        print("connect sub to url %s" % url)
         self._sub.setsockopt_string(zmq.SUBSCRIBE, sub_topic)
         # self._sub.setsockopt(zmq.SUBSCRIBE, sub_topic.encode(encoding='UTF-8'))
         print("subscribed to topic %s" % sub_topic)
