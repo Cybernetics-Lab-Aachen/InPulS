@@ -179,13 +179,18 @@ class AgentPanda(Agent):
                 #     data = self.transform(sensor_type, data)
                 sample.set(sensor_type, data, t)
             sample.set(END_EFFECTOR_POINT_JACOBIANS, latest_sample.get(END_EFFECTOR_POINT_JACOBIANS), t=t)
+            # position = latest_sample.get(END_EFFECTOR_POINTS)
+            # diff = np.array(self.ee_points_tgt - position).reshape(3, 3)
+            # norm = np.linalg.norm(diff, axis=1)
+            # print(norm)
 
             # Use END_EFFECTOR_POINTS as distance to target
-            sample.set(
-                END_EFFECTOR_POINTS,
-                sample.get(END_EFFECTOR_POINTS, t),# - self.ee_points_tgt / self.scaler.scale_[-9:],
-                t=t
-            )
+            # sample.set(
+            #     END_EFFECTOR_POINTS,
+            #     sample.get(END_EFFECTOR_POINTS, t),# - self.ee_points_tgt / self.scaler.scale_[-9:],
+            #     t=t
+            # )
+
             # Get action
             U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
             torque_limits_ = np.array([4.0, 4.0, 4.0, 4.0, 1.0, 1.0, .5])     # TODO: find better solution to clip (same as in cpp)
