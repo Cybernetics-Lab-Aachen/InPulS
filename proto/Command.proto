@@ -1,24 +1,25 @@
 syntax = "proto3";
 
-package jaco_hw_interface;
+package panda_gps_interface;
 
 message Command {
-    repeated double command = 1;
-    bool is_position_command = 2; //default value is false for boolean vars
-    repeated double ee_offsets = 3;
+    repeated double command = 1;    //[6]
+    bool is_position_command = 2;   //default value is false for boolean vars
+    repeated double ee_offsets = 3; //[3][3]
     int32 id = 4;
 }
 
 message State {
-    repeated double velocity = 1;
-    repeated double joint_angles = 2;
-    repeated double effort = 3;
-    repeated double ee_pos = 4;
-    repeated double ee_orient = 5;
-    int32 id = 6;
+    repeated double velocity = 1;       //[6]
+    repeated double joint_angles = 2;   //[6]
+    repeated double effort = 3;         //[6]
+    repeated double ee_pos = 4;         //[3][3]
+    repeated double ee_points_jacobian = 5;      //[9][7]
+    repeated double ee_velocity = 6;    //[3][3]
+    int32 id = 7;
 }
 
 message Request {
-    repeated double ee_offsets = 1;
-    int32 id = 2;
+    int32 id = 1;
+    repeated double ee_offsets = 2; //[3][3]
 }
