@@ -1,8 +1,10 @@
-scipy
-scikit-learn
-gym
-mujoco-py
-matplotlib
+gym>=0.14
+matplotlib>=3.0
+mujoco-py>=2.0
+numpy>=1.11
+Pillow>=3.1
+protobuf>=3.0
+scipy>=0.17
+scikit-learn>=0.21
 tensorflow-gpu~=1.12.0
-tensorflow-probability
-tqdm
+tqdm>=4.36

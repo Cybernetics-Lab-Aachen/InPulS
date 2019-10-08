@@ -2,61 +2,41 @@
 
 ## Dependencies
 
-The following are required:
+The following dependencies are required:
 
-* python (>=3.5)
-* python-qt4/qt5
-* Mujoco 1.50
+* Python (>=3.6)
+* [Mujoco 1.50](https://www.roboti.us/index.html)
 
 ```sh
-sudo apt-get install python3-pyqt5
+sudo apt-get install -y python3-pyqt5 protobuf-compiler libglew-dev patchelf
 python3 -m pip install --user --upgrade -r requirements.txt
 ```
 
 ## Setup
 
-1. Check that the dependencies above are installed.
+1. Ensure that the dependencies listed above are statisfied.
 
-2. Install boost and protobuf:
-   ```bash
-   sudo apt-get install libboost-all-dev libprotobuf-dev protobuf-compiler python-protobuf
-   ```
+1. Clone the repo:
 
-3. Clone the repo:
-   ```bash
-   git clone git@git.zlw-ima.rwth-aachen.de:dissertation_ennen/gps.git
-   cd gps
-   ```
+```bash
+git clone git@git.zlw-ima.rwth-aachen.de:dissertation_ennen/gps.git
+cd gps
+```
 
-4. Compile protobuf:
-   ```bash
-   ./compile_proto.sh
-   ```
-5. Initialize the workspace and build the package:
-   ```bash
-   catkin_make
-   ```
-   The build will likely fail because of missing ROS packages, but that is ok for now.
+1. Compile protobuf:
 
-6. Add to your `~/.bashrc`:
-   ```bash
-   source /path/to/gps/devel/setup.bash
-   ```
-   Run `source ~/.bashrc` or re-login to your shell.
+```bash
+./compile_proto.sh
+```
 
-7. If the build failed in step 5, install missing dependencies:
-   ```bash
-   rosdep install gps_agent_pkg
-   ```
-   and build the package again:
-   ```bash
-   catkin_make
-   ```
+1. Add to your `~/.bashrc`:
 
-sudo apt-get install python3-dev libglew-dev patchelf
-
+```bash
 # Mujoco
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.mujoco/mjpro150/bin
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-384
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-384  # Replace 384 with the actual driver version
 # Required for GLEW, otheriwse it crashes at launch
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-384/libGL.so
+```
+
+   Run `source ~/.bashrc` or re-login to your shell.
