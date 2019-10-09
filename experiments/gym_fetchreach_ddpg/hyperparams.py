@@ -154,10 +154,10 @@ param_str += '-h%r' % algorithm['policy_opt']['network_kwargs']['num_hidden']
 param_str += '-l%d' % algorithm['policy_opt']['memory_limit']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
-if main_filepath[-11:] == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
-    from os import mkdir
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+    from pathlib import Path
     from shutil import copy2
 
     # Make expirement folder and copy hyperparams
-    mkdir(common['data_files_dir'])
+    Path(common['data_files_dir']).mkdir(parents=True, exist_ok=False)
     copy2(EXP_DIR + 'hyperparams.py', common['data_files_dir'])

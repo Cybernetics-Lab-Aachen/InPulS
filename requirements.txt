@@ -1,6 +1,6 @@
 gym>=0.14
 matplotlib>=3.0
-mujoco-py>=2.0
+mujoco-py==1.50.1.68
 numpy>=1.11
 Pillow>=3.1
 protobuf>=3.0
