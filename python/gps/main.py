@@ -42,89 +42,6 @@ def main():
 
     hyperparams = imp.load_source('hyperparams', hyperparams_file)
 
-    if args.testgcm:
-        import random
-        import copy
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from gps.algorithm.gcm.gcm_controller import GCMController
-        import gps.algorithm.gcm.gcm_utils as gcm_utils
-        data_files_dir = exp_dir + 'data_files/'
-        seed = hyperparams.config.get('random_seed', 0)
-        random.seed(seed)
-        np.random.seed(seed)
-
-        gps = GPSMain(hyperparams.config)
-
-        model_files_dir = data_files_dir + ('itr_%02d/' % args.testgcm)
-
-        gcm_policy = GCMController(hyperparams.config, model_files_dir)
-        gcm_policy.reset_ctr_context()
-
-        #sample based on init configuration in hyperparams
-        gcm_sample_lists = gps._take_policy_samples(1, gcm_policy)
-        for i in range(len(gcm_sample_lists)):
-            gcm_sample_lists[i].get_X()  # Fill in data for pickling
-        gps.data_logger.pickle(
-            data_files_dir + ('pol_gcm_sample_itr_%02d.pkl' % args.testgcm), copy.copy(gcm_sample_lists)
-        )
-
-        # sample latent space to verify controller models
-        # plot only in case of a two dimensional latent space
-        if gcm_policy.FLAGS.lat_x_dim == 2:
-            Ks = []
-            ks = []
-            particle_number = 10
-            for i in range(particle_number):
-                for j in range(particle_number):
-                    idx_i = i - particle_number / 2
-                    idx_j = j - particle_number / 2
-                    pn_i = idx_i / particle_number
-                    pn_j = idx_j / particle_number
-                    sample_z = np.array([pn_i, pn_j])
-                    cur_ctr, cur_x = gcm_policy.sample_state_controller(np.reshape(sample_z, [1, -1]))
-                    K, k = gcm_utils.deserialize_controller(cur_ctr, 6, 12)
-                    Ks.append(K)
-                    ks.append(k)
-            gcm_policy.plot_controller(Ks, ks)
-
-        sys.exit()
-
-    if args.testgcmcond:
-        import random
-        import copy
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from gps.algorithm.gcm.gcm_controller import GCMController
-        from gps.algorithm.algorithm_ggcs import AlgorithmGGCS
-        import gps.algorithm.gcm.gcm_utils as gcm_utils
-
-        labels = args.testgcmcond
-        reset_cond = labels[1]
-
-        print("reset to condition ", reset_cond)
-        data_files_dir = exp_dir + 'data_files/'
-        seed = hyperparams.config.get('random_seed', 0)
-        random.seed(seed)
-        np.random.seed(seed)
-        gps = GPSMain(hyperparams.config, no_algorithm=False)
-        model_files_dir = data_files_dir + ('itr_%02d/' % labels[0])
-        if (type(gps.algorithm) == AlgorithmGGCS):
-            gcm = gps.algorithm.policy_opt.gcm
-            gcm_policy = GCMController(hyperparams.config, model_files_dir, restore=True, gcm=gcm)
-        else:
-            gcm_policy = GCMController(hyperparams.config, model_files_dir)
-            gcm_policy.reset_ctr_context()
-
-        # sample based on init configuration in hyperparams
-        gcm_sample_lists = gps._take_policy_samples(1, gcm_policy, reset_cond)
-        for i in range(len(gcm_sample_lists)):
-            gcm_sample_lists[i].get_X()  # Fill in data for pickling
-        gps.data_logger.pickle(
-            data_files_dir + ('pol_gcm_sample_itr_%02d.pkl' % labels[0]), copy.copy(gcm_sample_lists)
-        )
-        sys.exit()
-
     if args.testcond:
         import random
         import numpy as np
@@ -192,17 +109,17 @@ def main():
         seed = hyperparams.config.get('random_seed', 0)
         random.seed(seed)
         np.random.seed(seed)
-        gps = GPSMain(hyperparams.config, args.quit)
+        gps = GPSMain(hyperparams.config)
         if hyperparams.config['gui_on']:
             import matplotlib.pyplot as plt
 
-            run_gps = threading.Thread(target=lambda: gps.run(sessionid, itr_load=resume_training_itr))
+            run_gps = threading.Thread(target=lambda: gps.run(itr_load=resume_training_itr))
             run_gps.daemon = True
             run_gps.start()
             plt.ioff()
             plt.show()
         else:
-            gps.run(sessionid, itr_load=resume_training_itr)
+            gps.run(itr_load=resume_training_itr)
 
 
 if __name__ == "__main__":
