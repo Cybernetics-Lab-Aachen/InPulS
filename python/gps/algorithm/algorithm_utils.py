@@ -7,13 +7,14 @@ from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
 
 class IterationData(BundleType):
     """ Collection of iteration variables. """
+
     def __init__(self):
         variables = {
             'sample_list': None,  # List of samples for the current iteration.
             'traj_info': None,  # Current TrajectoryInfo object.
             'pol_info': None,  # Current PolicyInfo object.
             'traj_distr': None,  # Initial trajectory distribution.
-            'new_traj_distr': None, # Updated trajectory distribution.
+            'new_traj_distr': None,  # Updated trajectory distribution.
             'cs': None,  # Sample costs of the current iteration.
             'step_mult': 1.0,  # KL step multiplier for the current iteration.
             'eta': 1.0,  # Dual variable used in LQR backward pass.
@@ -24,15 +25,16 @@ class IterationData(BundleType):
 
 class TrajectoryInfo(BundleType):
     """ Collection of trajectory-related variables. """
+
     def __init__(self):
         variables = {
             'dynamics': None,  # Dynamics object for the current iteration.
             'x0mu': None,  # Mean for the initial state, used by the dynamics.
             'x0sigma': None,  # Covariance for the initial state distribution.
-            'xmu': None, # Mean of real world trajectory distribution
-            'ref_x': None, # Reference states
-            'ref_u': None, # Reference actions
-            'xmusigma': None, # Covariance of real world trajectory distribution
+            'xmu': None,  # Mean of real world trajectory distribution
+            'ref_x': None,  # Reference states
+            'ref_u': None,  # Reference actions
+            'xmusigma': None,  # Covariance of real world trajectory distribution
             'cc': None,  # Cost estimate constant term.
             'cv': None,  # Cost estimate vector term.
             'Cm': None,  # Cost estimate matrix term.
@@ -44,6 +46,7 @@ class TrajectoryInfo(BundleType):
 
 class PolicyInfo(BundleType):
     """ Collection of policy-related variables. """
+
     def __init__(self, hyperparams):
         T, dU, dX = hyperparams['T'], hyperparams['dU'], hyperparams['dX']
         variables = {
@@ -70,11 +73,9 @@ class PolicyInfo(BundleType):
         inv_pol_S = np.empty_like(self.chol_pol_S)
         for t in range(T):
             inv_pol_S[t, :, :] = np.linalg.solve(
-                self.chol_pol_S[t, :, :],
-                np.linalg.solve(self.chol_pol_S[t, :, :].T, np.eye(dU))
+                self.chol_pol_S[t, :, :], np.linalg.solve(self.chol_pol_S[t, :, :].T, np.eye(dU))
             )
-        return LinearGaussianPolicy(self.pol_K, self.pol_k, self.pol_S,
-                self.chol_pol_S, inv_pol_S)
+        return LinearGaussianPolicy(self.pol_K, self.pol_k, self.pol_S, self.chol_pol_S, inv_pol_S)
 
 
 def estimate_moments(X, mu, covar):
@@ -85,8 +86,8 @@ def estimate_moments(X, mu, covar):
         covar = np.tile(covar, [N, 1, 1, 1])
     Xmu = np.concatenate([X, mu], axis=2)
     ev = np.mean(Xmu, axis=0)
-    em = np.zeros((N, T, dX+dU, dX+dU))
-    pad1 = np.zeros((dX, dX+dU))
+    em = np.zeros((N, T, dX + dU, dX + dU))
+    pad1 = np.zeros((dX, dX + dU))
     pad2 = np.zeros((dU, dX))
     for n in range(N):
         for t in range(T):
@@ -107,15 +108,13 @@ def gauss_fit_joint_prior(pts, mu0, Phi, m, n0, dwts, dX, dU, sig_reg):
     # MAP estimate of joint distribution.
     N = dwts.shape[0]
     mu = mun
-    sigma = (N * empsig + Phi + (N * m) / (N + m) *
-             np.outer(mun - mu0, mun - mu0)) / (N + n0)
+    sigma = (N * empsig + Phi + (N * m) / (N + m) * np.outer(mun - mu0, mun - mu0)) / (N + n0)
     sigma = 0.5 * (sigma + sigma.T)
     # Add sigma regularization.
     sigma += sig_reg
     # Conditioning to get dynamics.
-    fd = np.linalg.solve(sigma[:dX, :dX], sigma[:dX, dX:dX+dU]).T
-    fc = mu[dX:dX+dU] - fd.dot(mu[:dX])
-    dynsig = sigma[dX:dX+dU, dX:dX+dU] - fd.dot(sigma[:dX, :dX]).dot(fd.T)
+    fd = np.linalg.solve(sigma[:dX, :dX], sigma[:dX, dX:dX + dU]).T
+    fc = mu[dX:dX + dU] - fd.dot(mu[:dX])
+    dynsig = sigma[dX:dX + dU, dX:dX + dU] - fd.dot(sigma[:dX, :dX]).dot(fd.T)
     dynsig = 0.5 * (dynsig + dynsig.T)
     return fd, fc, dynsig
-

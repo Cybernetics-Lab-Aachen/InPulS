@@ -1,16 +1,8 @@
 """ This file defines utilities for the ROS agents. """
 import numpy as np
 
-from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
-# from gps_agent_pkg.proto.python_compiled.ControllerParams_pb2 import ControllerParams
-# from gps_agent_pkg.proto.python_compiled.LinGaussParams_pb2 import LinGaussParams
-# from gps_agent_pkg.proto.python_compiled.TfParams_pb2 import TfParams
-# from gps_agent_pkg.proto.python_compiled.CaffeParams_pb2 import CaffeParams
-# from gps_agent_pkg.proto.python_compiled.TfActionCommand_pb2 import TfActionCommand
-
 from gps.sample.sample import Sample
-from gps.proto.gps_pb2 import LIN_GAUSS_CONTROLLER, CAFFE_CONTROLLER, TF_CONTROLLER, END_EFFECTOR_POINTS,\
-    END_EFFECTOR_ROTATIONS, JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINT_JACOBIANS
+from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINT_JACOBIANS
 import logging
 import time
 import threading
@@ -18,6 +10,7 @@ import threading
 import zmq
 
 LOGGER = logging.getLogger(__name__)
+
 
 def msg_to_sample(ros_msg, agent):
     """
@@ -29,15 +22,14 @@ def msg_to_sample(ros_msg, agent):
     joint_angles = np.array(ros_msg.joint_angles).reshape(7)
     ee_pos = np.array(ros_msg.ee_pos).reshape(9)
     ee_jacobians = np.array(ros_msg.ee_points_jacobian, order="F").reshape(9, 7)
-#    ee_orient = np.array(ros_msg.ee_orient).reshape(3)
 
     sample.set(JOINT_VELOCITIES, velocity)
     sample.set(JOINT_ANGLES, joint_angles)
     sample.set(END_EFFECTOR_POINTS, ee_pos)
     sample.set(END_EFFECTOR_POINT_JACOBIANS, ee_jacobians)
-    #sample.set(END_EFFECTOR_ROTATIONS, ee_orient)
 
     return sample
+
 
 def tf_obs_msg_to_numpy(obs_message):
     data = np.array(obs_message.data)
@@ -63,6 +55,7 @@ def image_msg_to_cv(image_message):
 
 class TimeoutException(Exception):
     """ Exception thrown on timeouts. """
+
     def __init__(self, sec_waited):
         Exception.__init__(self, "Timed out after %f seconds", sec_waited)
 
@@ -77,6 +70,7 @@ class ServiceEmulator(object):
         sub_topic: Subscriber topic.
         sub_type: Subscriber message type.
     """
+
     def __init__(self, pub_topic, pub_type, sub_topic, sub_type, pub_url, sub_url):
 
         self._pub = PublisherEmulator(pub_topic, pub_type, pub_url)
@@ -92,13 +86,11 @@ class ServiceEmulator(object):
             self._subscriber_msg = message
             self._waiting = False
 
-
     def publish(self, pub_msg):
         """ Publish a message without waiting for response. """
         self._pub.publish(pub_msg)
 
-    def publish_and_wait(self, pub_msg, timeout=5.0, poll_delay=0.01,
-                         check_id=False):
+    def publish_and_wait(self, pub_msg, timeout=5.0, poll_delay=0.01, check_id=False):
         """
         Publish a message and wait for the response.
         Args:
@@ -127,7 +119,6 @@ class ServiceEmulator(object):
 
 
 class PublisherEmulator:
-
     def __init__(self, pub_topic, pub_type, url):
         self._pub_topic = pub_topic
         self._pub_type = pub_type
@@ -145,7 +136,6 @@ class PublisherEmulator:
 
 
 class SubscriberEmulator:
-
     def __init__(self, sub_topic, sub_type, callback, url):
         self._sub_topic = sub_topic
         self._sub_type = sub_type
@@ -173,8 +163,6 @@ class SubscriberEmulator:
         while True:
             sub_message_string = self._sub.recv()
             #print("received message in topic %s" % self._sub_topic)
-            sub_message_string = sub_message_string[len(self._sub_topic)+1:]
+            sub_message_string = sub_message_string[len(self._sub_topic) + 1:]
             self._sub_message.ParseFromString(sub_message_string)
             self._callback(self._sub_message)
-
-

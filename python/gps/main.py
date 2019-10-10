@@ -7,7 +7,6 @@ import os.path
 import sys
 import argparse
 import threading
-import time
 
 # Add gps/python to path so that imports work. Replace backslashes for windows compability
 sys.path.append('/'.join(str.split(__file__.replace('\\', '/'), '/')[:-2]))

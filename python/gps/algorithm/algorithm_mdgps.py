@@ -19,6 +19,7 @@ class AlgorithmMDGPS(Algorithm):
     Sample-based joint policy learning and trajectory optimization with
     (approximate) mirror descent guided policy search algorithm.
     """
+
     def __init__(self, hyperparams):
         config = copy.deepcopy(ALG_MDGPS)
         config.update(hyperparams)
@@ -27,24 +28,18 @@ class AlgorithmMDGPS(Algorithm):
         policy_prior = self._hyperparams['policy_prior']
         for m in range(self.M):
             self.cur[m].pol_info = PolicyInfo(self._hyperparams)
-            self.cur[m].pol_info.policy_prior = \
-                    policy_prior['type'](policy_prior)
+            self.cur[m].pol_info.policy_prior = policy_prior['type'](policy_prior)
 
-        self.policy_opt = self._hyperparams['policy_opt']['type'](
-            self._hyperparams['policy_opt'], self.dO, self.dU
-        )
+        self.policy_opt = self._hyperparams['policy_opt']['type'](self._hyperparams['policy_opt'], self.dO, self.dU)
 
-        self.traj_opt = hyperparams['traj_opt']['type'](
-            hyperparams['traj_opt']
-        )
+        self.traj_opt = hyperparams['traj_opt']['type'](hyperparams['traj_opt'])
 
-    def iteration(self, sample_lists, _):
+    def iteration(self, sample_lists, itr):
         """
         Run iteration of MDGPS-based guided policy search.
 
         Args:
             sample_lists: List of SampleList objects for each condition.
-            _: to match parent class
         """
         # Store the samples and evaluate the costs.
         for m in range(self.M):
@@ -56,9 +51,7 @@ class AlgorithmMDGPS(Algorithm):
 
         # On the first iteration, need to catch policy up to init_traj_distr.
         if self.iteration_count == 0:
-            self.new_traj_distr = [
-                self.cur[cond].traj_distr for cond in range(self.M)
-            ]
+            self.new_traj_distr = [self.cur[cond].traj_distr for cond in range(self.M)]
             self._update_policy(initial_policy=True)
 
         # Update policy linearizations.
@@ -133,10 +126,8 @@ class AlgorithmMDGPS(Algorithm):
             m: Condition
             init: Whether this is the initial fitting of the policy.
         """
-        dX, dU, T = self.dX, self.dU, self.T
         # Choose samples to use.
         samples = self.cur[m].sample_list
-        N = len(samples)
         pol_info = self.cur[m].pol_info
         X = samples.get_X()
         obs = samples.get_obs().copy()
@@ -150,14 +141,12 @@ class AlgorithmMDGPS(Algorithm):
         policy_prior.update(samples, self.policy_opt, mode)
 
         # Fit linearization and store in pol_info.
-        pol_info.pol_K, pol_info.pol_k, pol_info.pol_S = \
-                policy_prior.fit(X, pol_mu, pol_sig)
-        for t in range(T):
-            pol_info.chol_pol_S[t, :, :] = \
-                    sp.linalg.cholesky(pol_info.pol_S[t, :, :])
+        pol_info.pol_K, pol_info.pol_k, pol_info.pol_S = policy_prior.fit(X, pol_mu, pol_sig)
+        for t in range(self.T):
+            pol_info.chol_pol_S[t, :, :] = sp.linalg.cholesky(pol_info.pol_S[t, :, :])
 
         # Visualize pol lin
-        if m==0:
+        if m == 0:
             self.visualize_policy_linearization(m, 'pol_lin')
 
     def _advance_iteration_variables(self):
@@ -167,8 +156,7 @@ class AlgorithmMDGPS(Algorithm):
         """
         Algorithm._advance_iteration_variables(self)
         for m in range(self.M):
-            self.cur[m].traj_info.last_kl_step = \
-                    self.prev[m].traj_info.last_kl_step
+            self.cur[m].traj_info.last_kl_step = self.prev[m].traj_info.last_kl_step
             self.cur[m].pol_info = copy.deepcopy(self.prev[m].pol_info)
 
     def _stepadjust(self):
@@ -177,7 +165,7 @@ class AlgorithmMDGPS(Algorithm):
         for all conditions.
         """
         # Compute previous cost and previous expected cost.
-        prev_M = len(self.prev) # May be different in future.
+        prev_M = len(self.prev)  # May be different in future.
         prev_laplace = np.empty(prev_M)
         prev_mc = np.empty(prev_M)
         prev_predicted = np.empty(prev_M)
@@ -188,17 +176,13 @@ class AlgorithmMDGPS(Algorithm):
             # Compute values under Laplace approximation. This is the policy
             # that the previous samples were actually drawn from under the
             # dynamics that were estimated from the previous samples.
-            prev_laplace[m] = self.traj_opt.estimate_cost(
-                    prev_nn, self.prev[m].traj_info
-            ).sum()
+            prev_laplace[m] = self.traj_opt.estimate_cost(prev_nn, self.prev[m].traj_info).sum()
             # This is the actual cost that we experienced.
             prev_mc[m] = self.prev[m].cs.mean(axis=0).sum()
             # This is the policy that we just used under the dynamics that
             # were estimated from the prev samples (so this is the cost
             # we thought we would have).
-            prev_predicted[m] = self.traj_opt.estimate_cost(
-                    prev_lg, self.prev[m].traj_info
-            ).sum()
+            prev_predicted[m] = self.traj_opt.estimate_cost(prev_lg, self.prev[m].traj_info).sum()
 
         # Compute current cost.
         cur_laplace = np.empty(self.M)
@@ -207,9 +191,7 @@ class AlgorithmMDGPS(Algorithm):
             cur_nn = self.cur[m].pol_info.traj_distr()
             # This is the actual cost we have under the current trajectory
             # based on the latest samples.
-            cur_laplace[m] = self.traj_opt.estimate_cost(
-                    cur_nn, self.cur[m].traj_info
-            ).sum()
+            cur_laplace[m] = self.traj_opt.estimate_cost(cur_nn, self.cur[m].traj_info).sum()
             cur_mc[m] = self.cur[m].cs.mean(axis=0).sum()
 
         # Compute predicted and actual improvement.
@@ -224,11 +206,9 @@ class AlgorithmMDGPS(Algorithm):
         elif self._hyperparams['step_rule'] == 'mc':
             predicted_impr = prev_mc - prev_predicted
             actual_impr = prev_mc - cur_mc
-        LOGGER.debug('Previous cost: Laplace: %f, MC: %f',
-                     prev_laplace, prev_mc)
+        LOGGER.debug('Previous cost: Laplace: %f, MC: %f', prev_laplace, prev_mc)
         LOGGER.debug('Predicted cost: Laplace: %f', prev_predicted)
-        LOGGER.debug('Actual cost: Laplace: %f, MC: %f',
-                     cur_laplace, cur_mc)
+        LOGGER.debug('Actual cost: Laplace: %f, MC: %f', cur_laplace, cur_mc)
 
         for m in range(self.M):
             self._set_new_mult(predicted_impr, actual_impr, m)
@@ -240,23 +220,22 @@ class AlgorithmMDGPS(Algorithm):
         T, dU, dX = traj_distr.T, traj_distr.dU, traj_distr.dX
         Cm, cv = np.copy(traj_info.Cm), np.copy(traj_info.cv)
 
-        PKLm = np.zeros((T, dX+dU, dX+dU))
-        PKLv = np.zeros((T, dX+dU))
+        PKLm = np.zeros((T, dX + dU, dX + dU))
+        PKLv = np.zeros((T, dX + dU))
         fCm, fcv = np.zeros(Cm.shape), np.zeros(cv.shape)
         for t in range(T):
             # Policy KL-divergence terms.
             inv_pol_S = np.linalg.solve(
-                pol_info.chol_pol_S[t, :, :],
-                np.linalg.solve(pol_info.chol_pol_S[t, :, :].T, np.eye(dU))
+                pol_info.chol_pol_S[t, :, :], np.linalg.solve(pol_info.chol_pol_S[t, :, :].T, np.eye(dU))
             )
             KB, kB = pol_info.pol_K[t, :, :], pol_info.pol_k[t, :]
-            PKLm[t, :, :] = np.vstack([
-                np.hstack([KB.T.dot(inv_pol_S).dot(KB), -KB.T.dot(inv_pol_S)]),
-                np.hstack([-inv_pol_S.dot(KB), inv_pol_S])
-            ])
-            PKLv[t, :] = np.concatenate([
-                KB.T.dot(inv_pol_S).dot(kB), -inv_pol_S.dot(kB)
-            ])
+            PKLm[t, :, :] = np.vstack(
+                [
+                    np.hstack([KB.T.dot(inv_pol_S).dot(KB), -KB.T.dot(inv_pol_S)]),
+                    np.hstack([-inv_pol_S.dot(KB), inv_pol_S])
+                ]
+            )
+            PKLv[t, :] = np.concatenate([KB.T.dot(inv_pol_S).dot(kB), -inv_pol_S.dot(kB)])
             fCm[t, :, :] = (Cm[t, :, :] + PKLm[t, :, :] * eta) / (eta)
             fcv[t, :] = (cv[t, :] + PKLv[t, :] * eta) / (eta)
 

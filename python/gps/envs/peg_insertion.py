@@ -4,19 +4,19 @@ from gym.envs.robotics.robot_env import RobotEnv
 from gym.envs.robotics import utils
 from gym.envs.robotics.fetch_env import goal_distance
 
-
 PR2_GAINS = np.array([3.09, 1.08, 0.393, 0.674, 0.111, 0.152, 0.098])
+
 
 def vec_to_qpos(vec):
     return {
-            'r_shoulder_pan_joint': vec[0],
-            'r_shoulder_lift_joint': vec[1],
-            'r_upper_arm_roll_joint': vec[2],
-            'r_elbow_flex_joint': vec[3],
-            'r_forearm_roll_joint': vec[4],
-            'r_wrist_flex_joint': vec[5],
-            'r_wrist_roll_joint': vec[6],
-        }
+        'r_shoulder_pan_joint': vec[0],
+        'r_shoulder_lift_joint': vec[1],
+        'r_upper_arm_roll_joint': vec[2],
+        'r_elbow_flex_joint': vec[3],
+        'r_forearm_roll_joint': vec[4],
+        'r_wrist_flex_joint': vec[5],
+        'r_wrist_roll_joint': vec[6],
+    }
 
 
 class PegInsertionEnv(RobotEnv):
@@ -50,15 +50,20 @@ class PegInsertionEnv(RobotEnv):
         return -goal_distance(achieved_goal, goal)
 
     def _reset_sim(self):
-        self._env_setup(vec_to_qpos(self.np_random.uniform(
-                # Limited range
-                low=np.asarray([-2.0, 0.0, -2.0, -2.0, 1.0, -0.5, 0]), 
-                high=np.asarray([1.0, 1.0, -1.0, -1.0, 2.0,  0.0, 0]))))
-                # Full range
-                #low=np.asarray([-2.2854,  -0.5236, -3.9, -2.3213, -np.pi, -2.094, -np.pi]),
-                #high=np.asarray([1.714602, 1.3963,  0.8,  0.0,     np.pi,  0.0,    np.pi]))))
+        self._env_setup(
+            vec_to_qpos(
+                self.np_random.uniform(
+                    # Limited range
+                    low=np.asarray([-2.0, 0.0, -2.0, -2.0, 1.0, -0.5, 0]),
+                    high=np.asarray([1.0, 1.0, -1.0, -1.0, 2.0, 0.0, 0])
+                )
+            )
+        )
+        # Full range
+        #low=np.asarray([-2.2854,  -0.5236, -3.9, -2.3213, -np.pi, -2.094, -np.pi]),
+        #high=np.asarray([1.714602, 1.3963,  0.8,  0.0,     np.pi,  0.0,    np.pi]))))
         return True
- 
+
     def _set_action(self, action):
         assert action.shape == (7, )
         action = np.clip(action, -1, +1) / 10
@@ -76,9 +81,10 @@ class PegInsertionEnv(RobotEnv):
                 #np.clip(self.sim.data.cfrc_ext, -1, 1).flat,
             ]
         )
-        achieved_goal = np.concatenate([
-            self.sim.data.get_site_xpos('leg_bottom'),
-            self.sim.data.get_site_xpos('leg_top')])
+        achieved_goal = np.concatenate(
+            [self.sim.data.get_site_xpos('leg_bottom'),
+             self.sim.data.get_site_xpos('leg_top')]
+        )
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),

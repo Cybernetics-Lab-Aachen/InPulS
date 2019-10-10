@@ -4,14 +4,14 @@
 ALG = {
     'inner_iterations': 1,  # Number of iterations.
     'min_eta': 1e-5,  # Minimum initial lagrange multiplier in DGD for
-                      # trajectory optimization.
-    'kl_step':0.2,
-    'min_step_mult':0.01,
-    'max_step_mult':10.0,
+    # trajectory optimization.
+    'kl_step': 0.2,
+    'min_step_mult': 0.01,
+    'max_step_mult': 10.0,
     # Trajectory settings.
-    'initial_state_var':1e-6,
+    'initial_state_var': 1e-6,
     'init_traj_distr': None,  # A list of initial LinearGaussianPolicy
-                              # objects for each condition.
+    # objects for each condition.
     # Trajectory optimization.
     'traj_opt': None,
     # Dynamics hyperaparams.
@@ -21,7 +21,6 @@ ALG = {
     # Whether or not to sample with neural net policy (only for badmm/mdgps).
     'sample_on_policy': False,
 }
-
 
 # AlgorithmBADMM
 ALG_BADMM = {
@@ -38,7 +37,6 @@ ALG_BADMM = {
     'exp_step_upper': 0.5,
     'exp_step_lower': 1.0,
 }
-
 
 # AlgorithmGGCS
 ALG_GGCS = {

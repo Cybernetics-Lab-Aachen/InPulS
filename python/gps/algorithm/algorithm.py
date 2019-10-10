@@ -61,21 +61,19 @@ class Algorithm(object):
             if dynamics is not None:
                 self.cur[m].traj_info.dynamics = dynamics['type'](dynamics)
             init_traj_distr = extract_condition(
-                self._hyperparams['init_traj_distr'], self._cond_idx[0] # TODO Global x0
+                self._hyperparams['init_traj_distr'],
+                self._cond_idx[0]  # TODO Global x0
             )
             self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
 
         #self.traj_opt = hyperparams['traj_opt']['type'](
         #    hyperparams['traj_opt']
         #)
-        self.cost = [
-            hyperparams['cost']['type'](hyperparams['cost'])
-            for _ in range(self.M)
-        ]
+        self.cost = [hyperparams['cost']['type'](hyperparams['cost']) for _ in range(self.M)]
         self.base_kl_step = self._hyperparams['kl_step']
 
     @abc.abstractmethod
-    def iteration(self, sample_list, itr, train_gcm=False):
+    def iteration(self, sample_list, itr):
         """ Run iteration of the algorithm. """
         raise NotImplementedError("Must be implemented in subclass")
 
@@ -113,9 +111,9 @@ class Algorithm(object):
                 if prior:
                     mu0, Phi, priorm, n0 = prior.initial_state()
                     N = len(cur_data)
-                    self.cur[m].traj_info.x0sigma += Phi + (N * priorm) / (N +
-                                                                           priorm) * np.outer(x0mu - mu0,
-                                                                                              x0mu - mu0) / (N + n0)
+                    self.cur[m].traj_info.x0sigma += (
+                        Phi + (N * priorm) / (N + priorm) * np.outer(x0mu - mu0, x0mu - mu0) / (N + n0)
+                    )
 
         self.visualize_dynamics(0)
 
@@ -145,8 +143,8 @@ class Algorithm(object):
         # Compute cost.
         cs = np.zeros((N, T))
         cc = np.zeros((N, T))
-        cv = np.zeros((N, T, dX+dU))
-        Cm = np.zeros((N, T, dX+dU, dX+dU))
+        cv = np.zeros((N, T, dX + dU))
+        Cm = np.zeros((N, T, dX + dU, dX + dU))
         for n in range(N):
             sample = self.cur[cond].sample_list[n]
             # Get costs.
@@ -156,10 +154,7 @@ class Algorithm(object):
 
             # Assemble matrix and vector.
             cv[n, :, :] = np.c_[lx, lu]
-            Cm[n, :, :, :] = np.concatenate(
-                (np.c_[lxx, np.transpose(lux, [0, 2, 1])], np.c_[lux, luu]),
-                axis=1
-            )
+            Cm[n, :, :, :] = np.concatenate((np.c_[lxx, np.transpose(lux, [0, 2, 1])], np.c_[lux, luu]), axis=1)
 
             # Adjust for expanding cost around a sample.
             X = sample.get_X()
@@ -168,8 +163,7 @@ class Algorithm(object):
             rdiff = -yhat
             rdiff_expand = np.expand_dims(rdiff, axis=2)
             cv_update = np.sum(Cm[n, :, :, :] * rdiff_expand, axis=1)
-            cc[n, :] += np.sum(rdiff * cv[n, :, :], axis=1) + 0.5 * \
-                    np.sum(rdiff * cv_update, axis=1)
+            cc[n, :] += np.sum(rdiff * cv[n, :, :], axis=1) + 0.5 * np.sum(rdiff * cv_update, axis=1)
             cv[n, :, :] += cv_update
 
         # Fill in cost estimate.
@@ -208,12 +202,10 @@ class Algorithm(object):
         # Optimize I w.r.t. KL: 0 = predicted_dI + 2 * penalty * KL =>
         # KL' = (-predicted_dI)/(2*penalty) = (pred/2*(pred-act)) * KL.
         # Therefore, the new multiplier is given by pred/2*(pred-act).
-        new_mult = predicted_impr / (2.0 * max(1e-4,
-                                               predicted_impr - actual_impr))
+        new_mult = predicted_impr / (2.0 * max(1e-4, predicted_impr - actual_impr))
         new_mult = max(0.1, min(5.0, new_mult))
         new_step = max(
-            min(new_mult * self.cur[m].step_mult,
-                self._hyperparams['max_step_mult']),
+            min(new_mult * self.cur[m].step_mult, self._hyperparams['max_step_mult']),
             self._hyperparams['min_step_mult']
         )
         self.cur[m].step_mult = new_step
@@ -227,9 +219,7 @@ class Algorithm(object):
         """ Measure the entropy of the current trajectory. """
         ent = 0
         for t in range(self.T):
-            ent = ent + np.sum(
-                np.log(np.diag(self.cur[m].traj_distr.chol_pol_covar[t, :, :]))
-            )
+            ent = ent + np.sum(np.log(np.diag(self.cur[m].traj_distr.chol_pol_covar[t, :, :])))
         return ent
 
     def visualize_dynamics(self, m):

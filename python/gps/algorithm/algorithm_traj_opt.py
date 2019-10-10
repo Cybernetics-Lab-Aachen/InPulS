@@ -13,10 +13,11 @@ LOGGER = logging.getLogger(__name__)
 
 class AlgorithmTrajOpt(Algorithm_NN):
     """ Sample-based trajectory optimization. """
+
     def __init__(self, hyperparams):
         super(AlgorithmTrajOpt, self).__init__(hyperparams)
 
-    def _update_trajectories(self, _):
+    def _update_trajectories(self):
         """
         Compute new linear Gaussian controllers.
         """
@@ -24,8 +25,9 @@ class AlgorithmTrajOpt(Algorithm_NN):
             self.new_traj_distr = [self.cur[cond].traj_distr for cond in range(self.M)]
         with Timer(self.timers, 'traj_opt'):
             for cond in range(self.M):
-                self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[cond], _ = \
-                        self.traj_opt_update(cond)
+                self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[
+                    cond
+                ], _ = self.traj_opt_update(cond)
 
         self.visualize_local_policy(0)
 
@@ -50,8 +52,7 @@ class AlgorithmTrajOpt(Algorithm_NN):
         index_u = slice(dimX, dimX + dimU)
 
         # Get quadratic expansion of the extended cost function
-        Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info,
-                                                     prev_traj_distr)
+        Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info, prev_traj_distr)
         self.Cm_ext = Cm_ext
         self.cv_ext = cv_ext
 
@@ -73,8 +74,8 @@ class AlgorithmTrajOpt(Algorithm_NN):
 
             # Add in the value function from the next time step.
             if t < T - 1:
-                Qm += Fm[t, :, :].T.dot(Vm[t+1, :, :]).dot(Fm[t, :, :])
-                qv += Fm[t, :, :].T.dot(vv[t+1, :] + Vm[t+1, :, :].dot(fv[t, :]))
+                Qm += Fm[t, :, :].T.dot(Vm[t + 1, :, :]).dot(Fm[t, :, :])
+                qv += Fm[t, :, :].T.dot(vv[t + 1, :] + Vm[t + 1, :, :].dot(fv[t, :]))
 
             # Symmetrize quadratic component to counter numerical errors.
             Qm = 0.5 * (Qm + Qm.T)
@@ -86,25 +87,19 @@ class AlgorithmTrajOpt(Algorithm_NN):
 
             # Compute mean terms.
             traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
-                U, sp.linalg.solve_triangular(L, Qm[index_u, index_x],
-                                              lower=True)
+                U, sp.linalg.solve_triangular(L, Qm[index_u, index_x], lower=True)
             )
-            traj_distr.k[t, :] = -sp.linalg.solve_triangular(
-                U, sp.linalg.solve_triangular(L, qv[index_u], lower=True)
-            )
+            traj_distr.k[t, :] = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, qv[index_u], lower=True))
 
             # Store conditional covariance, inverse, and Cholesky.
             traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
                 U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
             )
-            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
-                traj_distr.pol_covar[t, :, :]
-            )
+            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(traj_distr.pol_covar[t, :, :])
             traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
 
             # Compute value function.
-            Vm[t, :, :] = Qm[index_x, index_x] + \
-                    Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
+            Vm[t, :, :] = Qm[index_x, index_x] + Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
             # Symmetrize quadratic component to counter numerical errors.
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
@@ -147,8 +142,7 @@ class AlgorithmTrajOpt(Algorithm_NN):
         sigma[0, index_x, index_x] = traj_info.x0sigma
 
         for t in range(T):
-            mu[t, index_u] = traj_distr.K[t, :, :].dot(mu[t, index_x]) + \
-                             traj_distr.k[t, :]
+            mu[t, index_u] = traj_distr.K[t, :, :].dot(mu[t, index_x]) + traj_distr.k[t, :]
 
             sigma[t, index_x, index_u] = \
                 sigma[t, index_x, index_x].dot(traj_distr.K[t, :, :].T)
@@ -156,17 +150,14 @@ class AlgorithmTrajOpt(Algorithm_NN):
             sigma[t, index_u, index_x] = \
                 traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x])
 
-            sigma[t, index_u, index_u] = \
-                traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
-                    traj_distr.K[t, :, :].T
-                ) + traj_distr.pol_covar[t, :, :]
+            sigma[t, index_u, index_u] = traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
+                traj_distr.K[t, :, :].T
+            ) + traj_distr.pol_covar[t, :, :]
 
             if t < T - 1:
                 mu[t + 1, index_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
 
-                sigma[t + 1, index_x, index_x] = \
-                    Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
-                    dyn_covar[t, :, :]
+                sigma[t + 1, index_x, index_x] = Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + dyn_covar[t, :, :]
 
             # Symmetrize sigma
             sigma[t] = (sigma[t] + sigma[t].T) / 2

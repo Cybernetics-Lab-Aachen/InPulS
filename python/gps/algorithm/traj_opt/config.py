@@ -1,6 +1,5 @@
 """ Default configuration for trajectory optimization. """
 
-
 # TrajOptLQRPython
 TRAJ_OPT_LQR = {
     # Dual variable updates for non-PD Q-function.

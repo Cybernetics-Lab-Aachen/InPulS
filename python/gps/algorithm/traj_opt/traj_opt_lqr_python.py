@@ -8,19 +8,16 @@ import scipy as sp
 
 from gps.algorithm.traj_opt.config import TRAJ_OPT_LQR
 from gps.algorithm.traj_opt.traj_opt import TrajOpt
-from gps.algorithm.traj_opt.traj_opt_utils import \
-        traj_distr_kl, DGD_MAX_ITER
+from gps.algorithm.traj_opt.traj_opt_utils import traj_distr_kl, DGD_MAX_ITER
 
-from gps.algorithm.algorithm_badmm import AlgorithmBADMM
-from gps.algorithm.algorithm_ggcs import AlgorithmGGCS
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
-from gps.algorithm.algorithm_mdggcs import AlgorithmMDGGCS
-
 
 LOGGER = logging.getLogger(__name__)
 
+
 class TrajOptLQRPython(TrajOpt):
     """ LQR trajectory optimization, Python implementation. """
+
     def __init__(self, hyperparams):
         config = copy.deepcopy(TRAJ_OPT_LQR)
         config.update(hyperparams)
@@ -35,7 +32,7 @@ class TrajOptLQRPython(TrajOpt):
         step_mult = algorithm.cur[m].step_mult
         traj_info = algorithm.cur[m].traj_info
 
-        if (isinstance(algorithm, AlgorithmMDGPS) or isinstance(algorithm, AlgorithmMDGGCS)) and not initial_update:
+        if isinstance(algorithm, AlgorithmMDGPS) and not initial_update:
             # For MDGPS, constrain to previous NN linearization
             prev_traj_distr = algorithm.cur[m].pol_info.traj_distr()
         else:
@@ -52,19 +49,16 @@ class TrajOptLQRPython(TrajOpt):
         LOGGER.debug("Running DGD for trajectory %d, eta: %f", m, eta)
         mus = []
         for itr in range(DGD_MAX_ITER):
-            LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)",
-                    itr, min_eta, eta, max_eta)
+            LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)", itr, min_eta, eta, max_eta)
 
             # Run fwd/bwd pass, note that eta may be updated.
             # NOTE: we can just ignore case when the new eta is larger.
-            traj_distr, eta = self.backward(prev_traj_distr, traj_info,
-                                                eta, algorithm, m)
+            traj_distr, eta = self.backward(prev_traj_distr, traj_info, eta, algorithm, m)
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
             mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
-            kl_div = traj_distr_kl(new_mu, new_sigma,
-                                   traj_distr, prev_traj_distr)
+            kl_div = traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
             #print("kl_step: ", kl_step)
@@ -72,37 +66,33 @@ class TrajOptLQRPython(TrajOpt):
             #print("kl_div: ", kl_div)
 
             # Convergence check - constraint satisfaction.
-            if (abs(con) < 0.1*kl_step):
-                LOGGER.debug("KL: %f / %f, converged iteration %i",
-                        kl_div, kl_step, itr)
+            if (abs(con) < 0.1 * kl_step):
+                LOGGER.debug("KL: %f / %f, converged iteration %i", kl_div, kl_step, itr)
                 break
 
             # Choose new eta (bisect bracket or multiply by constant)
-            if con < 0: # Eta was too big.
+            if con < 0:  # Eta was too big.
                 max_eta = eta
-                geom = np.sqrt(min_eta*max_eta)  # Geometric mean.
-                new_eta = max(geom, 0.1*max_eta)
-                LOGGER.debug("KL: %f / %f, eta too big, new eta: %f",
-                        kl_div, kl_step, new_eta)
-            else: # Eta was too small.
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = max(geom, 0.1 * max_eta)
+                LOGGER.debug("KL: %f / %f, eta too big, new eta: %f", kl_div, kl_step, new_eta)
+            else:  # Eta was too small.
                 min_eta = eta
-                geom = np.sqrt(min_eta*max_eta)  # Geometric mean.
-                new_eta = min(geom, 10.0*min_eta)
-                LOGGER.debug("KL: %f / %f, eta too small, new eta: %f",
-                        kl_div, kl_step, new_eta)
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = min(geom, 10.0 * min_eta)
+                LOGGER.debug("KL: %f / %f, eta too small, new eta: %f", kl_div, kl_step, new_eta)
 
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
 
         if minAdvantage:
-            traj_distr = self._compute_advantage_stabilizing_controller(traj_distr, copy.deepcopy(prev_traj_distr),
-                                                                        traj_info, new_mu)
+            traj_distr = self._compute_advantage_stabilizing_controller(
+                traj_distr, copy.deepcopy(prev_traj_distr), traj_info, new_mu
+            )
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
 
-        if kl_div > kl_step and abs(kl_div - kl_step) > 0.1*kl_step:
-            LOGGER.warning(
-                "Final KL divergence after DGD convergence is too high."
-            )
+        if kl_div > kl_step and abs(kl_div - kl_step) > 0.1 * kl_step:
+            LOGGER.warning("Final KL divergence after DGD convergence is too high.")
 
         from gps.visualization.traj_opt import visualize_traj_opt
         visualize_traj_opt(
@@ -127,10 +117,9 @@ class TrajOptLQRPython(TrajOpt):
         # Compute cost.
         predicted_cost = np.zeros(T)
         for t in range(T):
-            predicted_cost[t] = traj_info.cc[t] + 0.5 * \
-                    np.sum(sigma[t, :, :] * traj_info.Cm[t, :, :]) + 0.5 * \
-                    mu[t, :].T.dot(traj_info.Cm[t, :, :]).dot(mu[t, :]) + \
-                    mu[t, :].T.dot(traj_info.cv[t, :])
+            predicted_cost[t] = traj_info.cc[t] + 0.5 * np.sum(
+                sigma[t, :, :] * traj_info.Cm[t, :, :]
+            ) + 0.5 * mu[t, :].T.dot(traj_info.Cm[t, :, :]).dot(mu[t, :]) + mu[t, :].T.dot(traj_info.cv[t, :])
         return predicted_cost
 
     def forward(self, traj_distr, traj_info):
@@ -154,8 +143,8 @@ class TrajOptLQRPython(TrajOpt):
         idx_x = slice(dX)
 
         # Allocate space.
-        sigma = np.zeros((T, dX+dU, dX+dU))
-        mu = np.zeros((T, dX+dU))
+        sigma = np.zeros((T, dX + dU, dX + dU))
+        mu = np.zeros((T, dX + dU))
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -167,27 +156,22 @@ class TrajOptLQRPython(TrajOpt):
         mu[0, idx_x] = traj_info.x0mu
 
         for t in range(T):
-            sigma[t, :, :] = np.vstack([
-                np.hstack([
-                    sigma[t, idx_x, idx_x],
-                    sigma[t, idx_x, idx_x].dot(traj_distr.K[t, :, :].T)
-                ]),
-                np.hstack([
-                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]),
-                    traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(
-                        traj_distr.K[t, :, :].T
-                    ) + traj_distr.pol_covar[t, :, :]
-                ])
-            ])
-            mu[t, :] = np.hstack([
-                mu[t, idx_x],
-                traj_distr.K[t, :, :].dot(mu[t, idx_x]) + traj_distr.k[t, :]
-            ])
+            sigma[t, :, :] = np.vstack(
+                [
+                    np.hstack([sigma[t, idx_x, idx_x], sigma[t, idx_x, idx_x].dot(traj_distr.K[t, :, :].T)]),
+                    np.hstack(
+                        [
+                            traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]),
+                            traj_distr.K[t, :, :].dot(sigma[t, idx_x, idx_x]).dot(traj_distr.K[t, :, :].T) +
+                            traj_distr.pol_covar[t, :, :]
+                        ]
+                    )
+                ]
+            )
+            mu[t, :] = np.hstack([mu[t, idx_x], traj_distr.K[t, :, :].dot(mu[t, idx_x]) + traj_distr.k[t, :]])
             if t < T - 1:
-                sigma[t+1, idx_x, idx_x] = \
-                        Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + \
-                        dyn_covar[t, :, :]
-                mu[t+1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
+                sigma[t + 1, idx_x, idx_x] = Fm[t, :, :].dot(sigma[t, :, :]).dot(Fm[t, :, :].T) + dyn_covar[t, :, :]
+                mu[t + 1, idx_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
 
             # Symmetrize sigma
             sigma[t] = (sigma[t] + sigma[t].T) / 2
@@ -216,12 +200,8 @@ class TrajOptLQRPython(TrajOpt):
 
         traj_distr = prev_traj_distr.nans_like()
 
-        # Store pol_wt if necessary
-        if type(algorithm) == AlgorithmBADMM or type(algorithm) == AlgorithmGGCS:
-            pol_wt = algorithm.cur[m].pol_info.pol_wt
-
         idx_x = slice(dX)
-        idx_u = slice(dX, dX+dU)
+        idx_u = slice(dX, dX + dU)
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -254,18 +234,8 @@ class TrajOptLQRPython(TrajOpt):
 
                 # Add in the value function from the next time step.
                 if t < T - 1:
-                    if type(algorithm) == AlgorithmBADMM or type(algorithm) == AlgorithmGGCS:
-                        if algorithm.inner_itr > 0:
-                            multiplier = (pol_wt[t+1] + eta)/(pol_wt[t] + eta)
-                        else:
-                            multiplier = 1.0
-                    else:
-                        multiplier = 1.0
-                    Qtt = Qtt + multiplier * \
-                            Fm[t, :, :].T.dot(Vxx[t+1, :, :]).dot(Fm[t, :, :])
-                    Qt = Qt + multiplier * \
-                            Fm[t, :, :].T.dot(Vx[t+1, :] +
-                                            Vxx[t+1, :, :].dot(fv[t, :]))
+                    Qtt = Qtt + Fm[t, :, :].T.dot(Vxx[t + 1, :, :]).dot(Fm[t, :, :])
+                    Qt = Qt + Fm[t, :, :].T.dot(Vx[t + 1, :] + Vxx[t + 1, :, :].dot(fv[t, :]))
 
                 # Symmetrize quadratic component.
                 Qtt = 0.5 * (Qtt + Qtt.T)
@@ -287,22 +257,16 @@ class TrajOptLQRPython(TrajOpt):
                 traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
                     U, sp.linalg.solve_triangular(L, np.eye(dU), lower=True)
                 )
-                traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
-                    traj_distr.pol_covar[t, :, :]
-                )
+                traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(traj_distr.pol_covar[t, :, :])
 
                 # Compute mean terms.
-                traj_distr.k[t, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, Qt[idx_u], lower=True)
-                )
+                traj_distr.k[t] = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, Qt[idx_u], lower=True))
                 traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
-                    U, sp.linalg.solve_triangular(L, Qtt[idx_u, idx_x],
-                                                  lower=True)
+                    U, sp.linalg.solve_triangular(L, Qtt[idx_u, idx_x], lower=True)
                 )
 
                 # Compute value function.
-                Vxx[t, :, :] = Qtt[idx_x, idx_x] + \
-                        Qtt[idx_x, idx_u].dot(traj_distr.K[t, :, :])
+                Vxx[t, :, :] = Qtt[idx_x, idx_x] + Qtt[idx_x, idx_u].dot(traj_distr.K[t, :, :])
                 Vx[t, :] = Qt[idx_x] + Qtt[idx_x, idx_u].dot(traj_distr.k[t, :])
                 Vxx[t, :, :] = 0.5 * (Vxx[t, :, :] + Vxx[t, :, :].T)
 
@@ -318,9 +282,11 @@ class TrajOptLQRPython(TrajOpt):
                 if eta >= 1e16:
                     if np.any(np.isnan(Fm)) or np.any(np.isnan(fv)):
                         raise ValueError('NaNs encountered in dynamics!')
-                    raise ValueError('Failed to find PD solution even for very \
+                    raise ValueError(
+                        'Failed to find PD solution even for very \
                             large eta (check that dynamics and cost are \
-                            reasonably well conditioned)!')
+                            reasonably well conditioned)!'
+                    )
         return traj_distr, eta
 
     def _compute_advantage_stabilizing_controller(self, gcm_traj_distr, ref_traj_distr, traj_info, mu_gcm):
@@ -330,7 +296,6 @@ class TrajOptLQRPython(TrajOpt):
         dimX = gcm_traj_distr.dX
         index_x = slice(dimX)
         index_u = slice(dimX, dimX + dimU)
-        gamma = 1.0
 
         # Pull out dynamics.
         Fm = traj_info.dynamics.Fm
@@ -353,7 +318,7 @@ class TrajOptLQRPython(TrajOpt):
             gcm_Qm = gcm_traj_distr.Qm[t, :, :]
             gcm_qv = gcm_traj_distr.qv[t, :]
             ref_Qm = ref_traj_distr.Qm[t, :, :]  # (X+U) x (X+U)
-            ref_qv = ref_traj_distr.qv[t, :] # (X+U) x 1
+            ref_qv = ref_traj_distr.qv[t, :]  # (X+U) x 1
 
             # Add in the value function from the next time step.
             if t < T - 1:
@@ -363,21 +328,25 @@ class TrajOptLQRPython(TrajOpt):
             # Symmetrize quadratic component to counter numerical errors.
             Qm = 0.5 * (Qm + Qm.T)
 
-
-
             x_gcm = mu_gcm[t, index_x]
             u_gcm = mu_gcm[t, index_u]
 
-            traj_distr.K[t, :, :], traj_distr.k[t, :], traj_distr.pol_covar[t, :, :], traj_distr.chol_pol_covar[t, :,
-                                                                                      :], traj_distr.inv_pol_covar[t, :,
-                                                                                          :] = self._compute_advantage_controller(Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, traj_info.xmu[t, index_x], traj_info.xmu[t, index_u], x_gcm, u_gcm, dimU, dimX)
+            traj_distr.K[t, :, :], traj_distr.k[t, :], traj_distr.pol_covar[t, :, :], traj_distr.chol_pol_covar[
+                t, :, :
+            ], traj_distr.inv_pol_covar[t, :, :] = self._compute_advantage_controller(
+                Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, traj_info.xmu[t, index_x], traj_info.xmu[t, index_u], x_gcm,
+                u_gcm, dimU, dimX
+            )
 
-            Vm[t, :, :], vv[t, :] = self._compute_value_function(Qm, qv, traj_distr.K[t, :, :], traj_distr.k[t, :], dimU, dimX)
+            Vm[t, :, :], vv[t, :] = self._compute_value_function(
+                Qm, qv, traj_distr.K[t, :, :], traj_distr.k[t, :], dimU, dimX
+            )
 
         return traj_distr
 
-    def _compute_advantage_controller(self, Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, x_real, u_real, x_gcm, u_gcm, dU,
-                                      dX):
+    def _compute_advantage_controller(
+        self, Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, x_real, u_real, x_gcm, u_gcm, dU, dX
+    ):
         index_x = slice(dX)
         index_u = slice(dX, dX + dU)
 
@@ -387,26 +356,18 @@ class TrajOptLQRPython(TrajOpt):
         L = U.T
 
         # Compute mean terms.
-        K = -sp.linalg.solve_triangular(
-            U, sp.linalg.solve_triangular(L, Qm[index_u, index_x],
-                                          lower=True)
-        )
+        K = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, Qm[index_u, index_x], lower=True))
 
         # Compute advantage offset + cost-to-go under current trajectory
         q_adv = qv[index_u] + gcm_Qm[index_u, index_x].dot(x_gcm) + gcm_Qm[index_u, index_u].dot(u_gcm) + gcm_qv[
-            index_u] - ref_Qm[index_u, index_x].dot(x_real) - ref_Qm[index_u, index_u].dot(u_real) - ref_qv[index_u]
+            index_u
+        ] - ref_Qm[index_u, index_x].dot(x_real) - ref_Qm[index_u, index_u].dot(u_real) - ref_qv[index_u]
 
-        k = -sp.linalg.solve_triangular(
-            U, sp.linalg.solve_triangular(L, q_adv, lower=True)
-        )
+        k = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, q_adv, lower=True))
 
         # Store conditional covariance, inverse, and Cholesky.
-        pol_covar = sp.linalg.solve_triangular(
-            U, sp.linalg.solve_triangular(L, np.eye(dU), lower=True)
-        )
-        chol_pol_covar = sp.linalg.cholesky(
-            pol_covar
-        )
+        pol_covar = sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, np.eye(dU), lower=True))
+        chol_pol_covar = sp.linalg.cholesky(pol_covar)
         inv_pol_covar = Qm[index_u, index_u]
         return K, k, pol_covar, chol_pol_covar, inv_pol_covar
 
@@ -415,10 +376,8 @@ class TrajOptLQRPython(TrajOpt):
         index_u = slice(dX, dX + dU)
 
         # Compute value function.
-        Vm = Qm[index_x, index_x] + \
-             Qm[index_x, index_u].dot(K)
+        Vm = Qm[index_x, index_x] + Qm[index_x, index_u].dot(K)
         # Symmetrize quadratic component to counter numerical errors.
         Vm = 0.5 * (Vm + Vm.T)
         vv = qv[index_x] + Qm[index_x, index_u].dot(k)
         return Vm, vv
-

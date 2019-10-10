@@ -10,6 +10,7 @@ from gps.algorithm.cost.cost_utils import evall1l2term, get_ramp_multiplier
 
 class CostState(Cost):
     """ Computes l1/l2 distance to a fixed target state. """
+
     def __init__(self, hyperparams):
         config = copy.deepcopy(COST_STATE)
         config.update(hyperparams)
@@ -41,8 +42,7 @@ class CostState(Cost):
             _, dim_sensor = x.shape
 
             wpm = get_ramp_multiplier(
-                self._hyperparams['ramp_option'], T,
-                wp_final_multiplier=self._hyperparams['wp_final_multiplier']
+                self._hyperparams['ramp_option'], T, wp_final_multiplier=self._hyperparams['wp_final_multiplier']
             )
             wp = wp * np.expand_dims(wpm, axis=-1)
             # Compute state penalty.
@@ -50,17 +50,14 @@ class CostState(Cost):
 
             # Evaluate penalty term.
             l, ls, lss = self._hyperparams['evalnorm'](
-                wp, dist, np.tile(np.eye(dim_sensor), [T, 1, 1]),
-                np.zeros((T, dim_sensor, dim_sensor, dim_sensor)),
-                self._hyperparams['l1'], self._hyperparams['l2'],
-                self._hyperparams['alpha']
+                wp, dist, np.tile(np.eye(dim_sensor), [T, 1, 1]), np.zeros((T, dim_sensor, dim_sensor, dim_sensor)),
+                self._hyperparams['l1'], self._hyperparams['l2'], self._hyperparams['alpha']
             )
 
             final_l += l
 
             sample.agent.pack_data_x(final_lx, ls, data_types=[data_type])
-            sample.agent.pack_data_x(final_lxx, lss,
-                                     data_types=[data_type, data_type])
+            sample.agent.pack_data_x(final_lxx, lss, data_types=[data_type, data_type])
         return final_l, final_lx, final_lu, final_lxx, final_luu, final_lux
 
     def eval_mu(self, mu, T, Du, Dx):
@@ -86,8 +83,7 @@ class CostState(Cost):
             _, dim_sensor = x.shape
 
             wpm = get_ramp_multiplier(
-                self._hyperparams['ramp_option'], T,
-                wp_final_multiplier=self._hyperparams['wp_final_multiplier']
+                self._hyperparams['ramp_option'], T, wp_final_multiplier=self._hyperparams['wp_final_multiplier']
             )
             wp = wp * np.expand_dims(wpm, axis=-1)
             # Compute state penalty.
@@ -95,10 +91,8 @@ class CostState(Cost):
 
             # Evaluate penalty term.
             l, ls, lss = evall1l2term(
-                wp, dist, np.tile(np.eye(dim_sensor), [T, 1, 1]),
-                np.zeros((T, dim_sensor, dim_sensor, dim_sensor)),
-                self._hyperparams['l1'], self._hyperparams['l2'],
-                self._hyperparams['alpha']
+                wp, dist, np.tile(np.eye(dim_sensor), [T, 1, 1]), np.zeros((T, dim_sensor, dim_sensor, dim_sensor)),
+                self._hyperparams['l1'], self._hyperparams['l2'], self._hyperparams['alpha']
             )
 
             final_l += l

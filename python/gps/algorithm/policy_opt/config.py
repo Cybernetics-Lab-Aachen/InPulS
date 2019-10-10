@@ -1,9 +1,4 @@
 """ Default configuration for policy optimization. """
-try:
-    from gps.algorithm.policy_opt.policy_opt_utils import construct_fc_network
-except ImportError:
-    construct_fc_network = None
-
 import os
 
 # config options shared by both caffe and tf.
@@ -25,21 +20,9 @@ GENERIC_CONFIG = {
     'random_seed': 1,
 }
 
-
-POLICY_OPT_CAFFE = {
-    # Other hyperparameters.
-    'network_model': construct_fc_network,  # Either a filename string
-                                            # or a function to call to
-                                            # create NetParameter.
-    'network_arch_params': {},  # Arguments to pass to method above.
-    'weights_file_prefix': '',
-}
-
-POLICY_OPT_CAFFE.update(GENERIC_CONFIG)
-
-
-checkpoint_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                               '..', 'policy_opt/tf_checkpoint/policy_checkpoint.ckpt'))
+checkpoint_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'policy_opt/tf_checkpoint/policy_checkpoint.ckpt')
+)
 POLICY_OPT_TF = {
     # Other hyperparameters.
     'checkpoint_prefix': checkpoint_path

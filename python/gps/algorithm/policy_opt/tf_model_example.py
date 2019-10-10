@@ -24,10 +24,10 @@ def batched_matrix_vector_multiply(vector, matrix):
 def euclidean_loss_layer(a, b, precision, batch_size):
     """ Math:  out = (action - mlp_out)'*precision*(action-mlp_out)
                     = (u-uhat)'*A*(u-uhat)"""
-    scale_factor = tf.constant(2*batch_size, dtype='float')
-    uP = batched_matrix_vector_multiply(a-b, precision)
-    uPu = tf.reduce_sum(uP*(a-b))  # this last dot product is then summed, so we just the sum all at once.
-    return uPu/scale_factor
+    scale_factor = tf.constant(2 * batch_size, dtype='float')
+    uP = batched_matrix_vector_multiply(a - b, precision)
+    uPu = tf.reduce_sum(uP * (a - b))  # this last dot product is then summed, so we just the sum all at once.
+    return uPu / scale_factor
 
 
 def get_input_layer(dim_input, dim_output):
@@ -50,7 +50,7 @@ def get_mlp_layers(mlp_input, number_layers, dimension_hidden):
         in_shape = cur_top.get_shape().dims[1].value
         cur_weight = init_weights([in_shape, dimension_hidden[layer_step]], name='w_' + str(layer_step))
         cur_bias = init_bias([dimension_hidden[layer_step]], name='b_' + str(layer_step))
-        if layer_step != number_layers-1:  # final layer has no RELU
+        if layer_step != number_layers - 1:  # final layer has no RELU
             cur_top = tf.nn.relu(tf.matmul(cur_top, cur_weight) + cur_bias)
         else:
             cur_top = tf.matmul(cur_top, cur_weight) + cur_bias
@@ -99,7 +99,7 @@ def multi_modal_network(dim_input=27, dim_output=7, batch_size=25, network_confi
     """
     n_layers = 2
     layer_size = 20
-    dim_hidden = (n_layers - 1)*[layer_size]
+    dim_hidden = (n_layers - 1) * [layer_size]
     dim_hidden.append(dim_output)
     pool_size = 2
     filter_size = 3
@@ -109,15 +109,15 @@ def multi_modal_network(dim_input=27, dim_output=7, batch_size=25, network_confi
     for sensor in network_config['obs_include']:
         dim = network_config['sensor_dims'][sensor]
         if sensor in network_config['obs_image_data']:
-            img_idx = img_idx + list(range(i, i+dim))
+            img_idx = img_idx + list(range(i, i + dim))
         else:
-            x_idx = x_idx + list(range(i, i+dim))
+            x_idx = x_idx + list(range(i, i + dim))
         i += dim
 
     nn_input, action, precision = get_input_layer(dim_input, dim_output)
 
-    state_input = nn_input[:, 0:x_idx[-1]+1]
-    image_input = nn_input[:, x_idx[-1]+1:img_idx[-1]+1]
+    state_input = nn_input[:, 0:x_idx[-1] + 1]
+    image_input = nn_input[:, x_idx[-1] + 1:img_idx[-1] + 1]
 
     # image goes through 2 convnet layers
     num_filters = network_config['num_filters']
@@ -128,13 +128,14 @@ def multi_modal_network(dim_input=27, dim_output=7, batch_size=25, network_confi
     image_input = tf.reshape(image_input, [-1, im_width, im_height, num_channels])
 
     # we pool twice, each time reducing the image size by a factor of 2.
-    conv_out_size = int(im_width/(2.0*pool_size)*im_height/(2.0*pool_size)*num_filters[1])
-    first_dense_size = conv_out_size + len(x_idx)
+    conv_out_size = int(im_width / (2.0 * pool_size) * im_height / (2.0 * pool_size) * num_filters[1])
 
     # Store layers weight & bias
     weights = {
-        'wc1': get_xavier_weights([filter_size, filter_size, num_channels, num_filters[0]], (pool_size, pool_size)), # 5x5 conv, 1 input, 32 outputs
-        'wc2': get_xavier_weights([filter_size, filter_size, num_filters[0], num_filters[1]], (pool_size, pool_size)), # 5x5 conv, 32 inputs, 64 outputs
+        'wc1': get_xavier_weights([filter_size, filter_size, num_channels, num_filters[0]],
+                                  (pool_size, pool_size)),  # 5x5 conv, 1 input, 32 outputs
+        'wc2': get_xavier_weights([filter_size, filter_size, num_filters[0], num_filters[1]],
+                                  (pool_size, pool_size)),  # 5x5 conv, 32 inputs, 64 outputs
     }
 
     biases = {
@@ -170,11 +171,8 @@ def max_pool(img, k):
 
 def get_xavier_weights(filter_shape, poolsize=(2, 2)):
     fan_in = np.prod(filter_shape[1:])
-    fan_out = (filter_shape[0] * np.prod(filter_shape[2:]) //
-               np.prod(poolsize))
+    fan_out = (filter_shape[0] * np.prod(filter_shape[2:]) // np.prod(poolsize))
 
-    low = -4*np.sqrt(6.0/(fan_in + fan_out)) # use 4 for sigmoid, 1 for tanh activation
-    high = 4*np.sqrt(6.0/(fan_in + fan_out))
+    low = -4 * np.sqrt(6.0 / (fan_in + fan_out))  # use 4 for sigmoid, 1 for tanh activation
+    high = 4 * np.sqrt(6.0 / (fan_in + fan_out))
     return tf.Variable(tf.random_uniform(filter_shape, minval=low, maxval=high, dtype=tf.float32))
-
-

@@ -8,7 +8,6 @@ from gps.algorithm.policy.config import POLICY_PRIOR_GMM
 from gps.utility.gmm import GMM
 from gps.algorithm.algorithm_utils import gauss_fit_joint_prior
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -25,6 +24,7 @@ class PolicyPriorGMM(object):
     python/gps/algorithm/dynamics/dynamics_prior_gmm.py. This is a
     similar GMM prior that is used for the dynamics estimate.
     """
+
     def __init__(self, hyperparams):
         """
         Hyperparameters:
@@ -78,8 +78,7 @@ class PolicyPriorGMM(object):
         dO = self.X.shape[2] + U.shape[2]
         XU = np.reshape(np.concatenate([self.X, U], axis=2), [T * N, dO])
         # Choose number of clusters.
-        K = int(max(2, min(self._max_clusters,
-                           np.floor(float(N * T) / self._min_samp))))
+        K = int(max(2, min(self._max_clusters, np.floor(float(N * T) / self._min_samp))))
 
         LOGGER.debug('Generating %d clusters for policy prior GMM.', K)
         self.gmm.update(XU, K)
@@ -129,12 +128,12 @@ class PolicyPriorGMM(object):
             Ys = np.concatenate([Ts, Ps], axis=1)
             # Obtain Normal-inverse-Wishart prior.
             mu0, Phi, mm, n0 = self.eval(Ts, Ps)
-            sig_reg = np.zeros((dX+dU, dX+dU))
+            sig_reg = np.zeros((dX + dU, dX + dU))
             # Slightly regularize on first timestep.
             if t == 0:
                 sig_reg[:dX, :dX] = 1e-8
-            pol_K[t, :, :], pol_k[t, :], pol_S[t, :, :] = \
-                    gauss_fit_joint_prior(Ys,
-                            mu0, Phi, mm, n0, dwts, dX, dU, sig_reg)
+            pol_K[t, :, :], pol_k[t, :], pol_S[t, :, :] = gauss_fit_joint_prior(
+                Ys, mu0, Phi, mm, n0, dwts, dX, dU, sig_reg
+            )
         pol_S += pol_sig
         return pol_K, pol_k, pol_S

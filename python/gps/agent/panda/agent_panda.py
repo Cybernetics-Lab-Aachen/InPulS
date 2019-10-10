@@ -3,14 +3,13 @@ import copy
 import logging
 import time
 import numpy as np
-import scipy as sp
 
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_PANDA
 from gps.agent.panda.utils import TimeoutException, ServiceEmulator, msg_to_sample
 
-from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS
+from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS
 
 import gps.proto.Command_pb2 as command_msgs
 
@@ -66,19 +65,17 @@ class AgentPanda(Agent):
         #     self.jac[:3] /= self.scaler.scale_[-9:-6].reshape(3, 1)
 
     def _init_pubs_and_subs(self):
-        ports = [5555, 5558, 5559]
-
         self._trial_service = ServiceEmulator(
-            self._hyperparams['trial_command_topic'], command_msgs.Command,
-            self._hyperparams['sample_result_topic'], command_msgs.State, self._hyperparams["trial_pub_url"],
-            self._hyperparams["sub_url"])
+            self._hyperparams['trial_command_topic'], command_msgs.Command, self._hyperparams['sample_result_topic'],
+            command_msgs.State, self._hyperparams["trial_pub_url"], self._hyperparams["sub_url"]
+        )
 
         self._data_service = ServiceEmulator(
-            self._hyperparams['data_request_topic'], command_msgs.Request,
-            self._hyperparams['sample_result_topic'], command_msgs.State, self._hyperparams["request_pub_url"],
-            self._hyperparams["sub_url"])
+            self._hyperparams['data_request_topic'], command_msgs.Request, self._hyperparams['sample_result_topic'],
+            command_msgs.State, self._hyperparams["request_pub_url"], self._hyperparams["sub_url"]
+        )
 
-        time.sleep(1) # wait for sub/pub to set up before publishing a message
+        time.sleep(1)  # wait for sub/pub to set up before publishing a message
 
     def _get_next_seq_id(self):
         self._seq_id = (self._seq_id + 1) % (2**30)
@@ -195,7 +192,8 @@ class AgentPanda(Agent):
 
             # Get action
             U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
-            torque_limits_ = np.array([4.0, 4.0, 4.0, 4.0, 1.0, 1.0, .5])     # TODO: find better solution to clip (same as in cpp)
+            torque_limits_ = np.array([4.0, 4.0, 4.0, 4.0, 1.0, 1.0,
+                                       .5])  # TODO: find better solution to clip (same as in cpp)
             U_t = np.clip(U_t, -torque_limits_, torque_limits_)
 
             # Perform action

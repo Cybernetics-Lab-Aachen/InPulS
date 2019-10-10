@@ -7,6 +7,7 @@ from gps.algorithm.cost.cost import Cost
 
 class CostSum(Cost):
     """ A wrapper cost function that adds other cost functions. """
+
     def __init__(self, hyperparams):
         config = copy.deepcopy(COST_SUM)
         config.update(hyperparams)
@@ -44,7 +45,6 @@ class CostSum(Cost):
             luu = luu + pluu * weight
             lux = lux + plux * weight
         return l, lx, lu, lxx, luu, lux
-
 
     def eval_mu(self, mu, T, Du, Dx):
         """

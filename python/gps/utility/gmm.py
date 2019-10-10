@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import scipy.linalg
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -12,11 +11,12 @@ def logsum(vec, axis=0, keepdims=True):
     #TODO: Add a docstring.
     maxv = np.max(vec, axis=axis, keepdims=keepdims)
     maxv[maxv == -float('inf')] = 0
-    return np.log(np.sum(np.exp(vec-maxv), axis=axis, keepdims=keepdims)) + maxv
+    return np.log(np.sum(np.exp(vec - maxv), axis=axis, keepdims=keepdims)) + maxv
 
 
 class GMM(object):
     """ Gaussian Mixture Model. """
+
     def __init__(self, init_sequential=False, eigreg=False, warmstart=True):
         self.init_sequential = init_sequential
         self.eigreg = eigreg
@@ -71,15 +71,13 @@ class GMM(object):
         cconst = np.zeros((1, 1, 1, K))
 
         for i in range(K):
-            U = scipy.linalg.cholesky(self.sigma[i, :Di, :Di],
-                                      check_finite=False)
+            U = scipy.linalg.cholesky(self.sigma[i, :Di, :Di], check_finite=False)
             Pdiff[:, :, 0, i] = scipy.linalg.solve_triangular(
-                U, scipy.linalg.solve_triangular(
-                    U.T, diff[:, :, 0, i], lower=True, check_finite=False
-                ), check_finite=False
+                U,
+                scipy.linalg.solve_triangular(U.T, diff[:, :, 0, i], lower=True, check_finite=False),
+                check_finite=False
             )
-            cconst[0, 0, 0, i] = -np.sum(np.log(np.diag(U))) - 0.5 * Di * \
-                    np.log(2 * np.pi)
+            cconst[0, 0, 0, i] = -np.sum(np.log(np.diag(U))) - 0.5 * Di * np.log(2 * np.pi)
 
         logobs = -0.5 * np.sum(diff * Pdiff, axis=0, keepdims=True) + cconst
         assert logobs.shape == (1, N, 1, K)
@@ -105,8 +103,7 @@ class GMM(object):
         # For some reason this version works way better than the "right"
         # one... could we be computing xxt wrong?
         diff = self.mu - np.expand_dims(mu, axis=0)
-        diff_expand = np.expand_dims(diff, axis=1) * \
-                np.expand_dims(diff, axis=2)
+        diff_expand = np.expand_dims(diff, axis=1) * np.expand_dims(diff, axis=2)
         wts_expand = np.expand_dims(wts, axis=2)
         sigma = np.sum((self.sigma + diff_expand) * wts_expand, axis=0)
         return mu, sigma
@@ -142,8 +139,7 @@ class GMM(object):
 
         LOGGER.debug('Fitting GMM with %d clusters on %d points', K, N)
 
-        if (not self.warmstart or self.sigma is None or
-                K != self.sigma.shape[0]):
+        if (not self.warmstart or self.sigma is None or K != self.sigma.shape[0]):
             # Initialization.
             LOGGER.debug('Initializing GMM.')
             self.sigma = np.zeros((K, Do, Do))
@@ -175,16 +171,13 @@ class GMM(object):
 
             # Compute log-likelihood.
             ll = np.sum(logsum(logobs, axis=1))
-            LOGGER.debug('GMM itr %d/%d. Log likelihood: %f',
-                         itr, max_iterations, ll)
+            LOGGER.debug('GMM itr %d/%d. Log likelihood: %f', itr, max_iterations, ll)
             if ll < prevll:
                 # TODO: Why does log-likelihood decrease sometimes?
-                LOGGER.debug('Log-likelihood decreased! Ending on itr=%d/%d',
-                             itr, max_iterations)
+                LOGGER.debug('Log-likelihood decreased! Ending on itr=%d/%d', itr, max_iterations)
                 break
-            if np.abs(ll-prevll) < 1e-5*prevll:
-                LOGGER.debug('GMM converged on itr=%d/%d',
-                             itr, max_iterations)
+            if np.abs(ll - prevll) < 1e-5 * prevll:
+                LOGGER.debug('GMM converged on itr=%d/%d', itr, max_iterations)
                 break
             prevll = ll
 
@@ -222,5 +215,4 @@ class GMM(object):
                     raise NotImplementedError()
                 else:  # Use quick and dirty regularization.
                     sigma = self.sigma[i, :, :]
-                    self.sigma[i, :, :] = 0.5 * (sigma + sigma.T) + \
-                            1e-6 * np.eye(Do)
+                    self.sigma[i, :, :] = 0.5 * (sigma + sigma.T) + 1e-6 * np.eye(Do)

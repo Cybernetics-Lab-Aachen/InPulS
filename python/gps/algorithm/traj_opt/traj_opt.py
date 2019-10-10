@@ -13,6 +13,3 @@ class TrajOpt(object):
     def update(self):
         """ Update trajectory distributions. """
         raise NotImplementedError("Must be implemented in subclass.")
-
-
-# TODO - Interface with C++ traj opt?

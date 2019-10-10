@@ -72,7 +72,8 @@ def visualize_latent_space_tsne(
     Args:
         file_name: File name without extension.
         x ndarray (N, dX) of states.
-        z_train: ndarray (N, S, dZ) with latent states were N is the number of input states and S the number of laten space sample of each state.
+        z_train: ndarray (N, S, dZ) with latent states were N is the number of input states and S the number of latent
+                 space sample of each state.
         show: Display generated plot. This is a blocking operation.
         export_data: Writes a npz file containing the plotted data points.
                      This is useful for later recreation of the plot.

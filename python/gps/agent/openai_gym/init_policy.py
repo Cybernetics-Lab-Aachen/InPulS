@@ -9,7 +9,9 @@ def init_gym_pol(hyperparams):
     env = gym.make(hyperparams['env'])
 
     if is_goal_based(env):
-        dX = env.observation_space.spaces['observation'].shape[0] + env.observation_space.spaces['desired_goal'].shape[0]
+        dX = (
+            env.observation_space.spaces['observation'].shape[0] + env.observation_space.spaces['desired_goal'].shape[0]
+        )
     else:
         dX = env.observation_space.shape[0]
     dU = env.action_space.shape[0]
@@ -25,8 +27,8 @@ def init_gym_pol(hyperparams):
     inv_pol_covar = np.empty((T, dU, dU))
 
     for t in range(T):
-        k[t] = (low+high)/2
-        PSig[t] = np.diag(np.square(high - low)/12) * hyperparams['init_var_scale']
+        k[t] = (low + high) / 2
+        PSig[t] = np.diag(np.square(high - low) / 12) * hyperparams['init_var_scale']
         cholPSig[t] = np.linalg.cholesky(PSig[t])
         inv_pol_covar[t] = np.linalg.inv(PSig[t])
 

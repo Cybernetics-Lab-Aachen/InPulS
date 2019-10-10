@@ -10,7 +10,9 @@ from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample
 
-from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS
+from gps.proto.gps_pb2 import (
+    TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS
+)
 
 import gps.proto.Command_pb2 as command_msgs
 

@@ -6,8 +6,7 @@ import numpy as np
 from gps.algorithm.cost.config import COST_FK
 from gps.algorithm.cost.cost import Cost
 from gps.algorithm.cost.cost_utils import get_ramp_multiplier
-from gps.proto.gps_pb2 import JOINT_ANGLES, END_EFFECTOR_POINTS, \
-        END_EFFECTOR_POINT_JACOBIANS
+from gps.proto.gps_pb2 import JOINT_ANGLES, END_EFFECTOR_POINTS, END_EFFECTOR_POINT_JACOBIANS
 
 
 class CostFK(Cost):
@@ -15,6 +14,7 @@ class CostFK(Cost):
     Forward kinematics cost function. Used for costs involving the end
     effector position.
     """
+
     def __init__(self, hyperparams):
         config = copy.deepcopy(COST_FK)
         config.update(hyperparams)
@@ -34,8 +34,7 @@ class CostFK(Cost):
         dU = sample.dU
 
         wpm = get_ramp_multiplier(
-            self._hyperparams['ramp_option'], T,
-            wp_final_multiplier=self._hyperparams['wp_final_multiplier']
+            self._hyperparams['ramp_option'], T, wp_final_multiplier=self._hyperparams['wp_final_multiplier']
         )
         wp = self._hyperparams['wp'] * np.expand_dims(wpm, axis=-1)
 
@@ -60,12 +59,10 @@ class CostFK(Cost):
         # order terms.
         jxx_zeros = np.zeros((T, dist.shape[1], jx.shape[2], jx.shape[2]))
         l, ls, lss = self._hyperparams['evalnorm'](
-            wp, dist, jx, jxx_zeros, self._hyperparams['l1'],
-            self._hyperparams['l2'], self._hyperparams['alpha']
+            wp, dist, jx, jxx_zeros, self._hyperparams['l1'], self._hyperparams['l2'], self._hyperparams['alpha']
         )
         # Add to current terms.
         sample.agent.pack_data_x(lx, ls, data_types=[JOINT_ANGLES])
-        sample.agent.pack_data_x(lxx, lss,
-                                 data_types=[JOINT_ANGLES, JOINT_ANGLES])
+        sample.agent.pack_data_x(lxx, lss, data_types=[JOINT_ANGLES, JOINT_ANGLES])
 
         return l, lx, lu, lxx, luu, lux

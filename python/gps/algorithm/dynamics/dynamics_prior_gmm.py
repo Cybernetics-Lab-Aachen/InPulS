@@ -81,7 +81,7 @@ class DynamicsPriorGMM(object):
         self.U = self.U[start:, :]
 
         # Compute cluster dimensionality.
-        Do = X.shape[2] + U.shape[2] + X.shape[2]  #TODO: Use Xtgt.
+        Do = X.shape[2] + U.shape[2] + X.shape[2]  # TODO: Use Xtgt.
 
         # Create dataset.
         N = self.X.shape[0]

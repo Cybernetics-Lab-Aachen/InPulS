@@ -3,7 +3,6 @@ import numpy as np
 
 from gps.algorithm.cost.cost_utils import RAMP_CONSTANT, evallogl2term, evall1l2term
 
-
 # CostFK
 COST_FK = {
     'ramp_option': RAMP_CONSTANT,  # How target cost ramps over time.
@@ -17,7 +16,6 @@ COST_FK = {
     'evalnorm': evallogl2term,
 }
 
-
 # CostState
 COST_STATE = {
     'ramp_option': RAMP_CONSTANT,  # How target cost ramps over time.
@@ -25,22 +23,22 @@ COST_STATE = {
     'l2': 1.0,
     'alpha': 1e-2,
     'wp_final_multiplier': 1.0,  # Weight multiplier on final time step.
-    'data_types': {
-        'JointAngle': {
-            'target_state': None,  # Target state - must be set.
-            'wp': None,  # State weights - must be set.
+    'data_types':
+        {
+            'JointAngle':
+                {
+                    'target_state': None,  # Target state - must be set.
+                    'wp': None,  # State weights - must be set.
+                },
         },
-    },
     'evalnorm': evall1l2term,
 }
-
 
 # CostSum
 COST_SUM = {
     'costs': [],  # A list of hyperparam dictionaries for each cost.
     'weights': [],  # Weight multipliers for each cost.
 }
-
 
 # CostAction
 COST_ACTION = {

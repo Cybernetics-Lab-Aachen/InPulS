@@ -14,12 +14,12 @@ from gps.algorithm.policy.tf_policy import TfPolicy
 from gps.algorithm.policy_opt.policy_opt import PolicyOpt
 from gps.algorithm.policy_opt.tf_utils import TfSolver
 
-
 LOGGER = logging.getLogger(__name__)
 
 
 class PolicyOptTf(PolicyOpt):
     """ Policy optimization using tensor flow for DAG computations/nonlinear function approximation. """
+
     def __init__(self, hyperparams, dO, dU):
         config = copy.deepcopy(POLICY_OPT_TF)
         config.update(hyperparams)
@@ -55,9 +55,9 @@ class PolicyOptTf(PolicyOpt):
         for sensor in self._hyperparams['network_params']['obs_include']:
             dim = self._hyperparams['network_params']['sensor_dims'][sensor]
             if sensor in self._hyperparams['network_params']['obs_image_data']:
-                self.img_idx = self.img_idx + list(range(i, i+dim))
+                self.img_idx = self.img_idx + list(range(i, i + dim))
             else:
-                self.x_idx = self.x_idx + list(range(i, i+dim))
+                self.x_idx = self.x_idx + list(range(i, i + dim))
             i += dim
         init_op = tf.initialize_all_variables()
         self.saver = tf.train.Saver(max_to_keep=None)
@@ -66,8 +66,12 @@ class PolicyOptTf(PolicyOpt):
     def init_network(self):
         """ Helper method to initialize the tf networks used """
         tf_map_generator = self._hyperparams['network_model']
-        tf_map = tf_map_generator(dim_input=self._dO, dim_output=self._dU, batch_size=self.batch_size,
-                                  network_config=self._hyperparams['network_params'])
+        tf_map = tf_map_generator(
+            dim_input=self._dO,
+            dim_output=self._dU,
+            batch_size=self.batch_size,
+            network_config=self._hyperparams['network_params']
+        )
         self.obs_tensor = tf_map.get_input_tensor()
         self.action_tensor = tf_map.get_target_output_tensor()
         self.precision_tensor = tf_map.get_precision_tensor()
@@ -76,12 +80,14 @@ class PolicyOptTf(PolicyOpt):
 
     def init_solver(self):
         """ Helper method to initialize the solver. """
-        self.solver = TfSolver(loss_scalar=self.loss_scalar,
-                               solver_name=self._hyperparams['solver_type'],
-                               base_lr=self._hyperparams['lr'],
-                               lr_policy=self._hyperparams['lr_policy'],
-                               momentum=self._hyperparams['momentum'],
-                               weight_decay=self._hyperparams['weight_decay'])
+        self.solver = TfSolver(
+            loss_scalar=self.loss_scalar,
+            solver_name=self._hyperparams['solver_type'],
+            base_lr=self._hyperparams['lr'],
+            lr_policy=self._hyperparams['lr_policy'],
+            momentum=self._hyperparams['momentum'],
+            weight_decay=self._hyperparams['weight_decay']
+        )
 
     def update(self, X, mu, prc, **kwargs):
         """
@@ -163,8 +169,7 @@ class PolicyOptTf(PolicyOpt):
         if self.policy.scale is not None:
             # TODO: Should prob be called before update?
             for n in range(N):
-                obs[n, :, self.x_idx] = (obs[n, :, self.x_idx].T.dot(self.policy.scale)
-                                         + self.policy.bias).T
+                obs[n, :, self.x_idx] = (obs[n, :, self.x_idx].T.dot(self.policy.scale) + self.policy.bias).T
 
         output = np.zeros((N, T, dU))
 

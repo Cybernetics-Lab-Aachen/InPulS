@@ -1,6 +1,5 @@
 """ Default configuration and hyperparameter values for dynamics objects. """
 
-
 # DynamicsPriorGMM
 DYN_PRIOR_GMM = {
     'min_samples_per_cluster': 20,

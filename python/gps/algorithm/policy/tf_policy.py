@@ -20,6 +20,7 @@ class TfPolicy(Policy):
         sess: tf session.
         device_string: tf device string for running on either gpu or cpu.
     """
+
     def __init__(self, dU, obs_tensor, act_op, var, sess, device_string):
         Policy.__init__(self)
         self.dU = dU
@@ -32,7 +33,7 @@ class TfPolicy(Policy):
         self.bias = None
         self.x_idx = None
 
-    def act(self, x, obs, t, noise):
+    def act(self, x, obs, t, noise, noise_clip=None):
         """
         Return an action for a state.
         Args:
@@ -46,15 +47,17 @@ class TfPolicy(Policy):
             obs = np.expand_dims(obs, axis=0)
         obs[:, self.x_idx] = obs[:, self.x_idx].dot(self.scale) + self.bias
         with tf.device(self.device_string):
-            action_mean = self.sess.run(self.act_op,
-                                        feed_dict={self.obs_tensor: obs})[0]
+            action_mean = self.sess.run(self.act_op, feed_dict={self.obs_tensor: obs})[0]
         if noise is None:
             u = action_mean
         else:
+            covar = self.chol_pol_covar.T
+            if noise_clip is not None:
+                covar = np.clip(covar, *noise_clip)
             if t is None:
-                u = action_mean + self.chol_pol_covar.T.dot(noise[0])
+                u = action_mean + covar.dot(noise[0])
             else:
-                u = action_mean + self.chol_pol_covar.T.dot(noise[t])
+                u = action_mean + covar.dot(noise[t])
         return u  # the DAG computations are batched by default, but we use batch size 1.
 
     def pickle_policy(self, deg_obs, deg_action, checkpoint_path, goal_state=None, should_hash=False):
@@ -67,9 +70,17 @@ class TfPolicy(Policy):
             checkpoint_path += hash_str
         os.mkdir(checkpoint_path + '/')
         checkpoint_path += '/_pol'
-        pickled_pol = {'deg_obs': deg_obs, 'deg_action': deg_action, 'chol_pol_covar': self.chol_pol_covar,
-                       'checkpoint_path_tf': checkpoint_path + '_tf_data', 'scale': self.scale, 'bias': self.bias,
-                       'device_string': self.device_string, 'goal_state': goal_state, 'x_idx': self.x_idx}
+        pickled_pol = {
+            'deg_obs': deg_obs,
+            'deg_action': deg_action,
+            'chol_pol_covar': self.chol_pol_covar,
+            'checkpoint_path_tf': checkpoint_path + '_tf_data',
+            'scale': self.scale,
+            'bias': self.bias,
+            'device_string': self.device_string,
+            'goal_state': goal_state,
+            'x_idx': self.x_idx
+        }
         pickle.dump(pickled_pol, open(checkpoint_path, "wb"))
         saver = tf.train.Saver()
         saver.save(self.sess, checkpoint_path + '_tf_data')
@@ -85,8 +96,12 @@ class TfPolicy(Policy):
         from tensorflow.python.framework import ops
         ops.reset_default_graph()  # we need to destroy the default graph before re_init or checkpoint won't restore.
         pol_dict = pickle.load(open(policy_dict_path, "rb"))
-        tf_map = tf_generator(dim_input=pol_dict['deg_obs'], dim_output=pol_dict['deg_action'],
-                              batch_size=1, network_config=network_config)
+        tf_map = tf_generator(
+            dim_input=pol_dict['deg_obs'],
+            dim_output=pol_dict['deg_action'],
+            batch_size=1,
+            network_config=network_config
+        )
 
         sess = tf.Session()
         init_op = tf.initialize_all_variables()
@@ -97,11 +112,12 @@ class TfPolicy(Policy):
 
         device_string = pol_dict['device_string']
 
-        cls_init = cls(pol_dict['deg_action'], tf_map.get_input_tensor(), tf_map.get_output_op(), np.zeros((1,)),
-                       sess, device_string)
+        cls_init = cls(
+            pol_dict['deg_action'], tf_map.get_input_tensor(), tf_map.get_output_op(), np.zeros((1, )), sess,
+            device_string
+        )
         cls_init.chol_pol_covar = pol_dict['chol_pol_covar']
         cls_init.scale = pol_dict['scale']
         cls_init.bias = pol_dict['bias']
         cls_init.x_idx = pol_dict['x_idx']
         return cls_init
-

@@ -39,6 +39,5 @@ def setup(value, n):
             return [value.copy() for _ in range(n)]
         except AttributeError:
             return [value for _ in range(n)]
-    assert len(value) == n, \
-            'Number of elements must match number of conditions or 1.'
+    assert len(value) == n, 'Number of elements must match number of conditions or 1.'
     return value

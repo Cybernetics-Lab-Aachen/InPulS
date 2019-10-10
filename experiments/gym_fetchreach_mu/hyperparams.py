@@ -23,9 +23,9 @@ from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
 
 SENSOR_DIMS = {
-    'observation': 10,  # FetchReach 10, Fetch 25
-    END_EFFECTOR_POINTS: 3,  # 1*3, 15 hand
-    ACTION: 4,  #4 , 20 Hand
+    'observation': 10,
+    END_EFFECTOR_POINTS: 3,
+    ACTION: 4,
 }
 
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
@@ -184,10 +184,10 @@ if algorithm['dynamics']['prior']['regularization'] > 0:
     param_str += '-Preg%r' % algorithm['dynamics']['prior']['regularization']
 if agent['action_noise_clip'] is not None:
     param_str += '-Uclip(%.2f,%.2f)' % agent['action_noise_clip']
-param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol' if not algorithm['sample_on_policy'] else '-gps_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+# Only make changes to filesystem if loaded by training process
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
     from pathlib import Path
     from shutil import copy2
 

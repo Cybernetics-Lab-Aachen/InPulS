@@ -7,7 +7,6 @@ from gps.algorithm.traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_IT
 from gps.algorithm.traj_opt.config import TRAJ_OPT_LQR
 import abc
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -22,7 +21,7 @@ class Algorithm_NN(Algorithm):
         self.init_step_mult = []
 
     @abc.abstractmethod
-    def _update_trajectories(self, train):
+    def _update_trajectories(self):
         """
         Compute new linear Gaussian controllers.
         """
@@ -49,8 +48,7 @@ class Algorithm_NN(Algorithm):
         index_u = slice(dimX, dimX + dimU)
 
         # Get quadratic expansion of the extended cost function
-        Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info,
-                                                     prev_traj_distr)
+        Cm_ext, cv_ext = self.compute_extended_costs(eta, traj_info, prev_traj_distr)
         self.Cm_ext = Cm_ext
         self.cv_ext = cv_ext
 
@@ -85,27 +83,20 @@ class Algorithm_NN(Algorithm):
 
             # Compute mean terms.
             traj_distr.K[t, :, :] = -sp.linalg.solve_triangular(
-                U, sp.linalg.solve_triangular(L, Qm[index_u, index_x],
-                                              lower=True)
+                U, sp.linalg.solve_triangular(L, Qm[index_u, index_x], lower=True)
             )
-            traj_distr.k[t, :] = -sp.linalg.solve_triangular(
-                U, sp.linalg.solve_triangular(L, qv[index_u], lower=True)
-            )
+            traj_distr.k[t, :] = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, qv[index_u], lower=True))
 
             # Store conditional covariance, inverse, and Cholesky.
             traj_distr.pol_covar[t, :, :] = sp.linalg.solve_triangular(
                 U, sp.linalg.solve_triangular(L, np.eye(dimU), lower=True)
             )
 
-            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(
-                traj_distr.pol_covar[t, :, :]
-            )
+            traj_distr.chol_pol_covar[t, :, :] = sp.linalg.cholesky(traj_distr.pol_covar[t, :, :])
             traj_distr.inv_pol_covar[t, :, :] = Qm[index_u, index_u]
 
-
             # Compute value function.
-            Vm[t, :, :] = Qm[index_x, index_x] + \
-                          Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
+            Vm[t, :, :] = Qm[index_x, index_x] + Qm[index_x, index_u].dot(traj_distr.K[t, :, :])
             # Symmetrize quadratic component to counter numerical errors.
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
@@ -148,8 +139,7 @@ class Algorithm_NN(Algorithm):
         sigma[0, index_x, index_x] = traj_info.x0sigma
 
         for t in range(T):
-            mu[t, index_u] = traj_distr.K[t, :, :].dot(mu[t, index_x]) + \
-                             traj_distr.k[t, :]
+            mu[t, index_u] = traj_distr.K[t, :, :].dot(mu[t, index_x]) + traj_distr.k[t, :]
 
             sigma[t, index_x, index_u] = \
                 sigma[t, index_x, index_x].dot(traj_distr.K[t, :, :].T)
@@ -157,11 +147,9 @@ class Algorithm_NN(Algorithm):
             sigma[t, index_u, index_x] = \
                 traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x])
 
-            sigma[t, index_u, index_u] = \
-                traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
-                    traj_distr.K[t, :, :].T
-                ) + traj_distr.pol_covar[t, :, :]
-
+            sigma[t, index_u, index_u] = traj_distr.K[t, :, :].dot(sigma[t, index_x, index_x]).dot(
+                traj_distr.K[t, :, :].T
+            ) + traj_distr.pol_covar[t, :, :]
 
             if t < T - 1:
                 mu[t + 1, index_x] = Fm[t, :, :].dot(mu[t, :]) + fv[t, :]
@@ -172,7 +160,7 @@ class Algorithm_NN(Algorithm):
 
         return mu, sigma
 
-    def iteration(self, sample_lists, itr=None, train_gcm = False):
+    def iteration(self, sample_lists, itr):
         """
         Run iteration of LQR.
         Args:
@@ -196,7 +184,7 @@ class Algorithm_NN(Algorithm):
                 self._stepadjust(m)
             self.init_step_mult.append(copy.deepcopy(self.cur[m].step_mult))
 
-        self._update_trajectories(train_gcm)
+        self._update_trajectories()
 
         self._advance_iteration_variables()
 
@@ -209,21 +197,15 @@ class Algorithm_NN(Algorithm):
         # Compute values under Laplace approximation. This is the policy
         # that the previous samples were actually drawn from under the
         # dynamics that were estimated from the previous samples.
-        previous_laplace_obj = self.estimate_cost(
-            self.prev[m].traj_distr, self.prev[m].traj_info
-        )
+        previous_laplace_obj = self.estimate_cost(self.prev[m].traj_distr, self.prev[m].traj_info)
         # This is the policy that we just used under the dynamics that
         # were estimated from the previous samples (so this is the cost
         # we thought we would have).
-        new_predicted_laplace_obj = self.estimate_cost(
-            self.cur[m].traj_distr, self.prev[m].traj_info
-        )
+        new_predicted_laplace_obj = self.estimate_cost(self.cur[m].traj_distr, self.prev[m].traj_info)
 
         # This is the actual cost we have under the current trajectory
         # based on the latest samples.
-        new_actual_laplace_obj = self.estimate_cost(
-            self.cur[m].traj_distr, self.cur[m].traj_info
-        )
+        new_actual_laplace_obj = self.estimate_cost(self.cur[m].traj_distr, self.cur[m].traj_info)
 
         # Measure the entropy of the current trajectory (for printout).
         ent = self._measure_ent(m)
@@ -232,24 +214,17 @@ class Algorithm_NN(Algorithm):
         previous_mc_obj = np.mean(np.sum(self.prev[m].cs, axis=1), axis=0)
         new_mc_obj = np.mean(np.sum(self.cur[m].cs, axis=1), axis=0)
 
-        LOGGER.debug('Trajectory step: ent: %f cost: %f -> %f',
-                     ent, previous_mc_obj, new_mc_obj)
+        LOGGER.debug('Trajectory step: ent: %f cost: %f -> %f', ent, previous_mc_obj, new_mc_obj)
 
         # Compute predicted and actual improvement.
-        predicted_impr = np.sum(previous_laplace_obj) - \
-                np.sum(new_predicted_laplace_obj)
-        actual_impr = np.sum(previous_laplace_obj) - \
-                np.sum(new_actual_laplace_obj)
+        predicted_impr = np.sum(previous_laplace_obj) - np.sum(new_predicted_laplace_obj)
+        actual_impr = np.sum(previous_laplace_obj) - np.sum(new_actual_laplace_obj)
 
         # Print improvement details.
-        LOGGER.debug('Previous cost: Laplace: %f MC: %f',
-                     np.sum(previous_laplace_obj), previous_mc_obj)
-        LOGGER.debug('Predicted new cost: Laplace: %f MC: %f',
-                     np.sum(new_predicted_laplace_obj), new_mc_obj)
-        LOGGER.debug('Actual new cost: Laplace: %f MC: %f',
-                     np.sum(new_actual_laplace_obj), new_mc_obj)
-        LOGGER.debug('Predicted/actual improvement: %f / %f',
-                     predicted_impr, actual_impr)
+        LOGGER.debug('Previous cost: Laplace: %f MC: %f', np.sum(previous_laplace_obj), previous_mc_obj)
+        LOGGER.debug('Predicted new cost: Laplace: %f MC: %f', np.sum(new_predicted_laplace_obj), new_mc_obj)
+        LOGGER.debug('Actual new cost: Laplace: %f MC: %f', np.sum(new_actual_laplace_obj), new_mc_obj)
+        LOGGER.debug('Predicted/actual improvement: %f / %f', predicted_impr, actual_impr)
 
         self._set_new_mult(predicted_impr, actual_impr, m)
 
@@ -266,10 +241,9 @@ class Algorithm_NN(Algorithm):
         # Compute cost.
         predicted_cost = np.zeros(T)
         for t in range(T):
-            predicted_cost[t] = traj_info.cc[t] + 0.5 * \
-                    np.sum(sigma[t, :, :] * traj_info.Cm[t, :, :]) + 0.5 * \
-                    mu[t, :].T.dot(traj_info.Cm[t, :, :]).dot(mu[t, :]) + \
-                    mu[t, :].T.dot(traj_info.cv[t, :])
+            predicted_cost[t] = traj_info.cc[t] + 0.5 * np.sum(
+                sigma[t, :, :] * traj_info.Cm[t, :, :]
+            ) + 0.5 * mu[t, :].T.dot(traj_info.Cm[t, :, :]).dot(mu[t, :]) + mu[t, :].T.dot(traj_info.cv[t, :])
         return predicted_cost
 
     def traj_opt_update(self, m):
@@ -294,41 +268,35 @@ class Algorithm_NN(Algorithm):
         mus = []
         for itr in range(DGD_MAX_ITER):
 
-            LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)",
-                    itr, min_eta, eta, max_eta)
+            LOGGER.debug("Iteration %i, bracket: (%.2e , %.2e , %.2e)", itr, min_eta, eta, max_eta)
 
             # Run fwd/bwd pass, note that eta may be updated.
             # NOTE: we can just ignore case when the new eta is larger.
-            traj_distr = self.backward(prev_traj_distr, traj_info,
-                                                eta)
+            traj_distr = self.backward(prev_traj_distr, traj_info, eta)
             new_mu, new_sigma = self.forward(traj_distr, traj_info)
             mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
-            kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma,
-                                   traj_distr, prev_traj_distr)
+            kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
             # print("kl_div - kl_step: ", con)
             # Convergence check - constraint satisfaction.
-            if (abs(con) < 0.1*kl_step):
-                LOGGER.debug("KL: %f / %f, converged iteration %i",
-                        kl_div, kl_step, itr)
+            if (abs(con) < 0.1 * kl_step):
+                LOGGER.debug("KL: %f / %f, converged iteration %i", kl_div, kl_step, itr)
                 break
 
             # Choose new eta (bisect bracket or multiply by constant)
-            if con < 0: # Eta was too big.
+            if con < 0:  # Eta was too big.
                 max_eta = eta
-                geom = np.sqrt(min_eta*max_eta)  # Geometric mean.
-                new_eta = max(geom, 0.1*max_eta)
-                LOGGER.debug("KL: %f / %f, eta too big, new eta: %f",
-                        kl_div, kl_step, new_eta)
-            else: # Eta was too small.
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = max(geom, 0.1 * max_eta)
+                LOGGER.debug("KL: %f / %f, eta too big, new eta: %f", kl_div, kl_step, new_eta)
+            else:  # Eta was too small.
                 min_eta = eta
-                geom = np.sqrt(min_eta*max_eta)  # Geometric mean.
-                new_eta = min(geom, 10.0*min_eta)
-                LOGGER.debug("KL: %f / %f, eta too small, new eta: %f",
-                        kl_div, kl_step, new_eta)
+                geom = np.sqrt(min_eta * max_eta)  # Geometric mean.
+                new_eta = min(geom, 10.0 * min_eta)
+                LOGGER.debug("KL: %f / %f, eta too small, new eta: %f", kl_div, kl_step, new_eta)
 
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
@@ -336,10 +304,8 @@ class Algorithm_NN(Algorithm):
             # print("eta_1: ", eta)
             # print("kl_step: ", kl_step)
 
-        if kl_div > kl_step and abs(kl_div - kl_step) > 0.1*kl_step:
-            LOGGER.warning(
-                "Final KL divergence after DGD convergence is too high."
-            )
+        if kl_div > kl_step and abs(kl_div - kl_step) > 0.1 * kl_step:
+            LOGGER.warning("Final KL divergence after DGD convergence is too high.")
 
         from gps.visualization.traj_opt import visualize_traj_opt
         visualize_traj_opt(
@@ -362,18 +328,12 @@ class Algorithm_NN(Algorithm):
 
         # Add in the trajectory divergence term.
         for t in range(self.T - 1, -1, -1):
-            Cm_ext[t, :, :] += np.vstack([
-                np.hstack([
-                    K[t, :, :].T.dot(ipc[t, :, :]).dot(K[t, :, :]),
-                    -K[t, :, :].T.dot(ipc[t, :, :])
-                ]),
-                np.hstack([
-                    -ipc[t, :, :].dot(K[t, :, :]), ipc[t, :, :]
-                ])
-            ])
-            cv_ext[t, :] += np.hstack([
-                K[t, :, :].T.dot(ipc[t, :, :]).dot(k[t, :]),
-                -ipc[t, :, :].dot(k[t, :])
-            ])
+            Cm_ext[t, :, :] += np.vstack(
+                [
+                    np.hstack([K[t, :, :].T.dot(ipc[t, :, :]).dot(K[t, :, :]), -K[t, :, :].T.dot(ipc[t, :, :])]),
+                    np.hstack([-ipc[t, :, :].dot(K[t, :, :]), ipc[t, :, :]])
+                ]
+            )
+            cv_ext[t, :] += np.hstack([K[t, :, :].T.dot(ipc[t, :, :]).dot(k[t, :]), -ipc[t, :, :].dot(k[t, :])])
 
         return Cm_ext, cv_ext

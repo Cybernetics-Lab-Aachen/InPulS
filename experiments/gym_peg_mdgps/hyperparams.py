@@ -86,7 +86,7 @@ agent = {
     'T': 100,
     'random_reset': False,
     'x0': [131, 327, 356, 491, 529, 853, 921, 937],  # Random seeds for each initial condition, 1
-    'dt': 1.0/25,
+    'dt': 1.0 / 25,
     'env': 'PegInsertion-v0',
     'conditions': common['conditions'],
     'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, 'diff'],
@@ -104,9 +104,6 @@ algorithm = {
     'max_step_mult': 3.0,
     'policy_sample_mode': 'replace',
     'sample_on_policy': False,
-    #'tac_policy': {
-    #    'history': 10,
-    #},
 }
 
 algorithm['init_traj_distr'] = {
@@ -116,10 +113,7 @@ algorithm['init_traj_distr'] = {
     'T': agent['T'],
 }
 
-action_cost = {
-    'type': CostAction,
-    'wu': np.ones(SENSOR_DIMS[ACTION])
-}
+action_cost = {'type': CostAction, 'wu': np.ones(SENSOR_DIMS[ACTION])}
 
 fk_cost = {
     'type': CostFK,
@@ -139,13 +133,14 @@ algorithm['cost'] = {
 algorithm['dynamics'] = {
     'type': DynamicsLRPrior,
     'regularization': 1e-6,
-    'prior': {
-        'type': DynamicsPriorGMM,
-        'max_clusters': 20,
-        'min_samples_per_cluster': 40,
-        'max_samples': 5*common['conditions'],
-        'strength': 1,
-    },
+    'prior':
+        {
+            'type': DynamicsPriorGMM,
+            'max_clusters': 20,
+            'min_samples_per_cluster': 40,
+            'max_samples': 5 * common['conditions'],
+            'strength': 1,
+        },
 }
 
 algorithm['traj_opt'] = {
@@ -154,11 +149,12 @@ algorithm['traj_opt'] = {
 
 algorithm['policy_opt'] = {
     'type': PolicyOptTf,
-    'network_params': {
-        'obs_include': agent['obs_include'],
-        'obs_vector_data': agent['obs_include'],
-        'sensor_dims': SENSOR_DIMS,
-    },
+    'network_params':
+        {
+            'obs_include': agent['obs_include'],
+            'obs_vector_data': agent['obs_include'],
+            'sensor_dims': SENSOR_DIMS,
+        },
     'save_path': common['data_files_dir'],
     'network_model': example_tf_network,
     'iterations': 3000,
@@ -194,6 +190,5 @@ param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
-param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol' if not algorithm['sample_on_policy'] else '-gps_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 mkdir(common['data_files_dir'])

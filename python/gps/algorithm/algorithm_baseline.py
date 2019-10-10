@@ -15,7 +15,7 @@ class AlgorithmBaseline(Algorithm):
 
         self.policy_opt = self._hyperparams['policy_opt']['type'](self._hyperparams['policy_opt'], self.dO, self.dU)
 
-    def iteration(self, sample_lists, _):
+    def iteration(self, sample_lists, itr):
         # Store the samples and evaluate the costs.
         for m in range(self.M):
             self.cur[m].sample_list = sample_lists[m]

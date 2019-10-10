@@ -21,9 +21,9 @@ from gps.gui.config import generate_experiment_info
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 
 SENSOR_DIMS = {
-    'observation': 10,  # FetchReach 10, Fetch 25
-    END_EFFECTOR_POINTS: 3,  # 1*3, 15 hand
-    ACTION: 4,  #4 , 20 Hand
+    'observation': 10,
+    END_EFFECTOR_POINTS: 3,
+    ACTION: 4,
 }
 
 BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
@@ -61,7 +61,7 @@ agent = {
     'dt': 1.0 / 25,
     'env': 'FetchReach-v1',
     'sensor_dims': SENSOR_DIMS,
-    'target_state': scaler.transform([np.zeros(13)])[0, -3:],  # Target np.zeros(3), 
+    'target_state': scaler.transform([np.zeros(13)])[0, -3:],
     'conditions': common['conditions'],
     'state_include': ['observation', END_EFFECTOR_POINTS],
     'obs_include': ['observation', END_EFFECTOR_POINTS],
@@ -147,10 +147,10 @@ param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
-param_str += '-tac_pol' if 'tac_policy' in algorithm else '-lqr_pol'
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+# Only make changes to filesystem if loaded by training process
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
     from pathlib import Path
     from shutil import copy2
 

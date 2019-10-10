@@ -37,8 +37,10 @@ class AgentOpenAIGym(Agent):
 
         self.sim = self.env.sim
         if is_goal_based(self.env):
-            dX = self.env.observation_space.spaces['observation'].shape[0] + self.env.observation_space.spaces[
-                'desired_goal'].shape[0]
+            dX = (
+                self.env.observation_space.spaces['observation'].shape[0] +
+                self.env.observation_space.spaces['desired_goal'].shape[0]
+            )
         else:
             dX = self.env.observation_space.shape[0]
         dU = self.env.action_space.shape[0]
