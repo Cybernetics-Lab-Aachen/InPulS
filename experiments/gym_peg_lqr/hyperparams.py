@@ -1,12 +1,11 @@
 """ Hyperparameters for Box2d Point Mass."""
-from __future__ import division
 
 import os.path
-from os import mkdir
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from __main__ import __file__ as main_filepath
 from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
@@ -88,6 +87,7 @@ agent = {
     'conditions': common['conditions'],
     'state_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, 'diff'],
     'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, 'diff'],
+    'actions_include': [ACTION],
     # 'scaler': scaler,
     'additional_sensors': additional_sensors,
 }
@@ -105,7 +105,12 @@ algorithm['init_traj_distr'] = {
     'T': agent['T'],
 }
 
-action_cost = {'type': CostAction, 'wu': np.ones(SENSOR_DIMS[ACTION])}
+action_cost = {
+    'type': CostAction,
+    'wu': np.ones(SENSOR_DIMS[ACTION]),
+    'name': 'Action',
+    'target_state': np.zeros(SENSOR_DIMS[ACTION]),
+}
 
 fk_cost = {
     'type': CostFK,
@@ -114,6 +119,7 @@ fk_cost = {
     'l1': 0.1,
     'l2': 10.0,
     'alpha': 1e-5,
+    'name': 'FK',
 }
 
 algorithm['cost'] = {
@@ -142,7 +148,10 @@ algorithm['traj_opt'] = {
 config = {
     'iterations': algorithm['iterations'],
     'num_samples': 5,
-    'num_pol_samples': 0,
+    'num_lqr_samples_static': 1,
+    'num_lqr_samples_random': 5,
+    'num_pol_samples_static': 1,
+    'num_pol_samples_random': 20,
     'save_samples': False,
     'verbose_trials': 0,
     'common': common,
@@ -152,11 +161,18 @@ config = {
 }
 
 param_str = 'peg_lqr'
-baseline = True
 param_str += '-random' if agent['random_reset'] else '-static'
 param_str += '-M%d' % config['common']['conditions']
 param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
-mkdir(common['data_files_dir'])
+
+# Only make changes to filesystem if loaded by training process
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
+    from pathlib import Path
+    from shutil import copy2
+
+    # Make expirement folder and copy hyperparams
+    Path(common['data_files_dir']).mkdir(parents=True, exist_ok=False)
+    copy2(EXP_DIR + 'hyperparams.py', common['data_files_dir'])

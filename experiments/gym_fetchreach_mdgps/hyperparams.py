@@ -1,5 +1,4 @@
 """ Hyperparameters for Box2d Point Mass."""
-from __future__ import division
 
 from datetime import datetime
 import numpy as np

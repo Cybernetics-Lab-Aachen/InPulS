@@ -1,5 +1,4 @@
 """ Hyperparameters for Box2d Point Mass."""
-from __future__ import division
 
 import os.path
 from datetime import datetime
