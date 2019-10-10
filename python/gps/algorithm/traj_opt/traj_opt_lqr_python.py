@@ -8,7 +8,7 @@ import scipy as sp
 
 from gps.algorithm.traj_opt.config import TRAJ_OPT_LQR
 from gps.algorithm.traj_opt.traj_opt import TrajOpt
-from gps.algorithm.traj_opt.traj_opt_utils import traj_distr_kl, DGD_MAX_ITER
+from gps.algorithm.traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_ITER
 
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
 
@@ -24,8 +24,7 @@ class TrajOptLQRPython(TrajOpt):
 
         TrajOpt.__init__(self, config)
 
-    # TODO - Add arg and return spec on this function.
-    def update(self, m, algorithm, minAdvantage=False, initial_update=False):
+    def update(self, m, algorithm, initial_update=False):
         """ Run dual gradient decent to optimize trajectories. """
         T = algorithm.T
         eta = algorithm.cur[m].eta
@@ -58,12 +57,8 @@ class TrajOptLQRPython(TrajOpt):
             mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
-            kl_div = traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
+            kl_div, _ = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
-
-            #print("kl_step: ", kl_step)
-            #print("con: ", con)
-            #print("kl_div: ", kl_div)
 
             # Convergence check - constraint satisfaction.
             if (abs(con) < 0.1 * kl_step):
@@ -84,12 +79,6 @@ class TrajOptLQRPython(TrajOpt):
 
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
-
-        if minAdvantage:
-            traj_distr = self._compute_advantage_stabilizing_controller(
-                traj_distr, copy.deepcopy(prev_traj_distr), traj_info, new_mu
-            )
-            new_mu, new_sigma = self.forward(traj_distr, traj_info)
 
         if kl_div > kl_step and abs(kl_div - kl_step) > 0.1 * kl_step:
             LOGGER.warning("Final KL divergence after DGD convergence is too high.")
@@ -288,96 +277,3 @@ class TrajOptLQRPython(TrajOpt):
                             reasonably well conditioned)!'
                     )
         return traj_distr, eta
-
-    def _compute_advantage_stabilizing_controller(self, gcm_traj_distr, ref_traj_distr, traj_info, mu_gcm):
-        # Constants.
-        T = gcm_traj_distr.T
-        dimU = gcm_traj_distr.dU
-        dimX = gcm_traj_distr.dX
-        index_x = slice(dimX)
-        index_u = slice(dimX, dimX + dimU)
-
-        # Pull out dynamics.
-        Fm = traj_info.dynamics.Fm
-        fv = traj_info.dynamics.fv
-
-        # Allocate.
-        Vm = np.zeros((T, dimX, dimX))
-        vv = np.zeros((T, dimX))
-
-        traj_distr = copy.deepcopy(gcm_traj_distr)
-
-        # Get quadratic expansion of the extended cost function
-        #self.Cm_ext, self.cv_ext = self.compute_extended_costs(eta, traj_info, gcm_traj_distr)
-
-        # Compute state-action-state function at each time step.
-        for t in range(T - 1, -1, -1):
-            # Add in the cost.
-            Qm = self.Cm_ext[t, :, :]  # (X+U) x (X+U)
-            qv = self.cv_ext[t, :]  # (X+U) x 1
-            gcm_Qm = gcm_traj_distr.Qm[t, :, :]
-            gcm_qv = gcm_traj_distr.qv[t, :]
-            ref_Qm = ref_traj_distr.Qm[t, :, :]  # (X+U) x (X+U)
-            ref_qv = ref_traj_distr.qv[t, :]  # (X+U) x 1
-
-            # Add in the value function from the next time step.
-            if t < T - 1:
-                Qm += Fm[t, :, :].T.dot(Vm[t + 1, :, :]).dot(Fm[t, :, :])
-                qv += Fm[t, :, :].T.dot(vv[t + 1, :] + Vm[t + 1, :, :].dot(fv[t, :]))
-
-            # Symmetrize quadratic component to counter numerical errors.
-            Qm = 0.5 * (Qm + Qm.T)
-
-            x_gcm = mu_gcm[t, index_x]
-            u_gcm = mu_gcm[t, index_u]
-
-            traj_distr.K[t, :, :], traj_distr.k[t, :], traj_distr.pol_covar[t, :, :], traj_distr.chol_pol_covar[
-                t, :, :
-            ], traj_distr.inv_pol_covar[t, :, :] = self._compute_advantage_controller(
-                Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, traj_info.xmu[t, index_x], traj_info.xmu[t, index_u], x_gcm,
-                u_gcm, dimU, dimX
-            )
-
-            Vm[t, :, :], vv[t, :] = self._compute_value_function(
-                Qm, qv, traj_distr.K[t, :, :], traj_distr.k[t, :], dimU, dimX
-            )
-
-        return traj_distr
-
-    def _compute_advantage_controller(
-        self, Qm, qv, ref_Qm, ref_qv, gcm_Qm, gcm_qv, x_real, u_real, x_gcm, u_gcm, dU, dX
-    ):
-        index_x = slice(dX)
-        index_u = slice(dX, dX + dU)
-
-        # Compute Cholesky decomposition of Q function action
-        # component.
-        U = sp.linalg.cholesky(Qm[index_u, index_u])
-        L = U.T
-
-        # Compute mean terms.
-        K = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, Qm[index_u, index_x], lower=True))
-
-        # Compute advantage offset + cost-to-go under current trajectory
-        q_adv = qv[index_u] + gcm_Qm[index_u, index_x].dot(x_gcm) + gcm_Qm[index_u, index_u].dot(u_gcm) + gcm_qv[
-            index_u
-        ] - ref_Qm[index_u, index_x].dot(x_real) - ref_Qm[index_u, index_u].dot(u_real) - ref_qv[index_u]
-
-        k = -sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, q_adv, lower=True))
-
-        # Store conditional covariance, inverse, and Cholesky.
-        pol_covar = sp.linalg.solve_triangular(U, sp.linalg.solve_triangular(L, np.eye(dU), lower=True))
-        chol_pol_covar = sp.linalg.cholesky(pol_covar)
-        inv_pol_covar = Qm[index_u, index_u]
-        return K, k, pol_covar, chol_pol_covar, inv_pol_covar
-
-    def _compute_value_function(self, Qm, qv, K, k, dU, dX):
-        index_x = slice(dX)
-        index_u = slice(dX, dX + dU)
-
-        # Compute value function.
-        Vm = Qm[index_x, index_x] + Qm[index_x, index_u].dot(K)
-        # Symmetrize quadratic component to counter numerical errors.
-        Vm = 0.5 * (Vm + Vm.T)
-        vv = qv[index_x] + Qm[index_x, index_u].dot(k)
-        return Vm, vv

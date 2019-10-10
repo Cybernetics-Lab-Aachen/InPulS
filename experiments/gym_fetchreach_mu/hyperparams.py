@@ -18,7 +18,6 @@ from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
 from gps.algorithm.gps.mu_policy import MU_Policy
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.openai_gym.init_policy import init_gym_pol
-from gps.gui.config import generate_experiment_info
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
 
@@ -165,13 +164,10 @@ config = {
     'verbose_trials': 0,
     'common': common,
     'agent': agent,
-    'gui_on': False,
     'algorithm': algorithm,
     'random_seed': 0,
     'traing_progress_metric': lambda X: np.linalg.norm(scaler.inverse_transform(X[-1:])[0, -3:]),
 }
-
-common['info'] = generate_experiment_info(config)
 
 param_str = 'fetchreach_mu'
 param_str += '-random' if agent['random_reset'] else '-static'

@@ -186,34 +186,6 @@ class PolicyOptTf(PolicyOpt):
 
         return output, pol_sigma, pol_prec, pol_det_sigma
 
-    def set_ent_reg(self, ent_reg):
-        """ Set the entropy regularization. """
-        self._hyperparams['ent_reg'] = ent_reg
-
-    # For pickling.
-    def __getstate__(self):
-        return {
-            'hyperparams': self._hyperparams,
-            'dO': self._dO,
-            'dU': self._dU,
-            'scale': self.policy.scale,
-            'bias': self.policy.bias,
-            'tf_iter': self.tf_iter,
-        }
-
-    # For unpickling.
-    def __setstate__(self, state):
-        from tensorflow.python.framework import ops
-        ops.reset_default_graph()  # we need to destroy the default graph before re_init or checkpoint won't restore.
-        self.__init__(state['hyperparams'], state['dO'], state['dU'])
-        self.policy.scale = state['scale']
-        self.policy.bias = state['bias']
-        self.tf_iter = state['tf_iter']
-
-        saver = tf.train.Saver()
-        check_file = self.checkpoint_file
-        saver.restore(self.sess, check_file)
-
     def restore_model(self, data_files_dir, iteration_count):
         self._data_files_dir = data_files_dir
         self.iteration_count = iteration_count

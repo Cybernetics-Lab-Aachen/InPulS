@@ -78,24 +78,6 @@ class PolicyInfo(BundleType):
         return LinearGaussianPolicy(self.pol_K, self.pol_k, self.pol_S, self.chol_pol_S, inv_pol_S)
 
 
-def estimate_moments(X, mu, covar):
-    """ Estimate the moments for a given linearized policy. """
-    N, T, dX = X.shape
-    dU = mu.shape[-1]
-    if len(covar.shape) == 3:
-        covar = np.tile(covar, [N, 1, 1, 1])
-    Xmu = np.concatenate([X, mu], axis=2)
-    ev = np.mean(Xmu, axis=0)
-    em = np.zeros((N, T, dX + dU, dX + dU))
-    pad1 = np.zeros((dX, dX + dU))
-    pad2 = np.zeros((dU, dX))
-    for n in range(N):
-        for t in range(T):
-            covar_pad = np.vstack([pad1, np.hstack([pad2, covar[n, t, :, :]])])
-            em[n, t, :, :] = np.outer(Xmu[n, t, :], Xmu[n, t, :]) + covar_pad
-    return ev, em
-
-
 def gauss_fit_joint_prior(pts, mu0, Phi, m, n0, dwts, dX, dU, sig_reg):
     """ Perform Gaussian fit to data with a prior. """
     # Build weights matrix.

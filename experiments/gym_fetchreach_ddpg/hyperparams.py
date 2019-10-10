@@ -138,7 +138,6 @@ config = {
     'verbose_trials': 0,
     'common': common,
     'agent': agent,
-    'gui_on': False,
     'algorithm': algorithm,
     'random_seed': 0,
     'traing_progress_metric': lambda X: np.linalg.norm(scaler.inverse_transform(X[-1:])[0, -3:]),
@@ -154,7 +153,8 @@ param_str += '-h%r' % algorithm['policy_opt']['network_kwargs']['num_hidden']
 param_str += '-l%d' % algorithm['policy_opt']['memory_limit']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+# Only make changes to filesystem if loaded by training process
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
     from pathlib import Path
     from shutil import copy2
 

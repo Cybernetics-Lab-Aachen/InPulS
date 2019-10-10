@@ -11,8 +11,7 @@ class Dynamics(object):
     def __init__(self, hyperparams):
         self._hyperparams = hyperparams
 
-        # TODO - Currently assuming that dynamics will always be linear
-        #        with X.
+        # TODO - Currently assuming that dynamics will always be linear with X.
         # TODO - Allocate arrays using hyperparams dU, dX, T.
 
         # Fitted dynamics: x_t+1 = Fm * [x_t;u_t] + fv.

@@ -19,7 +19,7 @@ from gps.algorithm.cost.cost_utils import evallogl2term
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.agent.opcua_azo.init_policy import init_azo_pol
-from gps.gui.target_setup_gui import load_pose_from_npz
+from gps.agent.ros_jaco.util import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION, TRIAL_ARM, JOINT_SPACE
 
 EE_POINTS = np.array([[0.04, -0.03, -0.18], [-0.04, -0.03, -0.18], [0.0, 0.03, -0.12]])
@@ -228,7 +228,6 @@ config = {
     'common': common,
     'min_iteration_for_testing': 15,
     'agent': agent,
-    'gui_on': False,
     'algorithm': algorithm,
     'experiment_ID': common['experiment_ID'],
     'dir': common['cost_log_dir'],
@@ -253,7 +252,8 @@ param_str += '-%ds' % config['num_samples']
 param_str += '-T%d' % agent['T']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':  # Only make changes to filesystem if loaded by training process
+# Only make changes to filesystem if loaded by training process
+if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
     from pathlib import Path
     from shutil import copy2
 

@@ -5,6 +5,7 @@ DEFAULT_JOINT_ANGLES = np.zeros(7)
 DEFAULT_END_EFFECTOR_POSITIONS = np.zeros(3)
 DEFAULT_END_EFFECTOR_ROTATIONS = np.zeros((3, 3))
 
+
 def buffered_axis_limits(amin, amax, buffer_factor=1.0):
     """
     Increases the range (amin, amax) by buffer_factor on each side
@@ -14,13 +15,14 @@ def buffered_axis_limits(amin, amax, buffer_factor=1.0):
     and then rounded to the nearest 10.
     """
     diff = amax - amin
-    amin -= (buffer_factor-1)*diff
-    amax += (buffer_factor-1)*diff
+    amin -= (buffer_factor - 1) * diff
+    amax += (buffer_factor - 1) * diff
     magnitude = np.floor(np.log10(np.amax(np.abs((amin, amax)) + 1e-100)))
-    precision = np.power(10, magnitude-1)
-    amin = np.floor(amin/precision) * precision
-    amax = np.ceil (amax/precision) * precision
+    precision = np.power(10, magnitude - 1)
+    amin = np.floor(amin / precision) * precision
+    amax = np.ceil(amax / precision) * precision
     return (amin, amax)
+
 
 def save_pose_to_npz(filename, actuator_name, target_number, data_time, pose):
     """
@@ -35,16 +37,12 @@ def save_pose_to_npz(filename, actuator_name, target_number, data_time, pose):
         None
     """
     ja, ee_pos, ee_rot = pose
-    save_data_to_npz(filename, actuator_name, target_number, data_time,
-                     'ja', ja)
-    save_data_to_npz(filename, actuator_name, target_number, data_time,
-                     'ee_pos', ee_pos)
-    save_data_to_npz(filename, actuator_name, target_number, data_time,
-                     'ee_rot', ee_rot)
+    save_data_to_npz(filename, actuator_name, target_number, data_time, 'ja', ja)
+    save_data_to_npz(filename, actuator_name, target_number, data_time, 'ee_pos', ee_pos)
+    save_data_to_npz(filename, actuator_name, target_number, data_time, 'ee_rot', ee_rot)
 
 
-def save_data_to_npz(filename, actuator_name, target_number, data_time,
-                     data_name, value):
+def save_data_to_npz(filename, actuator_name, target_number, data_time, data_name, value):
     """
     Save data to the specified file with key
     (actuator_name, target_number, data_time, data_name).
@@ -69,10 +67,15 @@ def save_to_npz(filename, key, value):
     np.savez(filename, **tmp)
 
 
-def load_pose_from_npz(filename, actuator_name, target_number, data_time,
-        default_ja=DEFAULT_JOINT_ANGLES,
-        default_ee_pos=DEFAULT_END_EFFECTOR_POSITIONS,
-        default_ee_rot=DEFAULT_END_EFFECTOR_ROTATIONS):
+def load_pose_from_npz(
+    filename,
+    actuator_name,
+    target_number,
+    data_time,
+    default_ja=DEFAULT_JOINT_ANGLES,
+    default_ee_pos=DEFAULT_END_EFFECTOR_POSITIONS,
+    default_ee_rot=DEFAULT_END_EFFECTOR_ROTATIONS
+):
     """
     Loads a pose for the specified actuator name, target number, and data time.
     Args:
@@ -81,19 +84,15 @@ def load_pose_from_npz(filename, actuator_name, target_number, data_time,
         target_number - the target number ('0', '1', '2', etc.)
         data_time - either 'initial or 'final'
     Return:
-        pose - (joint angle, end effector position, end effector rotation) tuple 
+        pose - (joint angle, end effector position, end effector rotation) tuple
     """
-    ja = load_data_from_npz(filename, actuator_name, target_number, data_time,
-                            'ja', default=default_ja)
-    ee_pos = load_data_from_npz(filename, actuator_name, target_number,
-                                data_time, 'ee_pos', default=default_ee_pos)
-    ee_rot = load_data_from_npz(filename, actuator_name, target_number,
-                                data_time, 'ee_rot', default=default_ee_rot)
+    ja = load_data_from_npz(filename, actuator_name, target_number, data_time, 'ja', default=default_ja)
+    ee_pos = load_data_from_npz(filename, actuator_name, target_number, data_time, 'ee_pos', default=default_ee_pos)
+    ee_rot = load_data_from_npz(filename, actuator_name, target_number, data_time, 'ee_rot', default=default_ee_rot)
     return (ja, ee_pos, ee_rot)
 
 
-def load_data_from_npz(filename, actuator_name, target_number, data_time,
-                       data_name, default=None):
+def load_data_from_npz(filename, actuator_name, target_number, data_time, data_name, default=None):
     """
     Load data from the specified file with key
     (actuator_name, target_number, data_time, data_name).
