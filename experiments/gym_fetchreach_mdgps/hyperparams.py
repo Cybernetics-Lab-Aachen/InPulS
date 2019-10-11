@@ -1,11 +1,10 @@
 """ Hyperparameters for Box2d Point Mass."""
 
-from datetime import datetime
+from pathlib import Path
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from __main__ import __file__ as main_filepath
-from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
 from gps.algorithm.cost.cost_state import CostState
@@ -26,14 +25,10 @@ SENSOR_DIMS = {
     ACTION: 4,
 }
 
-BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
-EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_mdgps/'
+EXP_DIR = str(Path(__file__).parent).replace('\\', '/') + '/'
 
 common = {
-    'experiment_name': 'gym_fetchreach_mdgps' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
-    'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
-    'log_filename': EXP_DIR + 'log.txt',
     'conditions': 4,
     # 'train_conditions': [0],
     # 'test_conditions': [0, 1, 2, 3],
@@ -170,8 +165,7 @@ param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
 # Only make changes to filesystem if loaded by training process
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
-    from pathlib import Path
+if Path(main_filepath) == Path(__file__).parents[2] / 'main.py':
     from shutil import copy2
 
     # Make expirement folder and copy hyperparams

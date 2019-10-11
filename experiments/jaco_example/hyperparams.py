@@ -1,13 +1,12 @@
 """ Hyperparameters for JACO trajectory optimization experiment. """
 
-
+from pathlib import Path
 import time
 from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from __main__ import __file__ as main_filepath
-from gps import __file__ as gps_filepath
 from gps.agent.ros_jaco.agent_ros_jaco import AgentROSJACO
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
@@ -36,20 +35,14 @@ SENSOR_DIMS = {
 
 PR2_GAINS = np.array([7.09, 2.3, 1.5, 1.2, 1.8, 0.1])
 
-BASE_DIR = '/'.join(str.split(gps_filepath, '/')[:-2])
-EXP_DIR = BASE_DIR + '/../experiments/jaco_example/'
+EXP_DIR = str(Path(__file__).parent).replace('\\', '/') + '/'
 
 common = {
-    'experiment_name': 'my_experiment' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
-    'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
-    'cost_log_dir': EXP_DIR + 'cost_log/',
     'target_filename': EXP_DIR + 'target.npz',
-    'log_filename': EXP_DIR + 'log.txt',
     #'train_conditions': [0, 1],
     #'test_conditions': [1,2],
     'conditions': 1,
-    'experiment_ID': '1' + time.ctime(),
 }
 
 # Set up each condition.
@@ -229,21 +222,9 @@ config = {
     'min_iteration_for_testing': 15,
     'agent': agent,
     'algorithm': algorithm,
-    'experiment_ID': common['experiment_ID'],
-    'dir': common['cost_log_dir'],
     'random_seed': 72,
     'traing_progress_metric': progress_metric,
 }
-
-common['info'] = (
-    'exp_name: ' + str(common['experiment_name']) + '\n'
-    'alg_type: ' + str(algorithm['type'].__name__) + '\n'
-    'alg_dyn:  ' + str(algorithm['dynamics']['type'].__name__) + '\n'
-    'alg_cost: ' + str(algorithm['cost']['type'].__name__) + '\n'
-    'iterations: ' + str(config['iterations']) + '\n'
-    'conditions: ' + str(algorithm['conditions']) + '\n'
-    'samples:    ' + str(config['num_samples']) + '\n'
-)
 
 param_str = 'jaco_lqr'
 param_str += '-random' if agent['random_reset'] else '-static'
@@ -253,8 +234,7 @@ param_str += '-T%d' % agent['T']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
 # Only make changes to filesystem if loaded by training process
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
-    from pathlib import Path
+if Path(main_filepath) == Path(__file__).parents[2] / 'main.py':
     from shutil import copy2
 
     # Make expirement folder and copy hyperparams

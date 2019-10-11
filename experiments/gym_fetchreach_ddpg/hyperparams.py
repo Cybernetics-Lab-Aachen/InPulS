@@ -1,13 +1,11 @@
 """ Hyperparameters for Box2d Point Mass."""
 
-import os.path
-from datetime import datetime
+from pathlib import Path
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 
 from __main__ import __file__ as main_filepath
-from gps import __file__ as gps_filepath
 from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_baseline import AlgorithmBaseline
 from gps.algorithm.cost.cost_state import CostState
@@ -18,26 +16,19 @@ from gps.algorithm.baselines import DDPG_Policy
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
 
 SENSOR_DIMS = {
-    'observation': 10,  # FetchReach 10, Fetch 25
-    END_EFFECTOR_POINTS: 3,  # 1*3, 15 hand
-    ACTION: 4,  #4 , 20 Hand
+    'observation': 10,
+    END_EFFECTOR_POINTS: 3,
+    ACTION: 4,
 }
 
-BASE_DIR = '/'.join(str.split(gps_filepath.replace('\\', '/'), '/')[:-2])
-EXP_DIR = BASE_DIR + '/../experiments/gym_fetchreach_ddpg/'
+EXP_DIR = str(Path(__file__).parent).replace('\\', '/') + '/'
 
 common = {
-    'experiment_name': 'gym_fetchreach_ddpg' + '_' + datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
-    'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
-    'log_filename': EXP_DIR + 'log.txt',
     'conditions': 4,
     # 'train_conditions': [0],
     # 'test_conditions': [0, 1, 2, 3],
 }
-
-if not os.path.exists(common['data_files_dir']):
-    os.makedirs(common['data_files_dir'])
 
 scaler = StandardScaler()
 scaler.mean_ = [
@@ -153,8 +144,7 @@ param_str += '-l%d' % algorithm['policy_opt']['memory_limit']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
 # Only make changes to filesystem if loaded by training process
-if main_filepath[-11:].replace('\\', '/') == 'gps/main.py':
-    from pathlib import Path
+if Path(main_filepath) == Path(__file__).parents[2] / 'main.py':
     from shutil import copy2
 
     # Make expirement folder and copy hyperparams
