@@ -1,4 +1,4 @@
-""" This file defines an agent for the Kinova Jaco2 ROS environment. """
+"""This module defines an agent for OPCUA controlled environments."""
 import _thread as thread
 import numpy as np
 import logging
@@ -14,17 +14,14 @@ from gps.proto.gps_pb2 import ACTION
 
 
 class AgentOPCUA(Agent):
-    """
-    All communication between the algorithms and ROS is done through
-    this class.
-    """
+    """Defines an Agent communicating via OPCUA."""
 
     def __init__(self, hyperparams):
-        """
-        Initialize agent.
+        """Initializes the agent.
+
         Args:
             hyperparams: Dictionary of hyperparameters.
-            init_node: Whether or not to initialize a new ROS node.
+
         """
         Agent.__init__(self, hyperparams)
         self.x0 = None
@@ -37,7 +34,6 @@ class AgentOPCUA(Agent):
         self.signals = self._hyperparams['send_signal']
         self.sensors = self._hyperparams['opc_ua_states_include']
         self.actuators = self.u_data_types
-        #self.__init_opcua()
         self.client = None
         self.pool = ThreadPool(len(self.sensors))
         self.debug = False
@@ -71,28 +67,40 @@ class AgentOPCUA(Agent):
             raise
 
     def transform(self, sensor, sensor_data):
-        """
-        Scales sates according to the scaler.
-        """
+        """Scales sates according to the scaler."""
         data_idx = self._x_data_idx[sensor]
         return (sensor_data - self.scaler.mean_[data_idx]) / self.scaler.scale_[data_idx]
 
     def inverse_transform(self, actuator, actuator_data):
-        """
-        Inverse actions according to the scaler.
-        """
+        """Inverse actions according to the scaler."""
         data_idx = self._u_data_idx[actuator]
         return actuator_data * self.action_scaler.scale_[data_idx] + self.action_scaler.mean_[data_idx]
 
     def read_sensor(self, sensor):
+        """Reads an OPCUA sensor.
+
+        Args:
+            sensor: Sensor identifier (as specified in hyperparams file)
+
+        Returns:
+            sensor_data: Array of sensor readings.
+
+        """
         sensor_data = self.opcua_vars[sensor].get_value()
         if np.isscalar(sensor_data):  # Wrap scalars into single element arrays
             sensor_data = [sensor_data]
         return self.transform(sensor, np.asarray(sensor_data))
 
     def write_actuator(self, actuator, data):
+        """Sets an OPCUA actuator.
+
+        Args:
+            actuator: Actuator identifier (as specified in hyperparams file)
+            data: Value to set the actuator to. Arrays of length one are unboxed to a scalar.
+
+        """
         if len(data) == 1:
-            data = data.item()  # TODO Maybe keep original dimension?
+            data = data.item()
         data = ua.Variant(self.inverse_transform(actuator, data), ua.VariantType.Float)
         try:
             self.opcua_vars[actuator].set_data_value(data)
@@ -103,24 +111,28 @@ class AgentOPCUA(Agent):
             raise
 
     def reset(self, cond):
-        """
-        Reset the agent for a particular experiment condition.
+        """Reset the agent for a particular experiment condition.
+
         Args:
             condition: An index into hyperparams['reset_conditions'].
+
         """
         if not self.debug:
             input('Press Enter to confirm reset')
 
     def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
-        """
-        Reset and execute a policy and collect a sample.
+        """Performs agent resets and rolls out given policy to collect a sample.
+
         Args:
             policy: A Policy object.
             condition: Which condition setup to run.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
+            reset_cond: The initial condition to reset the agent into.
+
         Returns:
             sample: A Sample object.
+
         """
         # Get a new sample
         sample = Sample(self)
@@ -194,11 +206,13 @@ class AgentOPCUA(Agent):
         return sample
 
     def finalize_sample(self):
+        """Adds additional waiting time to allow agent to reset. Sends final signals."""
         if not self.debug:
             time.sleep(10)
         self.send_signals(self.T)
 
     def send_signals(self, t):
+        """Sends edge-controlled OPCUA signals."""
         if not self.debug:
             for signal in self.signals:
                 if signal['condition'](t):
@@ -206,6 +220,7 @@ class AgentOPCUA(Agent):
                     thread.start_new_thread(self.send_signal, (signal, False, 2))
 
     def send_signal(self, signal, value, sleep=0):
+        """Sends an edge-controlled OPCUA signal."""
         if sleep > 0:
             time.sleep(sleep)
 
@@ -214,6 +229,6 @@ class AgentOPCUA(Agent):
         opcua_var.set_data_value(ua.Variant(value, ua.VariantType.Boolean))
 
     def close(self):
-        """ Releases any resources the agent may hold. """
+        """Releases any resources the agent may hold."""
         if self.client is not None:
             self.client.disconnect()
