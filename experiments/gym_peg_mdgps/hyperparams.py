@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from __main__ import __file__ as main_filepath
-from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
+from gps.agent.openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
 from gps.algorithm.cost.cost_fk import CostFK
 from gps.algorithm.cost.cost_state import CostState

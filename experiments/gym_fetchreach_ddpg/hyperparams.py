@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 
 from __main__ import __file__ as main_filepath
-from gps.agent.openai_gym.agent_openai_gym import AgentOpenAIGym
+from gps.agent.openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_baseline import AlgorithmBaseline
 from gps.algorithm.cost.cost_state import CostState
 from gps.algorithm.cost.cost_action import CostAction

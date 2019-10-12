@@ -1,3 +1,4 @@
+"""This module provides inital policies for gym environments."""
 import numpy as np
 import gym
 
@@ -6,6 +7,7 @@ from gps.agent.openai_gym.agent_openai_gym import is_goal_based
 
 
 def init_gym_pol(hyperparams):
+    """Generates a random inital policy for gym experiments."""
     env = gym.make(hyperparams['env'])
 
     if is_goal_based(env):
