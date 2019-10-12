@@ -1,7 +1,6 @@
-""" Hyperparameters for Box2d Point Mass."""
+"""Hyperparameters for FetchReach task using MotorUnit."""
 
 from pathlib import Path
-from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -53,7 +52,7 @@ agent = {
     'dt': 1.0 / 25,
     'env': 'FetchReach-v1',
     'sensor_dims': SENSOR_DIMS,
-    'target_state': scaler.transform([np.zeros(13)])[0, -3:],  # Target np.zeros(3), 
+    'target_state': scaler.transform([np.zeros(13)])[0, -3:],
     'conditions': common['conditions'],
     'state_include': ['observation', END_EFFECTOR_POINTS],
     'obs_include': ['observation', END_EFFECTOR_POINTS],

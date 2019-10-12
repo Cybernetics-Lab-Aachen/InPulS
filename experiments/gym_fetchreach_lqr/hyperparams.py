@@ -1,4 +1,4 @@
-""" Hyperparameters for Box2d Point Mass."""
+"""Hyperparameters for FetchReach task using LQR."""
 
 from pathlib import Path
 import numpy as np
@@ -119,7 +119,6 @@ config = {
     'num_lqr_samples_random': 5,
     'num_pol_samples_static': 1,
     'num_pol_samples_random': 20,
-    'verbose_trials': 0,
     'common': common,
     'agent': agent,
     'algorithm': algorithm,

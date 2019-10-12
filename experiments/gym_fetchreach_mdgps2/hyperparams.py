@@ -1,7 +1,6 @@
-""" Hyperparameters for Box2d Point Mass."""
+"""Hyperparameters for FetchReach task using new MDGPS implemntation."""
 
 from pathlib import Path
-from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 

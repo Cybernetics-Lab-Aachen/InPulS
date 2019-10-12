@@ -1,4 +1,4 @@
-""" Hyperparameters for Box2d Point Mass."""
+"""Hyperparameters for FetchReach task using MDGPS."""
 
 from pathlib import Path
 import numpy as np

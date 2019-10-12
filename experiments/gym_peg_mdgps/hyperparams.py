@@ -1,7 +1,6 @@
-""" Hyperparameters for Box2d Point Mass."""
+"""Hyperparameters for PR2 peg in hole task using MDGPS."""
 
 from pathlib import Path
-from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -41,6 +40,7 @@ common = {
 
 
 def additional_sensors(sim, sample, t):
+    """Virtual sensors supplying the leg positions."""
     from gps.proto.gps_pb2 import END_EFFECTOR_POINT_JACOBIANS
     jac = np.empty((6, 7))
     jac[:3] = sim.data.get_site_jacp('leg_bottom').reshape((3, -1))

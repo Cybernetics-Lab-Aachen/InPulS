@@ -1,4 +1,4 @@
-""" Hyperparameters for JACO trajectory optimization experiment. """
+"""Hyperparameters for JACO trajectory optimization experiment."""
 
 from pathlib import Path
 import numpy as np
@@ -19,10 +19,8 @@ from gps.agent.opcua.init_policy import init_pol
 from gps.agent.ros_jaco.util import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION, TRIAL_ARM, JOINT_SPACE
 
+# Offsets of the three points defining the end effector rotation
 EE_POINTS = np.array([[0.04, -0.03, -0.18], [-0.04, -0.03, -0.18], [0.0, 0.03, -0.12]])
-#EE_POINTS = np.array([[0.04, -0.10, -0.19], [-0.04, -0.10, -0.19], [0.0, -0.08, -0.12]])
-#EE_POINTS = np.array([[0.00, -0.0, -0.0], [-0.00, -0.00, -0.19], [0.0, -0.02, 0.0]])
-#EE_POINTS = np.array([[0.00, -0.0, -0.0], [-0.00, -0.00, -0.0], [0.0, -0.0, 0.0]])
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 6,
@@ -205,6 +203,7 @@ algorithm['dynamics'] = {
 
 
 def progress_metric(X):
+    """Use average distance from end effector points to end effector target as progress metric."""
     return np.mean(np.linalg.norm((scaler.inverse_transform(X[-1:])[0, -9:] - ee_tgts[0]).reshape(3, 3), axis=1))
 
 

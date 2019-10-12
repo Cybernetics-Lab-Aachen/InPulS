@@ -1,3 +1,5 @@
+"""Main file for GPS experiments."""
+
 import logging
 import imp
 import os
@@ -16,13 +18,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Make tensorflow less chatty
 
 
 class GPSMain(object):
-    """ Main class to run algorithms and experiments. """
+    """Logic to run an RL experiment."""
 
     def __init__(self, config):
-        """
-        Initialize GPSMain
+        """Initializes GPSMain.
+
         Args:
-            config: Hyperparameters for experiment
+            config: Hyperparameters for the experiment.
+
         """
         self._hyperparams = config
         self._conditions = config['common']['conditions']
@@ -54,13 +57,7 @@ class GPSMain(object):
         )
 
     def run(self):
-        """
-        Run training by iteratively sampling and taking an iteration.
-        Args:
-            itr_load: If specified, loads algorithm state from that
-                iteration, and resumes training at the next iteration.
-        Returns: None
-        """
+        """Runs training by alternatively taking samples and optimizing the policy."""
         if 'load_model' in self._hyperparams:
             self.iteration_count = self._hyperparams['load_model'][1]
             self.algorithm.policy_opt.iteration_count = self.iteration_count
@@ -193,7 +190,7 @@ class GPSMain(object):
         Args:
             cond: Condition number.
             i: Sample number.
-        Returns: None
+
         """
         if self.algorithm._hyperparams['sample_on_policy'] and self.iteration_count > 0:
             pol = self.algorithm.policy_opt.policy
@@ -208,12 +205,14 @@ class GPSMain(object):
         )
 
     def _take_policy_samples(self, N, pol, rnd=False, randomize_initial_state=0):
-        """
-        Take samples from the policy to see how it's doing.
+        """Takes samples from the policy without exploration noise.
+
         Args:
-            N  : number of policy samples to take per condition
-            pol: Policy to sample. None for LQR policies.
-        Returns: None
+            N: number of policy samples to take per condition.
+            pol: Policy to sample. Specify `None` to use sample local LQR policies.
+            rnd: Use random reset states.
+            randomize_initial_state: Randomize initial state.
+
         """
         if pol is None:
             pol_samples = [[None] * N] * len(self._test_idx)
@@ -222,7 +221,6 @@ class GPSMain(object):
                     pol_samples[i][n] = self.agent.sample(
                         self.algorithm.cur[cond].traj_distr,
                         None,
-                        verbose=None,
                         save=False,
                         noisy=False,
                         reset_cond=None if rnd else cond,
@@ -241,7 +239,6 @@ class GPSMain(object):
                     pol_samples[i][n] = self.agent.sample(
                         pol,
                         None,
-                        verbose=None,
                         save=False,
                         noisy=False,
                         reset_cond=cond,
@@ -251,8 +248,13 @@ class GPSMain(object):
             return [SampleList(samples) for samples in pol_samples]
 
     def export_samples(self, traj_sample_lists, sample_type='', visualize=False):
-        """
-        Exports trajectoy samples in a compressed numpy file.
+        """Exports trajectoy samples in a compressed numpy file.
+
+        Args:
+            traj_sample_lists: Samples to export.
+            sample_type: Type of samples. Used as prefix for the export file.
+            visualize: Generate a pdf file alongside the export file visualizing the samples.
+
         """
         M, N, T, dX, dU = len(traj_sample_lists), len(traj_sample_lists[0]), self.agent.T, self.agent.dX, self.agent.dU
         X = np.empty((M, N, T, dX))
@@ -291,9 +293,7 @@ class GPSMain(object):
                 )
 
     def export_dynamics(self):
-        """
-        Exports the local dynamics data in a compressed numpy file.
-        """
+        """Exports the local dynamics data in a compressed numpy file."""
         if self.algorithm.cur[0].traj_info.dynamics is None:
             return
 
@@ -316,9 +316,7 @@ class GPSMain(object):
         )
 
     def export_controllers(self):
-        """
-        Exports the local controller data in a compressed numpy file.
-        """
+        """Exports the local controller data in a compressed numpy file."""
         if self.algorithm.cur[0].traj_distr is None:
             return
 
@@ -348,14 +346,13 @@ class GPSMain(object):
         )
 
     def export_times(self):
-        """
-        Exports timer values into a csv file by appending a line for each iteration.
-        """
+        """Exports timer values into a csv file by appending a line for each iteration."""
         header = ','.join(self.algorithm.timers.keys()) if self.iteration_count == 0 else ''
         with open(self._data_files_dir + 'timers.csv', 'ab') as out_file:
             np.savetxt(out_file, np.asarray([np.asarray([f for f in self.algorithm.timers.values()])]), header=header)
 
     def visualize_training_progress(self):
+        """Generates a pdf file in `data_files` folder visualizing the current training progress."""
         if 'traing_progress_metric' in self._hyperparams:
             from gps.visualization.training import visualize_training
 
@@ -380,7 +377,7 @@ class GPSMain(object):
 
 
 if __name__ == "__main__":
-    """ Main function to be run. """
+    # CLI parser
     parser = argparse.ArgumentParser(description='Run the Guided Policy Search algorithm.')
     parser.add_argument('experiment', type=str, help='experiment name')
     args = parser.parse_args()
@@ -394,10 +391,14 @@ if __name__ == "__main__":
     if not hyperparams_file.is_file():
         sys.exit("Experiment '%s' does not exist.\nDid you create '%s'?" % (exp_name, hyperparams_file))
 
+    # Dynamically load hyperparameter file
     hyperparams = imp.load_source('hyperparams', str(hyperparams_file))
 
+    # Reset random seeds
     seed = hyperparams.config.get('random_seed', 0)
     random.seed(seed)
     np.random.seed(seed)
+
+    # Create GPR runner and perform experiment
     gps = GPSMain(hyperparams.config)
     gps.run()
