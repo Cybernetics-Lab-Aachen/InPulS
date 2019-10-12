@@ -3,7 +3,7 @@ import numpy as np
 from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
 
 
-def init_azo_pol(hyperparams):
+def init_pol(hyperparams):
     dU, dX = hyperparams['dU'], hyperparams['dX']
     T = hyperparams['T']
 

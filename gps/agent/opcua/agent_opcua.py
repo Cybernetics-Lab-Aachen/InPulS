@@ -13,7 +13,7 @@ from gps.sample.sample import Sample
 from gps.proto.gps_pb2 import ACTION
 
 
-class AgentOPCUAAZO(Agent):
+class AgentOPCUA(Agent):
     """
     All communication between the algorithms and ROS is done through
     this class.

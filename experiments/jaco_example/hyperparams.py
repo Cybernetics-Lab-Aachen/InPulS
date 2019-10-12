@@ -1,8 +1,6 @@
 """ Hyperparameters for JACO trajectory optimization experiment. """
 
 from pathlib import Path
-import time
-from datetime import datetime
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -17,7 +15,7 @@ from gps.algorithm.cost.cost_state import CostState
 from gps.algorithm.cost.cost_utils import evallogl2term
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
-from gps.agent.opcua_azo.init_policy import init_azo_pol
+from gps.agent.opcua.init_policy import init_pol
 from gps.agent.ros_jaco.util import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION, TRIAL_ARM, JOINT_SPACE
 
@@ -144,7 +142,7 @@ algorithm = {
 }
 
 algorithm['init_traj_distr'] = {
-    'type': init_azo_pol,
+    'type': init_pol,
     'init_const': np.array([-1.25, 0.05, -0.65, -0.01, 0, 0]),
     'init_var': 0.5 * np.eye(SENSOR_DIMS[ACTION]),
     'dt': agent['dt'],
