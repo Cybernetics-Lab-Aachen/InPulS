@@ -15,7 +15,7 @@ from gps.algorithm.cost.cost_state import CostState
 from gps.algorithm.cost.cost_utils import evallogl2term
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
-from gps.agent.opcua.init_policy import init_pol
+from gps.algorithm.policy.init_policy import init_pol
 from gps.agent.ros_jaco.util import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION, TRIAL_ARM, JOINT_SPACE
 
