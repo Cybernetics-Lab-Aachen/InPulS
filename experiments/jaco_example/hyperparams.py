@@ -215,7 +215,6 @@ config = {
     'num_lqr_samples_random': 0,
     'num_pol_samples_static': 0,
     'num_pol_samples_random': 0,
-    'verbose_trials': 0,
     'common': common,
     'min_iteration_for_testing': 15,
     'agent': agent,

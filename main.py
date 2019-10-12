@@ -104,7 +104,7 @@ class GPSMain(object):
                 with Timer(self.algorithm.timers, 'sampling'):
                     for cond in self._train_idx:
                         for i in trange(self._hyperparams['num_samples'], desc='Taking samples'):
-                            self._take_sample(itr, cond, i)
+                            self._take_sample(cond, i)
                 traj_sample_lists = [
                     self.agent.get_samples(cond, -self._hyperparams['num_samples']) for cond in self._train_idx
                 ]
@@ -187,16 +187,15 @@ class GPSMain(object):
 
             self.visualize_training_progress()
 
-    def _take_sample(self, itr, cond, i):
-        """
-        Collect a sample from the agent.
+    def _take_sample(self, cond, i):
+        """Collects a sample from the agent.
+
         Args:
-            itr: Iteration number.
             cond: Condition number.
             i: Sample number.
         Returns: None
         """
-        if self.algorithm._hyperparams['sample_on_policy'] and self.algorithm.iteration_count > 0:
+        if self.algorithm._hyperparams['sample_on_policy'] and self.iteration_count > 0:
             pol = self.algorithm.policy_opt.policy
         else:
             pol = self.algorithm.cur[cond].traj_distr
@@ -204,10 +203,8 @@ class GPSMain(object):
         self.agent.sample(
             pol,
             cond,
-            verbose=(i < self._hyperparams['verbose_trials']),
             noisy=True,
-            use_TfController=True,
-            reset_cond=None if self.agent._hyperparams['random_reset'] else cond
+            reset_cond=None if self.agent._hyperparams['random_reset'] else cond,
         )
 
     def _take_policy_samples(self, N, pol, rnd=False, randomize_initial_state=0):

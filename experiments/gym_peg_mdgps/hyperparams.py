@@ -171,7 +171,6 @@ config = {
     'num_pol_samples_static': 1,
     'num_pol_samples_random': 20,
     'save_samples': False,
-    'verbose_trials': 0,
     'common': common,
     'agent': agent,
     'algorithm': algorithm,

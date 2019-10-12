@@ -117,10 +117,8 @@ class AgentOPCUA(Agent):
         Args:
             policy: A Policy object.
             condition: Which condition setup to run.
-            verbose: Unused for this agent.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
-            use_TfController: Whether to use the syncronous TfController
         Returns:
             sample: A Sample object.
         """
