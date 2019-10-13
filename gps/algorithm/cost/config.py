@@ -1,4 +1,4 @@
-""" Default configuration and hyperparameter values for costs. """
+"""Default configuration and hyperparameter values for costs."""
 import numpy as np
 
 from gps.algorithm.cost.cost_utils import RAMP_CONSTANT, evallogl2term, evall1l2term
@@ -8,7 +8,6 @@ COST_FK = {
     'ramp_option': RAMP_CONSTANT,  # How target cost ramps over time.
     'wp': None,  # State weights - must be set.
     'wp_final_multiplier': 1.0,  # Weight multiplier on final time step.
-    'env_target': True,  # TODO - This isn't used.
     'l1': 0.0,
     'l2': 1.0,
     'alpha': 1e-5,

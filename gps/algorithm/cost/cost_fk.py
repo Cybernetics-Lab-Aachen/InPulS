@@ -1,33 +1,37 @@
-""" This file defines the forward kinematics cost function. """
+"""This file defines the forward kinematics cost function."""
 import copy
 
 import numpy as np
 
+from gps.algorithm.cost import Cost
 from gps.algorithm.cost.config import COST_FK
-from gps.algorithm.cost.cost import Cost
 from gps.algorithm.cost.cost_utils import get_ramp_multiplier
 from gps.proto.gps_pb2 import JOINT_ANGLES, END_EFFECTOR_POINTS, END_EFFECTOR_POINT_JACOBIANS
 
 
 class CostFK(Cost):
-    """
-    Forward kinematics cost function. Used for costs involving the end
-    effector position.
-    """
+    """Forward kinematics cost function. Used for costs involving the end effector position."""
 
     def __init__(self, hyperparams):
+        """Initializes the cost function.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         config = copy.deepcopy(COST_FK)
         config.update(hyperparams)
         Cost.__init__(self, config)
 
     def eval(self, sample):
-        """
-        Evaluate forward kinematics (end-effector penalties) cost.
-        Temporary note: This implements the 'joint' penalty type from
-            the matlab code, with the velocity/velocity diff/etc.
-            penalties removed. (use CostState instead)
+        """Evaluate forward kinematics (end-effector penalties) cost.
+
+        Temporary note: This implements the 'joint' penalty type from the matlab code, with the velocity/velocity
+        diff/etc. penalties removed. (use CostState instead).
+
         Args:
-            sample: A single sample.
+            sample: A single sample
+
         """
         T = sample.T
         dX = sample.dX

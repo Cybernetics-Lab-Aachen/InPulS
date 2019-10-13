@@ -1,19 +1,25 @@
-""" This file defines the base cost class. """
-import abc
+"""This file defines the base cost class."""
+from abc import ABC, abstractmethod
 
 
-class Cost(object):
-    """ Cost superclass. """
-    __metaclass__ = abc.ABCMeta
+class Cost(ABC):
+    """Abstract cost superclass."""
 
     def __init__(self, hyperparams):
+        """Initializes the cost function.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         self._hyperparams = hyperparams
 
-    @abc.abstractmethod
+    @abstractmethod
     def eval(self, sample):
-        """
-        Evaluate cost function and derivatives.
+        """Evaluates the function and it's derivatives.
+
         Args:
             sample:  A single sample.
+
         """
-        raise NotImplementedError("Must be implemented in subclass.")
+        pass

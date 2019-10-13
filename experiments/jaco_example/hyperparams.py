@@ -8,10 +8,7 @@ from __main__ import __file__ as main_filepath
 from gps.agent.jaco import AgentROSJACO, load_pose_from_npz
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.cost.cost_fk import CostFK
-from gps.algorithm.cost.cost_action import CostAction
-from gps.algorithm.cost.cost_sum import CostSum
-from gps.algorithm.cost.cost_state import CostState
+from gps.algorithm.cost import CostAction, CostFK, CostState, CostSum
 from gps.algorithm.cost.cost_utils import evallogl2term
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM

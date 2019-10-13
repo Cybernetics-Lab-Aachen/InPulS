@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from gps.algorithm.cost.cost_sum import CostSum
+from gps.algorithm.cost import CostSum
 
 
 def __plot_costs(ax, samples, cf, weight=1.0):

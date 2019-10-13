@@ -8,9 +8,7 @@ import tensorflow as tf
 from __main__ import __file__ as main_filepath
 from gps.agent.openai_gym import AgentOpenAIGym
 from gps.algorithm.algorithm_baseline import AlgorithmBaseline
-from gps.algorithm.cost.cost_state import CostState
-from gps.algorithm.cost.cost_action import CostAction
-from gps.algorithm.cost.cost_sum import CostSum
+from gps.algorithm.cost import CostAction, CostState, CostSum
 from gps.agent.openai_gym.init_policy import init_gym_pol
 from gps.algorithm.baselines import DDPG_Policy
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, ACTION
