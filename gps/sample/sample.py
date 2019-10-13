@@ -1,17 +1,22 @@
-""" This file defines the sample class. """
+"""This file defines the sample class."""
 import numpy as np
 
 from gps.proto.gps_pb2 import ACTION
 
 
 class Sample(object):
-    """
-    Class that handles the representation of a trajectory and stores a
-    single trajectory.
-    Note: must be serializable for easy saving, no C++ references!
+    """Representation of a trajectory sample.
+
+    TODO: Replace with pandas
     """
 
     def __init__(self, agent):
+        """Initializes the sample.
+
+        Args:
+            agent: Agent from which this sample stems from. Assumes dimensions from the agent.
+
+        """
         self.agent = agent
 
         self.T = agent.T
@@ -31,8 +36,7 @@ class Sample(object):
         self._meta.fill(np.nan)
 
     def set(self, sensor_name, sensor_data, t=None):
-        """ Set trajectory data for a particular sensor. """
-        #print("sensor name: ", sensor_name)
+        """Set trajectory data for a particular sensor."""
         if t is None:
             self._data[sensor_name] = sensor_data
             self._X.fill(np.nan)  # Invalidate existing X.
@@ -47,13 +51,13 @@ class Sample(object):
             self._obs[t, :].fill(np.nan)
 
     def get(self, sensor_name, t=None):
-        """ Get trajectory data for a particular sensor. """
+        """Get trajectory data for a particular sensor."""
         #print("Access to get::Sample")
         #print("dict with data types: ", self._data)
         return (self._data[sensor_name] if t is None else self._data[sensor_name][t, :])
 
     def get_X(self, t=None):
-        """ Get the state. Put it together if not precomputed. """
+        """Get the state. Put it together if not precomputed."""
         X = self._X if t is None else self._X[t, :]
         if np.any(np.isnan(X)):
             for data_type in self._data:
@@ -61,23 +65,14 @@ class Sample(object):
                     continue
                 data = (self._data[data_type] if t is None else self._data[data_type][t, :])
                 self.agent.pack_data_x(X, data, data_types=[data_type])
-        #print("shape X: ", X.shape)                     #shape: dTxdX = (100,32)
-        #print("Access to get_X::sample")
-        #print("X_100: ", X[99,:])
         return X
 
-    def update_X(self, data, t=None):
-        self._X = data if t is None else self._X[t, :]
-
-    def get_EEF_Position(self, t=None):
-        return self.get(7, t)
-
     def get_U(self, t=None):
-        """ Get the action. """
+        """Get the action."""
         return self._data[ACTION] if t is None else self._data[ACTION][t, :]
 
     def get_obs(self, t=None):
-        """ Get the observation. Put it together if not precomputed. """
+        """Get the observation. Put it together if not precomputed."""
         obs = self._obs if t is None else self._obs[t, :]
         if np.any(np.isnan(obs)):
             for data_type in self._data:
@@ -89,24 +84,13 @@ class Sample(object):
                 self.agent.pack_data_obs(obs, data, data_types=[data_type])
         return obs
 
-    def get_meta(self):
-        """ Get the meta data. Put it together if not precomputed. """
-        meta = self._meta
-        if np.any(np.isnan(meta)):
-            for data_type in self._data:
-                if data_type not in self.agent.meta_data_types:
-                    continue
-                data = self._data[data_type]
-                self.agent.pack_data_meta(meta, data, data_types=[data_type])
-        return meta
-
-    # For pickling.
     def __getstate__(self):
+        """Pickle sample without reference to the agent."""
         state = self.__dict__.copy()
         state.pop('agent')
         return state
 
-    # For unpickling.
     def __setstate__(self, state):
+        """Unpickle sample."""
         self.__dict__ = state
         self.__dict__['agent'] = None

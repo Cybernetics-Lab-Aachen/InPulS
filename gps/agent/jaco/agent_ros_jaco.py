@@ -17,7 +17,7 @@ from gps.proto.gps_pb2 import (
 
 import gps.proto.Command_pb2 as command_msgs
 
-from gps.sample.sample import Sample
+from gps.sample import Sample
 
 # Approximation of Jaco EE Jacobian
 JAC = np.array(

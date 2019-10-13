@@ -8,7 +8,7 @@ import scipy as sp
 from gps.algorithm.algorithm import Algorithm, Timer
 from gps.algorithm.algorithm_utils import PolicyInfo
 from gps.algorithm.config import ALG_MDGPS
-from gps.sample.sample_list import SampleList
+from gps.sample import SampleList
 from gps.visualization import visualize_approximation
 
 LOGGER = logging.getLogger(__name__)

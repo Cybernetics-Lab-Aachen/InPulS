@@ -8,7 +8,7 @@ from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_PANDA
 from gps.agent.ros_utils import TimeoutException, ServiceEmulator
-from gps.sample.sample import Sample
+from gps.sample import Sample
 from gps.proto.gps_pb2 import (
     TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_POINTS, JOINT_ANGLES, JOINT_VELOCITIES
 )

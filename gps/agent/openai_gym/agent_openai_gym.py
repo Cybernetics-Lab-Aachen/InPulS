@@ -5,7 +5,7 @@ import gym
 
 from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise
-from gps.sample.sample import Sample
+from gps.sample import Sample
 from gps.proto.gps_pb2 import ACTION
 
 

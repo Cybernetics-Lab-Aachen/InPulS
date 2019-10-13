@@ -4,7 +4,7 @@ import copy
 
 from gps.agent.config import AGENT
 from gps.proto.gps_pb2 import ACTION
-from gps.sample.sample_list import SampleList
+from gps.sample import Sample, SampleList
 
 
 class Agent(ABC):
@@ -199,8 +199,6 @@ class Agent(ABC):
 
     def pack_sample(self, X, U):
         """Packs sample data into Sample object."""
-        from gps.sample.sample import Sample
-
         assert X.shape[0] == self.T
         assert U.shape[0] == self.T
         assert X.shape[1] == self.dX
