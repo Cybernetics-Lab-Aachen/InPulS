@@ -1,8 +1,4 @@
-"""This file defines utilities for the ROS agents."""
-import numpy as np
-
-from gps.sample.sample import Sample
-from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINT_JACOBIANS
+"""Utilities for ROS agents."""
 import logging
 import time
 import threading
@@ -10,23 +6,6 @@ import threading
 import zmq
 
 LOGGER = logging.getLogger(__name__)
-
-
-def msg_to_sample(ros_msg, agent):
-    """Convert a SampleResult ROS message into a Sample Python object."""
-    sample = Sample(agent)
-
-    velocity = np.array(ros_msg.velocity).reshape(7)
-    joint_angles = np.array(ros_msg.joint_angles).reshape(7)
-    ee_pos = np.array(ros_msg.ee_pos).reshape(9)
-    ee_jacobians = np.array(ros_msg.ee_points_jacobian, order="F").reshape(9, 7)
-
-    sample.set(JOINT_VELOCITIES, velocity)
-    sample.set(JOINT_ANGLES, joint_angles)
-    sample.set(END_EFFECTOR_POINTS, ee_pos)
-    sample.set(END_EFFECTOR_POINT_JACOBIANS, ee_jacobians)
-
-    return sample
 
 
 class TimeoutException(Exception):

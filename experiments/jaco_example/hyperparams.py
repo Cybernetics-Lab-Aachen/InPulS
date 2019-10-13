@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from __main__ import __file__ as main_filepath
-from gps.agent.ros_jaco.agent_ros_jaco import AgentROSJACO
+from gps.agent.jaco import AgentROSJACO, load_pose_from_npz
 from gps.algorithm.algorithm_traj_opt import AlgorithmTrajOpt
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
 from gps.algorithm.cost.cost_fk import CostFK
@@ -16,7 +16,6 @@ from gps.algorithm.cost.cost_utils import evallogl2term
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.algorithm.policy.init_policy import init_pol
-from gps.agent.ros_jaco.util import load_pose_from_npz
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, END_EFFECTOR_POINTS, ACTION, TRIAL_ARM, JOINT_SPACE
 
 # Offsets of the three points defining the end effector rotation

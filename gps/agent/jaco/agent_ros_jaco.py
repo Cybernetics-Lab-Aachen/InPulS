@@ -1,4 +1,4 @@
-""" This file defines an agent for the Kinova Jaco2 ROS environment. """
+"""This module defines an agent for the Kinova JACO robot arm."""
 import copy
 import logging
 import time
@@ -8,10 +8,11 @@ import scipy as sp
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
-from gps.agent.ros_jaco.ros_utils import TimeoutException, ServiceEmulator, msg_to_sample
+from gps.agent.ros_utils import TimeoutException, ServiceEmulator
 
 from gps.proto.gps_pb2 import (
-    TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS
+    TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_ROTATIONS, END_EFFECTOR_POINTS, JOINT_ANGLES,
+    JOINT_VELOCITIES
 )
 
 import gps.proto.Command_pb2 as command_msgs
@@ -30,17 +31,14 @@ JAC = np.array(
 
 
 class AgentROSJACO(Agent):
-    """
-    All communication between the algorithms and ROS is done through
-    this class.
-    """
+    """An Agent for the Franka Kinova JACO robot arm."""
 
-    def __init__(self, hyperparams, init_node=True):
-        """
-        Initialize agent.
+    def __init__(self, hyperparams):
+        """Initializes the agent.
+
         Args:
             hyperparams: Dictionary of hyperparameters.
-            init_node: Whether or not to initialize a new ROS node.
+
         """
         config = copy.deepcopy(AGENT_ROS_JACO)
         config.update(hyperparams)
@@ -91,12 +89,12 @@ class AgentROSJACO(Agent):
         return self._seq_id
 
     def get_data(self):
+        """Requests the most recent value for data/sensor readings.
+
+        Returns:
+            sample: entire sample report (all available data).
+
         """
-        Request for the most recent value for data/sensor readings.
-        Returns entire sample report (all available data) in sample.
-        Args:
-        """
-        # TODO: check what is needed as response!
         request = command_msgs.Request()
         request.id = self._get_next_seq_id()
         request.ee_offsets.extend(self.ee_points.reshape(-1))
@@ -105,12 +103,13 @@ class AgentROSJACO(Agent):
         return msg_to_sample(result_msg, self)
 
     def reset_arm(self, arm, mode, data, position_command=False):
-        """
-        Issues a position command to an arm.
+        """Issues a position command to an arm.
+
         Args:
             arm: Either TRIAL_ARM or AUXILIARY_ARM.
             mode: An integer code (defined in gps_pb2).
             data: An array of floats.
+
         """
         reset_command = command_msgs.Command()
         reset_command.command.extend(data)
@@ -129,10 +128,11 @@ class AgentROSJACO(Agent):
             self._reset_service.publish(reset_command)
 
     def reset(self, condition):
-        """
-        Reset the agent for a particular experiment condition.
+        """Reset the agent for a particular experiment condition.
+
         Args:
             condition: An index into hyperparams['reset_conditions'].
+
         """
         condition_data = self._hyperparams['reset_conditions'][condition]
         if condition is None:
@@ -141,20 +141,23 @@ class AgentROSJACO(Agent):
             self.reset_arm(None, None, condition_data[TRIAL_ARM]['data'], True)
         time.sleep(0.5)  # useful for the real robot, so it stops completely
 
-    def transform(self, sensor_type, data):
+    def __transform(self, sensor_type, data):
         idx = self._x_data_idx[sensor_type]
         return (data - self.scaler.mean_[idx]) / self.scaler.scale_[idx]
 
     def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
-        """
-        Reset and execute a policy and collect a sample.
+        """Performs agent reset and rolls out given policy to collect a sample.
+
         Args:
             policy: A Policy object.
             condition: Which condition setup to run.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
+            reset_cond: The initial condition to reset the agent into.
+
         Returns:
             sample: A Sample object.
+
         """
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
@@ -172,7 +175,7 @@ class AgentROSJACO(Agent):
             for sensor_type in self.x_data_types:
                 data = latest_sample.get(sensor_type)
                 if self.scaler is not None:
-                    data = self.transform(sensor_type, data)
+                    data = self.__transform(sensor_type, data)
                 sample.set(sensor_type, data, t)
 
             # Compute site Jacobians
@@ -216,3 +219,20 @@ class AgentROSJACO(Agent):
             self._samples[condition].append(sample)
         self.reset(reset_cond)
         return sample
+
+
+def msg_to_sample(ros_msg, agent):
+    """Convert a SampleResult ROS message into a Sample Python object."""
+    sample = Sample(agent)
+
+    velocity = np.array(ros_msg.velocity).reshape(7)
+    joint_angles = np.array(ros_msg.joint_angles).reshape(7)
+    ee_pos = np.array(ros_msg.ee_pos).reshape(9)
+    ee_jacobians = np.array(ros_msg.ee_points_jacobian, order="F").reshape(9, 7)
+
+    sample.set(JOINT_VELOCITIES, velocity)
+    sample.set(JOINT_ANGLES, joint_angles)
+    sample.set(END_EFFECTOR_POINTS, ee_pos)
+    sample.set(END_EFFECTOR_POINT_JACOBIANS, ee_jacobians)
+
+    return sample

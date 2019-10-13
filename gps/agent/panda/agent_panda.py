@@ -7,9 +7,11 @@ import numpy as np
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_PANDA
-from gps.agent.panda.utils import TimeoutException, ServiceEmulator, msg_to_sample
+from gps.agent.ros_utils import TimeoutException, ServiceEmulator
 from gps.sample.sample import Sample
-from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS
+from gps.proto.gps_pb2 import (
+    TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS, END_EFFECTOR_POINTS, JOINT_ANGLES, JOINT_VELOCITIES
+)
 import gps.proto.Command_pb2 as command_msgs
 
 
@@ -183,3 +185,20 @@ class AgentPanda(Agent):
             self._samples[condition].append(sample)
         self.reset(reset_cond)
         return sample
+
+
+def msg_to_sample(ros_msg, agent):
+    """Convert a SampleResult ROS message into a Sample Python object."""
+    sample = Sample(agent)
+
+    velocity = np.array(ros_msg.velocity).reshape(7)
+    joint_angles = np.array(ros_msg.joint_angles).reshape(7)
+    ee_pos = np.array(ros_msg.ee_pos).reshape(9)
+    ee_jacobians = np.array(ros_msg.ee_points_jacobian, order="F").reshape(9, 7)
+
+    sample.set(JOINT_VELOCITIES, velocity)
+    sample.set(JOINT_ANGLES, joint_angles)
+    sample.set(END_EFFECTOR_POINTS, ee_pos)
+    sample.set(END_EFFECTOR_POINT_JACOBIANS, ee_jacobians)
+
+    return sample
