@@ -1,4 +1,4 @@
-""" This file defines an agent for the Kinova Jaco2 ROS environment. """
+"""This module defines an agent for the Franka Emika Panda robot arm."""
 import copy
 import logging
 import time
@@ -8,36 +8,20 @@ from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_PANDA
 from gps.agent.panda.utils import TimeoutException, ServiceEmulator, msg_to_sample
-
-from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS
-
-import gps.proto.Command_pb2 as command_msgs
-
 from gps.sample.sample import Sample
-
-# # Approximation of Jaco EE Jacobian
-# JAC = np.array(
-#     [
-#         -0.29052, -0.0456493, -0.232069, 0.0490652, 0.0297493, 0, 0.294644, -0.0288231, -0.136461, 0.0604075,
-#         -0.00100644, 0, 6.09391e-14, -0.402527, 0.156064, -0.0512757, 0.016437, 0, 0, 0.508486, -0.508486, 0.486912,
-#         -0.401568, -0.0127389, 2.06823e-13, -0.856, 0.856, 0.292873, 0.509841, 0.99136, -1, -1.76985e-13, 3.01313e-13,
-#         0.814991, 0.759208, 0.0832759
-#     ]
-# ).reshape(6, 6)
+from gps.proto.gps_pb2 import TRIAL_ARM, ACTION, END_EFFECTOR_POINT_JACOBIANS
+import gps.proto.Command_pb2 as command_msgs
 
 
 class AgentPanda(Agent):
-    """
-    All communication between the algorithms and ROS is done through
-    this class.
-    """
+    """An Agent for the Franka Emika Panda robot arm."""
 
-    def __init__(self, hyperparams, init_node=True):
-        """
-        Initialize agent.
+    def __init__(self, hyperparams):
+        """Initializes the agent.
+
         Args:
             hyperparams: Dictionary of hyperparameters.
-            init_node: Whether or not to initialize a new ROS node.
+
         """
         config = copy.deepcopy(AGENT_PANDA)
         config.update(hyperparams)
@@ -56,14 +40,6 @@ class AgentPanda(Agent):
         self.ee_points = hyperparams["ee_points"]
         self.ee_points_tgt = self._hyperparams['ee_points_tgt']
 
-        #self.scaler = self._hyperparams.get('scaler', None)
-
-        # # EE Jacobian
-        # self.jac = JAC
-        # if self.scaler is not None:  # Scale jacobians
-        #     self.jac[:3] *= self.scaler.scale_[:6].reshape(1, 6)
-        #     self.jac[:3] /= self.scaler.scale_[-9:-6].reshape(3, 1)
-
     def _init_pubs_and_subs(self):
         self._trial_service = ServiceEmulator(
             self._hyperparams['trial_command_topic'], command_msgs.Command, self._hyperparams['sample_result_topic'],
@@ -81,11 +57,12 @@ class AgentPanda(Agent):
         self._seq_id = (self._seq_id + 1) % (2**30)
         return self._seq_id
 
-    def get_data(self, **kwargs):
-        """
-        Request for the most recent value for data/sensor readings.
-        Returns entire sample report (all available data) in sample.
-        Args:
+    def get_data(self):
+        """Requests the most recent value for data/sensor readings.
+
+        Returns:
+            sample: entire sample report (all available data).
+
         """
         request = command_msgs.Request()
         request.id = self._get_next_seq_id()
@@ -95,12 +72,13 @@ class AgentPanda(Agent):
         return msg_to_sample(result_msg, self)
 
     def reset_arm(self, arm, mode, data, position_command=False):
-        """
-        Issues a position command to an arm.
+        """Issues a position command to an arm.
+
         Args:
             arm: Either TRIAL_ARM or AUXILIARY_ARM.
             mode: An integer code (defined in gps_pb2).
             data: An array of floats.
+
         """
         reset_command = command_msgs.Command()
         reset_command.command.extend(data)
@@ -118,7 +96,8 @@ class AgentPanda(Agent):
         else:
             self._trial_service.publish(reset_command)
 
-    def relax_arm(self, *args, **kwargs):
+    def relax_arm(self):
+        """Relaxes current arm."""
         reset_command = command_msgs.Command()
         reset_command.command.extend([0., 0., 0., 0., 0., 0., 0.])
         reset_command.is_position_command = False
@@ -126,10 +105,11 @@ class AgentPanda(Agent):
         self._trial_service.publish(reset_command)
 
     def reset(self, condition):
-        """
-        Reset the agent for a particular experiment condition.
+        """Reset the agent for a particular experiment condition.
+
         Args:
             condition: An index into hyperparams['reset_conditions'].
+
         """
         condition_data = self._hyperparams['reset_conditions'][condition]
         if condition is None:
@@ -138,20 +118,19 @@ class AgentPanda(Agent):
             self.reset_arm(None, None, condition_data[TRIAL_ARM]['data'], True)
         time.sleep(0.5)  # useful for the real robot, so it stops completely
 
-    # def transform(self, sensor_type, data):
-    #     idx = self._x_data_idx[sensor_type]
-    #     return (data - self.scaler.mean_[idx]) / self.scaler.scale_[idx]
-
     def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
-        """
-        Reset and execute a policy and collect a sample.
+        """Performs agent reset and rolls out given policy to collect a sample.
+
         Args:
             policy: A Policy object.
             condition: Which condition setup to run.
             save: Whether or not to store the trial into the samples.
             noisy: Whether or not to use noise during sampling.
+            reset_cond: The initial condition to reset the agent into.
+
         Returns:
             sample: A Sample object.
+
         """
         if noisy:
             noise = generate_noise(self.T, self.dU, self._hyperparams)
@@ -163,8 +142,8 @@ class AgentPanda(Agent):
 
         # Execute policy over a time period of [0,T]
         # TODO: Find better solution to change mode.
-        """ relax arm to change mode to torque. If this is not done, the mode will be changed in timestep t=0 causing
-        the loop to be slow in timestep t=1 because the mutex in the cpp is locked. """
+        # relax arm to change mode to torque. If this is not done, the mode will be changed in timestep t=0 causing
+        # the loop to be slow in timestep t=1 because the mutex in the cpp is locked. """
         self.relax_arm()
         time.sleep(1)
 
@@ -173,27 +152,14 @@ class AgentPanda(Agent):
             # Read sensors and store sensor data in sample
             latest_sample = self.get_data()
             for sensor_type in self.x_data_types:
-                data = latest_sample.get(sensor_type)
-                # if self.scaler is not None:
-                #     data = self.transform(sensor_type, data)
-                sample.set(sensor_type, data, t)
+                sample.set(sensor_type, latest_sample.get(sensor_type), t)
             sample.set(END_EFFECTOR_POINT_JACOBIANS, latest_sample.get(END_EFFECTOR_POINT_JACOBIANS), t=t)
-            # position = latest_sample.get(END_EFFECTOR_POINTS)
-            # diff = np.array(self.ee_points_tgt - position).reshape(3, 3)
-            # norm = np.linalg.norm(diff, axis=1)
-            # print(norm)
-
-            # Use END_EFFECTOR_POINTS as distance to target
-            # sample.set(
-            #     END_EFFECTOR_POINTS,
-            #     sample.get(END_EFFECTOR_POINTS, t),# - self.ee_points_tgt / self.scaler.scale_[-9:],
-            #     t=t
-            # )
 
             # Get action
             U_t = policy.act(sample.get_X(t), sample.get_obs(t), t, noise)
-            torque_limits_ = np.array([4.0, 4.0, 4.0, 4.0, 1.0, 1.0,
-                                       .5])  # TODO: find better solution to clip (same as in cpp)
+
+            # TODO: find better solution to clip (same as in cpp)
+            torque_limits_ = np.array([4.0, 4.0, 4.0, 4.0, 1.0, 1.0, .5])
             U_t = np.clip(U_t, -torque_limits_, torque_limits_)
 
             # Perform action

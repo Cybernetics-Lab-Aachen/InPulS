@@ -121,7 +121,7 @@ class AgentOPCUA(Agent):
             input('Press Enter to confirm reset')
 
     def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
-        """Performs agent resets and rolls out given policy to collect a sample.
+        """Performs agent reset and rolls out given policy to collect a sample.
 
         Args:
             policy: A Policy object.

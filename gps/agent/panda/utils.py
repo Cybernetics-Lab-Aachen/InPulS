@@ -1,4 +1,4 @@
-""" This file defines utilities for the ROS agents. """
+"""This file defines utilities for the ROS agents."""
 import numpy as np
 
 from gps.sample.sample import Sample
@@ -13,9 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def msg_to_sample(ros_msg, agent):
-    """
-    Convert a SampleResult ROS message into a Sample Python object.
-    """
+    """Convert a SampleResult ROS message into a Sample Python object."""
     sample = Sample(agent)
 
     velocity = np.array(ros_msg.velocity).reshape(7)
@@ -31,48 +29,32 @@ def msg_to_sample(ros_msg, agent):
     return sample
 
 
-def tf_obs_msg_to_numpy(obs_message):
-    data = np.array(obs_message.data)
-    data = data.reshape(obs_message.shape)
-    return data
-
-
-def image_msg_to_cv(image_message):
-
-    width = image_message.width
-    height = image_message.height
-    depth = image_message.height
-
-    if image_message.isInt:
-        data_type = np.int8
-    else:
-        data_type = np.float32
-
-    image = np.array(image_message.data, dtype=data_type)
-    image = image.reshape(height, width, depth)  # cv uses HWC order
-    return image
-
-
 class TimeoutException(Exception):
-    """ Exception thrown on timeouts. """
+    """Exception thrown on timeouts."""
 
     def __init__(self, sec_waited):
+        """Initializes the exception.
+
+        Args:
+            sec_waited: Duration in seconds after which the timeout is raised.
+
+        """
         Exception.__init__(self, "Timed out after %f seconds", sec_waited)
 
 
 class ServiceEmulator(object):
-    """
-    Emulates a ROS service (request-response) from a
-    publisher-subscriber pair.
-    Args:
-        pub_topic: Publisher topic.
-        pub_type: Publisher message type.
-        sub_topic: Subscriber topic.
-        sub_type: Subscriber message type.
-    """
+    """Emulates a ROS service (request-response) from a publisher-subscriber pair."""
 
     def __init__(self, pub_topic, pub_type, sub_topic, sub_type, pub_url, sub_url):
+        """Initializes the service emulator.
 
+        Args:
+            pub_topic: Publisher topic.
+            pub_type: Publisher message type.
+            sub_topic: Subscriber topic.
+            sub_type: Subscriber message type.
+
+        """
         self._pub = PublisherEmulator(pub_topic, pub_type, pub_url)
 
         self._sub = SubscriberEmulator(sub_topic, sub_type, self._callback, sub_url)
@@ -82,17 +64,21 @@ class ServiceEmulator(object):
 
     def _callback(self, message):
         if self._waiting:
-            #print("Saved received message")
             self._subscriber_msg = message
             self._waiting = False
 
     def publish(self, pub_msg):
-        """ Publish a message without waiting for response. """
+        """Publishes a message without waiting for a response.
+
+        Args:
+            pub_msg: Message to publish.
+
+        """
         self._pub.publish(pub_msg)
 
     def publish_and_wait(self, pub_msg, timeout=5.0, poll_delay=0.01, check_id=False):
-        """
-        Publish a message and wait for the response.
+        """Publishes a message and waits for the response.
+
         Args:
             pub_msg: Message to publish.
             timeout: Timeout in seconds.
@@ -100,8 +86,10 @@ class ServiceEmulator(object):
                 seconds.
             check_id: If enabled, will only return messages with a
                 matching id field.
+
         Returns:
             sub_msg: Subscriber message.
+
         """
         if check_id:  # This is not yet implemented in C++.
             raise NotImplementedError()
@@ -119,24 +107,48 @@ class ServiceEmulator(object):
 
 
 class PublisherEmulator:
+    """Emulates a ROS publisher."""
+
     def __init__(self, pub_topic, pub_type, url):
+        """Initializes the publisher.
+
+        Args:
+            pub_topic: Publisher topic.
+            pub_type: Publisher message type.
+            url: Server url.
+
+        """
         self._pub_topic = pub_topic
         self._pub_type = pub_type
         context = zmq.Context()
         self._pub = context.socket(zmq.PUB)
         self._pub.bind(url)
-        print("bind pub to url %s" % url)
 
     def publish(self, message):
+        """Publishes a message.
+
+        Args:
+            pub_msg: Message to publish.
+
+        """
         assert type(message) == self._pub_type
         message_string = message.SerializeToString()
         self._pub.send(self._pub_topic.encode(encoding='ASCII') + " ".encode(encoding='ASCII') + message_string)
-        # self._pub.send(self._pub_topic.encode(encoding='UTF-8') + " " + message_string)
-        #print("published to %s" % self._pub_topic)
 
 
 class SubscriberEmulator:
+    """Emulates a ROS suscriber."""
+
     def __init__(self, sub_topic, sub_type, callback, url):
+        """Initializes the suscriber.
+
+        Args:
+            sub_topic: Subscriber topic.
+            sub_type: Subscriber message type.
+            callback: Callback to notify on received messages.
+            url: Server url.
+
+        """
         self._sub_topic = sub_topic
         self._sub_type = sub_type
         self._callback = callback
@@ -144,10 +156,8 @@ class SubscriberEmulator:
         context = zmq.Context()
         self._sub = context.socket(zmq.SUB)
         self._sub.connect(url)
-        print("connect sub to url %s" % url)
+
         self._sub.setsockopt_string(zmq.SUBSCRIBE, sub_topic)
-        # self._sub.setsockopt(zmq.SUBSCRIBE, sub_topic.encode(encoding='UTF-8'))
-        print("subscribed to topic %s" % sub_topic)
 
         self._sub_message = sub_type()
 
@@ -159,10 +169,8 @@ class SubscriberEmulator:
         thread.start()
 
     def _callback_thread(self):
-        #  sub_message_string = ""
         while True:
             sub_message_string = self._sub.recv()
-            #print("received message in topic %s" % self._sub_topic)
             sub_message_string = sub_message_string[len(self._sub_topic) + 1:]
             self._sub_message.ParseFromString(sub_message_string)
             self._callback(self._sub_message)

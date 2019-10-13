@@ -10,7 +10,7 @@ from gps.proto.gps_pb2 import ACTION
 
 
 class AgentOpenAIGym(Agent):
-    """An Agent for  gym environments."""
+    """An Agent for gym environments."""
 
     def __init__(self, hyperparams):
         """Initializes the agent.
@@ -55,7 +55,7 @@ class AgentOpenAIGym(Agent):
         randomize_initial_state=0,
         **kwargs,
     ):
-        """Performs agent resets and rolls out given policy to collect a sample.
+        """Performs agent reset and rolls out given policy to collect a sample.
 
         Args:
             policy: A Policy object.
