@@ -1,41 +1,43 @@
-""" This file defines the base class for dynamics estimation. """
-import abc
+"""This file defines the base class for dynamics estimation."""
+from abc import ABC, abstractmethod
 
 import numpy as np
 
 
-class Dynamics(object):
-    """ Dynamics superclass. """
-    __metaclass__ = abc.ABCMeta
+class Dynamics(ABC):
+    """Abstract dynamics superclass."""
 
     def __init__(self, hyperparams):
+        """Initializes the dynamics.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         self._hyperparams = hyperparams
 
-        # TODO - Currently assuming that dynamics will always be linear with X.
-        # TODO - Allocate arrays using hyperparams dU, dX, T.
-
         # Fitted dynamics: x_t+1 = Fm * [x_t;u_t] + fv.
-        self.Fm = np.array(np.nan)
-        self.fv = np.array(np.nan)
+        self.Fm = np.array(np.nan)  # Linear component
+        self.fv = np.array(np.nan)  # Constant component
         self.dyn_covar = np.array(np.nan)  # Covariance.
 
-    @abc.abstractmethod
+    @abstractmethod
     def update_prior(self, sample):
-        """ Update dynamics prior. """
-        raise NotImplementedError("Must be implemented in subclass.")
+        """Update dynamics prior."""
+        pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_prior(self):
-        """ Returns prior object. """
-        raise NotImplementedError("Must be implemented in subclass.")
+        """Returns prior object."""
+        pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def fit(self, sample_list):
-        """ Fit dynamics. """
-        raise NotImplementedError("Must be implemented in subclass.")
+        """Fit dynamics."""
+        pass
 
     def copy(self):
-        """ Return a copy of the dynamics estimate. """
+        """Return a copy of this dynamics object."""
         dyn = type(self)(self._hyperparams)
         dyn.Fm = np.copy(self.Fm)
         dyn.fv = np.copy(self.fv)

@@ -1,13 +1,19 @@
-""" This file defines linear regression with an arbitrary prior. """
+"""This file defines linear regression with an arbitrary prior."""
 import numpy as np
 
-from gps.algorithm.dynamics.dynamics import Dynamics
+from gps.algorithm.dynamics import Dynamics
 
 
 class DynamicsLRPrior(Dynamics):
-    """ Dynamics with linear regression, with arbitrary prior. """
+    """Linear dynamics fitted via linear regression with arbitrary prior."""
 
     def __init__(self, hyperparams):
+        """Initializes the dynamics.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         Dynamics.__init__(self, hyperparams)
         self.Fm = None
         self.fv = None
@@ -15,17 +21,17 @@ class DynamicsLRPrior(Dynamics):
         self.prior = self._hyperparams['prior']['type'](self._hyperparams['prior'])
 
     def update_prior(self, samples):
-        """ Update dynamics prior. """
+        """Update dynamics prior."""
         X = samples.get_X()
         U = samples.get_U()
         self.prior.update(X, U)
 
     def get_prior(self):
-        """ Return the dynamics prior. """
+        """Returns prior object."""
         return self.prior
 
     def fit(self, X, U, prior_only=False):
-        """ Fit dynamics. """
+        """Fit dynamics."""
         # Constants
         N, T, dimX = X.shape
         dimU = U.shape[2]

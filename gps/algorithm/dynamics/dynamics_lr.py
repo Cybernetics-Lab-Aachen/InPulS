@@ -1,29 +1,34 @@
-""" This file defines linear regression for dynamics estimation. """
+"""This file defines linear regression for dynamics estimation."""
 import numpy as np
 
-from gps.algorithm.dynamics.dynamics import Dynamics
+from gps.algorithm.dynamics import Dynamics
 
 
 class DynamicsLR(Dynamics):
-    """ Dynamics with linear regression, with constant prior. """
+    """Linear dynamics fitted via linear regression with constant prior."""
 
     def __init__(self, hyperparams):
+        """Initializes the dynamics.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         Dynamics.__init__(self, hyperparams)
         self.Fm = None
         self.fv = None
         self.dyn_covar = None
 
     def update_prior(self, sample):
-        """ Update dynamics prior. """
-        # Nothing to do - constant prior.
-        pass
+        """Update dynamics prior."""
+        pass  # Nothing to do - constant prior.
 
     def get_prior(self):
-        """ Return the dynamics prior, or None if constant prior. """
+        """Returns prior object."""
         return None
 
     def fit(self, X, U):
-        """ Fit dynamics. """
+        """Fit dynamics."""
         N, T, dX = X.shape
         dU = U.shape[2]
 

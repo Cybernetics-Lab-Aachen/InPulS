@@ -1,4 +1,4 @@
-""" This file defines the GMM prior for dynamics estimation. """
+"""This file defines the GMM prior for dynamics estimation."""
 import copy
 import logging
 
@@ -11,22 +11,26 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DynamicsPriorGMM(object):
-    """
-    A dynamics prior encoded as a GMM over [x_t, u_t, x_t+1] points.
+    """A dynamics prior encoded as a GMM over [x_t, u_t, x_t+1] points.
+
     See:
-        S. Levine*, C. Finn*, T. Darrell, P. Abbeel, "End-to-end
-        training of Deep Visuomotor Policies", arXiv:1504.00702,
-        Appendix A.3.
+        S. Levine*, C. Finn*, T. Darrell, P. Abbeel, "End-to-end training of Deep Visuomotor Policies",
+        arXiv:1504.00702, Appendix A.3.
+
     """
 
     def __init__(self, hyperparams):
-        """
+        """Initializes the dynamics.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
         Hyperparameters:
             min_samples_per_cluster: Minimum samples per cluster.
             max_clusters: Maximum number of clusters to fit.
-            max_samples: Maximum number of trajectories to use for
-                fitting the GMM at any given time.
+            max_samples: Maximum number of trajectories to use for fitting the GMM at any given time.
             strength: Adjusts the strength of the prior.
+
         """
         config = copy.deepcopy(DYN_PRIOR_GMM)
         config.update(hyperparams)
@@ -41,7 +45,7 @@ class DynamicsPriorGMM(object):
         self.regularization = self._hyperparams.get('regularization', 0)
 
     def initial_state(self):
-        """ Return dynamics prior for initial time step. """
+        """Return dynamics prior for initial time step."""
         # Compute mean and covariance.
         mu0 = np.mean(self.X[:, 0, :], axis=0)
         Phi = np.diag(np.var(self.X[:, 0, :], axis=0))
@@ -55,11 +59,12 @@ class DynamicsPriorGMM(object):
         return mu0, Phi, m, n0
 
     def update(self, X, U):
-        """
-        Update prior with additional data.
+        """Update prior with additional data.
+
         Args:
             X: A N x T x dX matrix of sequential state data.
             U: A N x T x dU matrix of sequential control data.
+
         """
         # Constants.
         T = X.shape[1] - 1
@@ -95,13 +100,15 @@ class DynamicsPriorGMM(object):
         self.gmm.update(xux, K)
 
     def eval(self, Dx, Du, pts):
-        """
-        Evaluate prior.
+        """Evaluate prior.
+
         Args:
+            Dx: Dimension of state space
+            Du: Dimension of action space
             pts: A N x Dx+Du+Dx matrix.
+
         """
-        # Construct query data point by rearranging entries and adding
-        # in reference.
+        # Construct query data point by rearranging entries and adding in reference.
         assert pts.shape[1] == Dx + Du + Dx
 
         # Perform query and fix mean.
