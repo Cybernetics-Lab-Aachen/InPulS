@@ -1,5 +1,5 @@
-""" This file defines the base agent class. """
-import abc
+"""This file defines the base agent class."""
+from abc import ABC, abstractmethod
 import copy
 
 from gps.agent.config import AGENT
@@ -7,19 +7,19 @@ from gps.proto.gps_pb2 import ACTION
 from gps.sample.sample_list import SampleList
 
 
-class Agent(object):
-    """
-    Agent superclass. The agent interacts with the environment to
-    collect samples.
-    """
-    __metaclass__ = abc.ABCMeta
+class Agent(ABC):
+    """Abstract agent superclass. The agent interacts with the environment to collect samples."""
 
     def __init__(self, hyperparams):
+        """Initializes the agent.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
+        """
         config = copy.deepcopy(AGENT)
         config.update(hyperparams)
         self._hyperparams = config
-
-        self.active = False
 
         # Store samples, along with size/index information for samples.
         self._samples = [[] for _ in range(self._hyperparams['conditions'])]
@@ -51,67 +51,56 @@ class Agent(object):
         self._target_ja = []
         self._initial_ja = []
 
-    def is_active(self):
-        return self.active
+    @abstractmethod
+    def sample(self, policy, condition, save=True, noisy=True, reset_cond=None, **kwargs):
+        """Performs agent reset and rolls out given policy to collect a sample.
 
-    @abc.abstractmethod
-    def sample(self, policy, condition, save=True, noisy=True):
+        Args:
+            policy: A Policy object.
+            condition: Which condition setup to run.
+            save: Whether or not to store the trial into the samples.
+            noisy: Whether or not to use noise during sampling.
+            reset_cond: The initial condition to reset the agent into.
+            kwargs: Additional agent specific arguments.
+
+        Returns:
+            sample: A Sample object.
+
         """
-        Draw a sample from the environment, using the specified policy
-        and under the specified condition, with or without noise.
-        """
-        raise NotImplementedError("Must be implemented in subclass.")
+        pass
 
     def reset(self, condition):
-        """ Reset environment to the specified condition. """
-        pass  # May be overridden in subclass.
+        """Reset the agent for a particular experiment condition.
+
+        Args:
+            condition: An index into hyperparams['reset_conditions']. Some environments support `None` to indicate a
+            reset to a random initial state.
+
+        """
+        pass
 
     def get_samples(self, condition, start=0, end=None):
-        """
-        Return the requested samples based on the start and end indices.
+        """Returns the requested samples based on the start and end indices.
+
         Args:
             start: Starting index of samples to return.
             end: End index of samples to return.
+
         """
         return (
             SampleList(self._samples[condition][start:])
             if end is None else SampleList(self._samples[condition][start:end])
         )
 
-    def extend_state_space(self, state):
-        if self._hyperparams['include_tgt']:
-            state[(self.dX - self._hyperparams['dtgtX']
-                  ):self.dX] = self._hyperparams['exp_x_tgts'][self.condition][0:self._hyperparams['dtgtX']]
-        return state
-
-    def delete_last_sample(self, condition):
-        """ Delete the last sample from the specified condition. """
-        self._samples[condition].pop()
-
-    def get_idx_x(self, sensor_name):
-        """
-        Return the indices corresponding to a certain state sensor name.
-        Args:
-            sensor_name: The name of the sensor.
-        """
-        return self._x_data_idx[sensor_name]
-
-    def get_idx_obs(self, sensor_name):
-        """
-        Return the indices corresponding to a certain observation sensor name.
-        Args:
-            sensor_name: The name of the sensor.
-        """
-        return self._obs_data_idx[sensor_name]
-
     def pack_data_obs(self, existing_mat, data_to_insert, data_types, axes=None):
-        """
-        Update the observation matrix with new data.
+        """Updates the observation matrix with new data.
+
         Args:
             existing_mat: Current observation matrix.
             data_to_insert: New data to insert into the existing matrix.
             data_types: Name of the sensors to insert data for.
             axes: Which axes to insert data. Defaults to the last axes.
+
         """
         num_sensor = len(data_types)
         if axes is None:
@@ -139,13 +128,14 @@ class Agent(object):
         existing_mat[tuple(index)] = data_to_insert
 
     def pack_data_meta(self, existing_mat, data_to_insert, data_types, axes=None):
-        """
-        Update the meta data matrix with new data.
+        """Updates the meta data matrix with new data.
+
         Args:
             existing_mat: Current meta data matrix.
             data_to_insert: New data to insert into the existing matrix.
             data_types: Name of the sensors to insert data for.
             axes: Which axes to insert data. Defaults to the last axes.
+
         """
         num_sensor = len(data_types)
         if axes is None:
@@ -173,13 +163,14 @@ class Agent(object):
         existing_mat[index] = data_to_insert
 
     def pack_data_x(self, existing_mat, data_to_insert, data_types, axes=None):
-        """
-        Update the state matrix with new data.
+        """Update the state matrix with new data.
+
         Args:
             existing_mat: Current state matrix.
             data_to_insert: New data to insert into the existing matrix.
             data_types: Name of the sensors to insert data for.
             axes: Which axes to insert data. Defaults to the last axes.
+
         """
         num_sensor = len(data_types)
         if axes is None:
@@ -206,36 +197,8 @@ class Agent(object):
             index[axes[i]] = slice(self._x_data_idx[data_types[i]][0], self._x_data_idx[data_types[i]][-1] + 1)
         existing_mat[tuple(index)] = data_to_insert
 
-    def unpack_data_x(self, existing_mat, data_types, axes=None):
-        """
-        Returns the requested data from the state matrix.
-        Args:
-            existing_mat: State matrix to unpack from.
-            data_types: Names of the sensor to unpack.
-            axes: Which axes to unpack along. Defaults to the last axes.
-        """
-        num_sensor = len(data_types)
-        if axes is None:
-            # If axes not specified, assume indexing on last dimensions.
-            axes = list(range(-1, -num_sensor - 1, -1))
-        else:
-            # Make sure number of sensors and axes are consistent.
-            if num_sensor != len(axes):
-                raise ValueError('Length of sensors (%d) must equal length of axes (%d)', num_sensor, len(axes))
-
-        # Shape checks.
-        for i in range(num_sensor):
-            # Make sure to slice along X.
-            if existing_mat.shape[axes[i]] != self.dX:
-                raise ValueError('Axes must be along an dX=%d dimensional axis', self.dX)
-
-        # Actually perform the slice.
-        index = [slice(None) for _ in range(len(existing_mat.shape))]
-        for i in range(num_sensor):
-            index[axes[i]] = slice(self._x_data_idx[data_types[i]][0], self._x_data_idx[data_types[i]][-1] + 1)
-        return existing_mat[tuple(index)]
-
     def pack_sample(self, X, U):
+        """Packs sample data into Sample object."""
         from gps.sample.sample import Sample
 
         assert X.shape[0] == self.T

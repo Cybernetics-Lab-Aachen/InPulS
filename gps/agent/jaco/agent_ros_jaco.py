@@ -5,7 +5,7 @@ import time
 import numpy as np
 import scipy as sp
 
-from gps.agent.agent import Agent
+from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_ROS_JACO
 from gps.agent.ros_utils import TimeoutException, ServiceEmulator

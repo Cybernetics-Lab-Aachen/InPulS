@@ -3,7 +3,7 @@ import numpy as np
 
 import gym
 
-from gps.agent.agent import Agent
+from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise
 from gps.sample.sample import Sample
 from gps.proto.gps_pb2 import ACTION
@@ -109,7 +109,6 @@ class AgentOpenAIGym(Agent):
                 raise Exception('Iteration ended prematurely %d/%d' % (t + 1, self.T))
         if save:
             self._samples[condition].append(sample)
-        self.active = False
         return sample
 
     def set_states(self, sample, obs, t):

@@ -4,7 +4,7 @@ import logging
 import time
 import numpy as np
 
-from gps.agent.agent import Agent
+from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_PANDA
 from gps.agent.ros_utils import TimeoutException, ServiceEmulator

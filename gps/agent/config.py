@@ -1,4 +1,4 @@
-""" Default configuration and hyperparameters for agent objects. """
+"""Default configuration and hyperparameters for agent objects."""
 import numpy as np
 
 AGENT = {
@@ -52,8 +52,4 @@ AGENT_PANDA = {
     # trial and auxiliary arms.
     'frequency': 20,
     'end_effector_points': np.array([]),
-}
-
-AGENT_BOX2D = {
-    'render': True,
 }

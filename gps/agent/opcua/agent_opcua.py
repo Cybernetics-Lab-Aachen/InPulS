@@ -7,7 +7,7 @@ from multiprocessing.pool import ThreadPool
 
 from opcua import ua, Client
 
-from gps.agent.agent import Agent
+from gps.agent import Agent
 from gps.agent.agent_utils import generate_noise
 from gps.sample.sample import Sample
 from gps.proto.gps_pb2 import ACTION
@@ -197,7 +197,6 @@ class AgentOPCUA(Agent):
                     time.sleep(sleep_time)
             if save:
                 self._samples[condition].append(sample)
-            self.active = False
             self.finalize_sample()
 
             sample_ok = self.debug or input('Continue?') == 'y'
