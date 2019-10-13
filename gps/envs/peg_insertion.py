@@ -1,3 +1,5 @@
+"""This file defines the peg insertion task."""
+
 import os
 import numpy as np
 from gym.envs.robotics.robot_env import RobotEnv
@@ -8,6 +10,7 @@ PR2_GAINS = np.array([3.09, 1.08, 0.393, 0.674, 0.111, 0.152, 0.098])
 
 
 def vec_to_qpos(vec):
+    """Structures joint angle as dictionary."""
     return {
         'r_shoulder_pan_joint': vec[0],
         'r_shoulder_lift_joint': vec[1],
@@ -20,7 +23,10 @@ def vec_to_qpos(vec):
 
 
 class PegInsertionEnv(RobotEnv):
+    """This environments models a peg insertion task with a sumilated PR2 robot."""
+
     def __init__(self):
+        """Initializes the environment."""
         initial_qpos = vec_to_qpos([0.1, 0.1, -1.54, -1.7, 1.54, -0.2, 0])
         RobotEnv.__init__(
             self,
@@ -31,22 +37,8 @@ class PegInsertionEnv(RobotEnv):
         )
         self.distance_threshold = 0.05
 
-        # Find seeds for good initial states
-        # results = np.empty(1000)
-        # for i in range(results.shape[0]):
-        #     self.seed(i)
-        #     self._reset_sim()
-        #     obs = self._get_obs()
-        #     dist = goal_distance(obs['achieved_goal'], obs['desired_goal'])
-        #     if obs['achieved_goal'][2] < -0.4:  # Peg below/inside table
-        #         dist = 10
-        #     results[i] = dist
-        # print(list(np.sort(np.argsort(results)[:8])))
-        # print(np.sort(results)[:8])
-        # exit()
-
     def compute_reward(self, achieved_goal, goal, info):
-        # Compute distance between goal and the achieved goal.
+        """Compute distance between goal and the achieved goal."""
         return -goal_distance(achieved_goal, goal)
 
     def _reset_sim(self):

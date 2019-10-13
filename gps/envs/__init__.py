@@ -1,3 +1,5 @@
+"""This package contains addition environemnts."""
+
 from gym.envs.registration import register
 
 register(
