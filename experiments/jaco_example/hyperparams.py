@@ -45,10 +45,7 @@ for i in range(common['conditions']):
 
     ja_x0_, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(common['target_filename'], 'trial_arm', str(i), 'initial')
     ja_tgt, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(common['target_filename'], 'trial_arm', str(i), 'target')
-    ee_tgt = np.ndarray.flatten(
-        # get_ee_points(EE_POINTS, ee_pos_tgt, ee_rot_tgt).T
-        ee_pos_tgt
-    )
+    ee_tgt = np.ndarray.flatten(ee_pos_tgt)
 
     x_tgt = np.zeros(21)
     jv_tgt = np.zeros(6)
@@ -60,9 +57,6 @@ for i in range(common['conditions']):
     ja_x0 = ja_x0_[:6]
     x0 = np.zeros(21)
     x0[:6] = ja_x0
-    #x0[12:(12+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
-    #    get_ee_points(EE_POINTS, ee_pos_x0, ee_rot_x0).T
-    #)
 
     reset_condition = {
         TRIAL_ARM: {

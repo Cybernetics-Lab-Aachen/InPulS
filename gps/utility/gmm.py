@@ -1,4 +1,4 @@
-""" This file defines a Gaussian mixture model class. """
+"""This file defines a Gaussian mixture model class."""
 import logging
 
 import numpy as np
@@ -8,26 +8,31 @@ LOGGER = logging.getLogger(__name__)
 
 
 def logsum(vec, axis=0, keepdims=True):
-    #TODO: Add a docstring.
+    """Computes sum of logarithms."""
     maxv = np.max(vec, axis=axis, keepdims=keepdims)
     maxv[maxv == -float('inf')] = 0
     return np.log(np.sum(np.exp(vec - maxv), axis=axis, keepdims=keepdims)) + maxv
 
 
 class GMM(object):
-    """ Gaussian Mixture Model. """
+    """Gaussian Mixture Model."""
 
-    def __init__(self, init_sequential=False, eigreg=False, warmstart=True):
-        self.init_sequential = init_sequential
-        self.eigreg = eigreg
+    def __init__(self, warmstart=True):
+        """Initializes the GMM.
+
+        Args:
+            warmstart: Use previous clusters as initial clusters.
+
+        """
         self.warmstart = warmstart
         self.sigma = None
 
     def inference(self, pts):
-        """
-        Evaluate dynamics prior.
+        """Evaluate dynamics prior.
+
         Args:
             pts: A N x D array of points.
+
         """
         # Compute posterior cluster weights.
         logwts = self.clusterwts(pts)
@@ -45,13 +50,14 @@ class GMM(object):
         return mu0, Phi, m, n0
 
     def estep(self, data):
-        """
-        Compute log observation probabilities under GMM.
+        """Compute log observation probabilities under GMM.
+
         Args:
             data: A N x D array of points.
+
         Returns:
-            logobs: A N x K array of log probabilities (for each point
-                on each cluster).
+            logobs: A N x K array of log probabilities (for each point on each cluster).
+
         """
         # Constants.
         K = self.sigma.shape[0]
@@ -85,13 +91,15 @@ class GMM(object):
         return logobs
 
     def moments(self, logwts):
-        """
-        Compute the moments of the cluster mixture with logwts.
+        """Compute the moments of the cluster mixture with logwts.
+
         Args:
             logwts: A K x 1 array of log cluster probabilities.
+
         Returns:
             mu: A (D,) mean vector.
             sigma: A D x D covariance matrix.
+
         """
         # Exponentiate.
         wts = np.exp(logwts)
@@ -109,12 +117,14 @@ class GMM(object):
         return mu, sigma
 
     def clusterwts(self, data):
-        """
-        Compute cluster weights for specified points under GMM.
+        """Compute cluster weights for specified points under GMM.
+
         Args:
             data: An N x D array of points
+
         Returns:
             A K x 1 array of average cluster log probabilities.
+
         """
         # Compute probability of each point under each cluster.
         logobs = self.estep(data)
@@ -127,11 +137,12 @@ class GMM(object):
         return logwts.T
 
     def update(self, data, K, max_iterations=100):
-        """
-        Run EM to update clusters.
+        """Run EM to update clusters.
+
         Args:
             data: An N x D data matrix, where N = number of data points.
             K: Number of clusters to use.
+
         """
         # Constants.
         N = data.shape[0]
@@ -150,10 +161,7 @@ class GMM(object):
             N = self.N
 
             # Set initial cluster indices.
-            if not self.init_sequential:
-                cidx = np.random.randint(0, K, size=(1, N))
-            else:
-                raise NotImplementedError()
+            cidx = np.random.randint(0, K, size=(1, N))
 
             # Initialize.
             for i in range(K):
@@ -211,8 +219,6 @@ class GMM(object):
                 mu = self.mu[i, :]
                 self.sigma[i, :, :] = XX - np.outer(mu, mu)
 
-                if self.eigreg:  # Use eigenvalue regularization.
-                    raise NotImplementedError()
-                else:  # Use quick and dirty regularization.
-                    sigma = self.sigma[i, :, :]
-                    self.sigma[i, :, :] = 0.5 * (sigma + sigma.T) + 1e-6 * np.eye(Do)
+                # Use quick and dirty regularization.
+                sigma = self.sigma[i, :, :]
+                self.sigma[i, :, :] = 0.5 * (sigma + sigma.T) + 1e-6 * np.eye(Do)
