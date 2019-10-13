@@ -69,7 +69,19 @@ class DDPG_Policy(PolicyOpt):
             labels=['critic', 'actor'],
         )
 
-    def act(self, x, _, t, noise, noise_clip=None):
+    def act(self, x, _, t, noise):
+        """Decides an action for the given state/observation at the current timestep.
+
+        Args:
+            x: State vector.
+            obs: Observation vector.
+            t: Time step.
+            noise: A dU-dimensional noise vector.
+
+        Returns:
+            A dU dimensional action vector.
+
+        """
         if t == 0:
             self.pol.reset()
 

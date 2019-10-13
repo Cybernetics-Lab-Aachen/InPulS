@@ -1,9 +1,4 @@
-""" Default configuration and hyperparameter values for policies. """
-
-# PolicyPrior
-POLICY_PRIOR = {
-    'strength': 1e-4,
-}
+"""Default configuration and hyperparameter values for policies."""
 
 # PolicyPriorGMM
 POLICY_PRIOR_GMM = {

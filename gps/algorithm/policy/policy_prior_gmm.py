@@ -1,4 +1,4 @@
-""" This file defines a GMM prior for policy linearization. """
+"""This file defines a GMM prior for policy linearization."""
 import copy
 import logging
 
@@ -12,27 +12,26 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PolicyPriorGMM(object):
-    """
-    A policy prior encoded as a GMM over [x_t, u_t] points, where u_t is
-    the output of the policy for the given state x_t. This prior is used
-    when computing the linearization of the policy.
+    """A policy prior encoded as a GMM over [x_t, u_t] points.
 
-    See the method AlgorithmBADMM._update_policy_fit, in
-    python/gps/algorithm.algorithm_badmm.py.
+    This prior is used when computing the linearization of the policy.
 
-    Also see the GMM dynamics prior, in
-    python/gps/algorithm/dynamics/dynamics_prior_gmm.py. This is a
-    similar GMM prior that is used for the dynamics estimate.
+    See the GMM dynamics prior, in python/gps/algorithm/dynamics/dynamics_prior_gmm.py. This is a similar GMM prior
+    that is used for the dynamics estimate.
     """
 
     def __init__(self, hyperparams):
-        """
+        """Initializes the policy prior.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+
         Hyperparameters:
             min_samples_per_cluster: Minimum number of samples.
             max_clusters: Maximum number of clusters to fit.
-            max_samples: Maximum number of trajectories to use for
-                fitting the GMM at any given time.
+            max_samples: Maximum number of trajectories to use for fitting the GMM at any given time.
             strength: Adjusts the strength of the prior.
+
         """
         config = copy.deepcopy(POLICY_PRIOR_GMM)
         config.update(hyperparams)
@@ -47,13 +46,13 @@ class PolicyPriorGMM(object):
         self._strength = self._hyperparams['strength']
 
     def update(self, samples, policy_opt, mode='add'):
-        """
-        Update GMM using new samples or policy_opt.
-        By default does not replace old samples.
+        """Update GMM using new samples or policy_opt.
 
         Args:
             samples: SampleList containing new samples
             policy_opt: PolicyOpt containing current policy
+            mode: `add` or `replace`. By default does not replace old samples.
+
         """
         X, obs = samples.get_X(), samples.get_obs()
 
@@ -84,7 +83,7 @@ class PolicyPriorGMM(object):
         self.gmm.update(XU, K)
 
     def eval(self, Ts, Ps):
-        """ Evaluate prior. """
+        """Evaluate prior."""
         # Construct query data point.
         pts = np.concatenate((Ts, Ps), axis=1)
         # Perform query.
@@ -96,15 +95,14 @@ class PolicyPriorGMM(object):
         Phi *= m
         return mu0, Phi, m, n0
 
-    # TODO: Merge with non-GMM policy_prior?
     def fit(self, X, pol_mu, pol_sig):
-        """
-        Fit policy linearization.
+        """Fit policy linearization.
 
         Args:
             X: Samples (N, T, dX)
             pol_mu: Policy means (N, T, dU)
             pol_sig: Policy covariance (N, T, dU)
+
         """
         N, T, dX = X.shape
         dU = pol_mu.shape[2]

@@ -55,7 +55,6 @@ agent = {
     'obs_include': ['observation', END_EFFECTOR_POINTS],
     'actions_include': [ACTION],
     'scaler': scaler,
-    'action_noise_clip': None,
 }
 
 algorithm = {
@@ -164,8 +163,6 @@ param_str += '-K%d' % algorithm['dynamics']['prior']['max_clusters']
 param_str += '-h%r' % algorithm['policy_opt']['N_hidden']
 if algorithm['dynamics']['prior']['regularization'] > 0:
     param_str += '-Preg%r' % algorithm['dynamics']['prior']['regularization']
-if agent['action_noise_clip'] is not None:
-    param_str += '-Uclip(%.2f,%.2f)' % agent['action_noise_clip']
 common['data_files_dir'] += '%s_%d/' % (param_str, config['random_seed'])
 
 # Only make changes to filesystem if loaded by training process

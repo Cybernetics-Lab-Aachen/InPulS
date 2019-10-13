@@ -1,4 +1,4 @@
-""" This file defines the linear Gaussian policy class. """
+"""This file defines the linear Gaussian policy class."""
 import numpy as np
 
 from gps.algorithm.policy.policy import Policy
@@ -6,8 +6,8 @@ from gps.utility.general_utils import check_shape
 
 
 class LinearGaussianPolicy(Policy):
-    """
-    Time-varying linear Gaussian policy.
+    """Time-varying linear Gaussian policy.
+
     U = K*x + k + noise, where noise ~ N(0, chol_pol_covar)
     """
 
@@ -34,44 +34,28 @@ class LinearGaussianPolicy(Policy):
         self.Qm = np.zeros((self.T, self.dU + self.dX, self.dU + self.dX))
         self.qv = np.zeros((self.T, self.dU + self.dX))
 
-    def act(self, x, obs, t, noise=None, noise_clip=None):
-        """
-        Return an action for a state.
+    def act(self, x, obs, t, noise=None):
+        """Decides an action for the given state/observation at the current timestep.
+
         Args:
             x: State vector.
             obs: Observation vector.
             t: Time step.
-            noise: Action noise. This will be scaled by the variance.
+            noise: A dU-dimensional noise vector.
+
+        Returns:
+            A dU dimensional action vector.
+
         """
         u = self.K[t].dot(x) + self.k[t]
         if noise is not None:
             covar = self.chol_pol_covar[t].T
-            if noise_clip is not None:
-                covar = np.clip(covar, *noise_clip)
 
             u += covar.dot(noise[t])
         return u
 
-    def fold_k(self, noise):
-        """
-        Fold noise into k.
-        Args:
-            noise: A T x Du noise vector with mean 0 and variance 1.
-        Returns:
-            k: A T x dU bias vector.
-        """
-        k = np.zeros_like(self.k)
-        for i in range(self.T):
-            scaled_noise = self.chol_pol_covar[i].T.dot(noise[i])
-            k[i] = scaled_noise + self.k[i]
-        return k
-
     def nans_like(self):
-        """
-        Returns:
-            A new linear Gaussian policy object with the same dimensions
-            but all values filled with NaNs.
-        """
+        """Creates a new linear Gaussian policy object with the same dimensions but all values filled with NaNs."""
         policy = LinearGaussianPolicy(
             np.zeros_like(self.K),
             np.zeros_like(self.k),

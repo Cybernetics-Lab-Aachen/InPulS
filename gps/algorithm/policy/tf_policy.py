@@ -5,16 +5,19 @@ from gps.algorithm.policy.policy import Policy
 
 
 class TfPolicy(Policy):
-    """
-    A neural network policy implemented in tensor flow. The network output is
-    taken to be the mean, and Gaussian noise is added on top of it.
+    """A neural network policy implemented in tensor flow.
+
+    The network output is taken to be the mean, and Gaussian noise is added on top of it.
+
     U = net.forward(obs) + noise, where noise ~ N(0, diag(var))
+
     Args:
         obs_tensor: tensor representing tf observation. Used in feed dict for forward pass.
         act_op: tf op to execute the forward pass. Use sess.run on this op.
         var: Du-dimensional noise variance vector.
         sess: tf session.
         device_string: tf device string for running on either gpu or cpu.
+
     """
 
     def __init__(self, dU, obs_tensor, act_op, var, sess, device_string):
@@ -29,14 +32,18 @@ class TfPolicy(Policy):
         self.bias = None
         self.x_idx = None
 
-    def act(self, x, obs, t, noise, noise_clip=None):
-        """
-        Return an action for a state.
+    def act(self, x, obs, t, noise):
+        """Decides an action for the given state/observation at the current timestep.
+
         Args:
             x: State vector.
             obs: Observation vector.
             t: Time step.
-            noise: Action noise. This will be scaled by the variance.
+            noise: A dU-dimensional noise vector.
+
+        Returns:
+            A dU dimensional action vector.
+
         """
         # Normalize obs.
         if len(obs.shape) == 1:
@@ -48,8 +55,6 @@ class TfPolicy(Policy):
             u = action_mean
         else:
             covar = self.chol_pol_covar.T
-            if noise_clip is not None:
-                covar = np.clip(covar, *noise_clip)
             if t is None:
                 u = action_mean + covar.dot(noise[0])
             else:

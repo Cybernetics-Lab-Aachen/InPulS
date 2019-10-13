@@ -252,7 +252,19 @@ class MU_Policy(PolicyOpt):
         self.var = 1 / np.diag(A)
         self.policy.chol_pol_covar = np.diag(np.sqrt(self.var))
 
-    def act(self, x, _, t, noise, noise_clip=None):
+    def act(self, x, _, t, noise):
+        """Decides an action for the given state/observation at the current timestep.
+
+        Args:
+            x: State vector.
+            obs: Observation vector.
+            t: Time step.
+            noise: A dU-dimensional noise vector.
+
+        Returns:
+            A dU dimensional action vector.
+
+        """
         u = self.sess.run(
             self.action_out,
             feed_dict={

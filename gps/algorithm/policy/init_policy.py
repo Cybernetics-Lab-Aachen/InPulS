@@ -1,9 +1,12 @@
+"""This module provides methods to generate initial policies."""
+
 import numpy as np
 
 from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
 
 
 def init_pol(hyperparams):
+    """Generates an initial policy of constant actions with added noise."""
     dU, dX = hyperparams['dU'], hyperparams['dX']
     T = hyperparams['T']
 
@@ -23,6 +26,7 @@ def init_pol(hyperparams):
 
 
 def init_pol_ctr(hyperparams):
+    """Generates an initial policy by loading linear controllers from a file."""
     dU, dX = hyperparams['dU'], hyperparams['dX']
     T = hyperparams['T']
     data = np.load(hyperparams['ctr_file'])
