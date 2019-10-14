@@ -1,4 +1,4 @@
-""" This file defines policy optimization for a tensorflow policy. """
+"""This file defines policy optimization for a GPS policy."""
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import layers
@@ -9,9 +9,25 @@ from gps.algorithm.policy_opt.policy_opt import PolicyOpt
 
 
 class GPS_Policy(PolicyOpt):
-    """ Policy optimization using tensor flow for DAG computations/nonlinear function approximation. """
+    """Refactored implementation of GPS."""
 
     def __init__(self, hyperparams, dX, dU):
+        """Initializes the agent.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+            dX: Dimension of state space.
+            dU: Dimension of action space.
+
+        Hyperparameters:
+            random_seed: Random seed used for tensorflow.
+            init_var: Initial policy variance
+            epochs: Number of training epochs each iteration.
+            batch_size: Batch size used during training. Must be a divisor of  M * N * (T - 1).
+            weight_decay: L2 regularization of the network.
+            N_hidden: Size of hidden layers.
+
+        """
         PolicyOpt.__init__(self, hyperparams, dX, dU)
         self.dX = dX
         self.dU = dU
@@ -25,9 +41,9 @@ class GPS_Policy(PolicyOpt):
 
         self.graph = tf.Graph()  # Encapsulate model in own graph
         with self.graph.as_default():
-            self.init_network()
-            self.init_loss_function()
-            self.init_solver()
+            self._init_network()
+            self._init_loss_function()
+            self._init_solver()
 
             # Create session
             config = tf.ConfigProto()
@@ -40,7 +56,8 @@ class GPS_Policy(PolicyOpt):
 
         self.policy = self  # Act method is contained in this class
 
-    def init_network(self):
+    def _init_network(self):
+        """Defines the tensorflow network."""
         # Placeholders for dataset
         self.state_data = tf.placeholder(tf.float32, (None, self.dX))
         self.action_data = tf.placeholder(tf.float32, (None, self.dU))
@@ -71,7 +88,8 @@ class GPS_Policy(PolicyOpt):
             h = layers.fully_connected(h, self.N_hidden)
             self.action_out = layers.fully_connected(h, self.dU, activation_fn=None)
 
-    def init_loss_function(self):
+    def _init_loss_function(self):
+        """Defines the loss function."""
         # KL divergence loss
         #  loss_kl = 1/2 delta_action^T * prc * delta_action
         delta_action = self.action_batch - self.action_out
@@ -83,16 +101,15 @@ class GPS_Policy(PolicyOpt):
         # Total loss
         self.loss = self.loss_kl + self.loss_reg
 
-    def init_solver(self):
+    def _init_solver(self):
+        """Defines the optimizer."""
         optimizer = tf.train.AdamOptimizer()
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             self.solver_op = optimizer.minimize(self.loss)
         self.optimizer_reset_op = tf.variables_initializer(optimizer.variables())
 
     def update(self, X, mu, prc, initial_policy=False, **kwargs):
-        """
-        Trains a GPS model on the dataset
-        """
+        """Trains the GPS model on the dataset."""
         M, N, T = X.shape[:3]
         N_train = M * N * (T - 1)
 
@@ -177,10 +194,11 @@ class GPS_Policy(PolicyOpt):
         return u
 
     def prob(self, X):
-        """
-        Run policy forward.
+        """Runs policy forward.
+
         Args:
             X: States (N, T, dX)
+
         """
         N, T = X.shape[:2]
 
@@ -198,7 +216,9 @@ class GPS_Policy(PolicyOpt):
         return action, pol_sigma, pol_prec, pol_det_sigma
 
     def restore_model(self, data_files_dir, iteration_count):
+        """Loads the network weighs from a file."""
         self.saver.restore(self.sess, data_files_dir + 'model-%02d' % (iteration_count))
 
     def store_model(self):
+        """Saves the network weighs in a file."""
         self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))

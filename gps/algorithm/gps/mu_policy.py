@@ -1,4 +1,4 @@
-""" This file defines policy optimization for a tensorflow policy. """
+"""This file defines policy optimization for a MU policy."""
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import layers
@@ -10,9 +10,32 @@ from gps.algorithm.policy_opt.policy_opt import PolicyOpt
 
 
 class MU_Policy(PolicyOpt):
-    """ Policy optimization using tensor flow for DAG computations/nonlinear function approximation. """
+    """Motor Unit policy.
+
+    The global policy is trained on state->linear controller pairs.
+
+    """
 
     def __init__(self, hyperparams, dX, dU):
+        """Initializes the agent.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+            dX: Dimension of state space.
+            dU: Dimension of action space.
+
+        Hyperparameters:
+            random_seed: Random seed used for tensorflow.
+            init_var: Initial policy variance
+            epochs: Number of training epochs each iteration.
+            batch_size: Batch size used during training. Must be a divisor of  M * N * (T - 1).
+            weight_decay: L2 regularization of the network.
+            N_hidden: Size of hidden layers.
+            dZ: Dimension of the latent space.
+            beta_kl: Weight of the KL-divergence term in loss function.
+            N: Number of samples regulriztion.
+
+        """
         PolicyOpt.__init__(self, hyperparams, dX, dU)
         self.dX = dX
         self.dU = dU
@@ -30,9 +53,9 @@ class MU_Policy(PolicyOpt):
 
         self.graph = tf.Graph()  # Encapsulate model in own graph
         with self.graph.as_default():
-            self.init_network()
-            self.init_loss_function()
-            self.init_solver()
+            self._init_network()
+            self._init_loss_function()
+            self._init_solver()
 
             # Create session
             config = tf.ConfigProto()
@@ -45,7 +68,8 @@ class MU_Policy(PolicyOpt):
 
         self.policy = self  # Act method is contained in this class
 
-    def init_network(self):
+    def _init_network(self):
+        """Defines the tensorflow network."""
         # Placeholders for dataset
         self.state_data = tf.placeholder(tf.float32, (None, None, self.dX))
         self.K_data = tf.placeholder(tf.float32, (None, self.dU, self.dX))
@@ -120,7 +144,8 @@ class MU_Policy(PolicyOpt):
         )
         self.action_out = self.action_estimation + self.action_regulation
 
-    def init_loss_function(self):
+    def _init_loss_function(self):
+        """Defines the loss function."""
         # KL divergence action estimator loss
         lqr_action = tf.einsum(
             'ijk,ilk->ilj', self.K_batch, tf.reshape(self.state_batch, (self.batch_size, self.N, self.dX))
@@ -153,7 +178,11 @@ class MU_Policy(PolicyOpt):
         self.loss_action = self.loss_kl_action_estimation + self.loss_reg_action
         self.loss_stabilizer = self.beta_kl * self.loss_latent + self.loss_mse_stabilizer + self.loss_reg_stabilizer
 
-    def init_solver(self):
+    def _init_solver(self):
+        """Defines the optimizer.
+
+        Uses on optimizer for each the action estimator and the stabilizer net.
+        """
         optimizer_action = tf.train.AdamOptimizer()
         optimizer_stabilizer = tf.train.AdamOptimizer()
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
@@ -175,15 +204,7 @@ class MU_Policy(PolicyOpt):
         )
 
     def update(self, X, mu, prc, K, k, initial_policy=False, **kwargs):
-        """
-        Trains a GPS model on the dataset
-        """
-
-        # Shape K:      4,20,4,13           cond, time, action, state
-        # Shape prc:    4,20,4,4            cond, time, action, action
-        # Shape X:      4,5,20,13           cond, sample, time, state
-        # Shape mu:     4,5,20,4            cond, sample, time, action
-
+        """Trains the MU model on the dataset."""
         M, N, T = X.shape[:3]
         N_ctr = M * (T - 1)
 
@@ -282,10 +303,11 @@ class MU_Policy(PolicyOpt):
         return u
 
     def prob(self, X):
-        """
-        Run policy forward.
+        """Runs policy forward.
+
         Args:
             X: States (N, T, dX)
+
         """
         N, T = X.shape[:2]
 
@@ -305,6 +327,7 @@ class MU_Policy(PolicyOpt):
         return action, pol_sigma, pol_prec, pol_det_sigma
 
     def sample_latent_space(self, x_train, N_test):
+        """Takes samples from the lantent space and visualizes them."""
         from gps.visualization.latent_space import visualize_latent_space_tsne
 
         N, T = x_train.shape[:2]
@@ -346,13 +369,16 @@ class MU_Policy(PolicyOpt):
             )
 
     def restore_model(self, data_files_dir, iteration_count):
+        """Loads the network weighs from a file."""
         self.saver.restore(self.sess, data_files_dir + 'model-%02d' % (iteration_count))
 
     def store_model(self):
+        """Saves the network weighs in a file."""
         self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
 
 
 def tf_cov(x):
+    """Compute covariance in tensorflow."""
     mean_x = tf.reduce_mean(x, axis=0, keepdims=True)
     mx = tf.matmul(tf.transpose(mean_x), mean_x)
     vx = tf.matmul(tf.transpose(x), x) / tf.cast(tf.shape(x)[0], tf.float32)
