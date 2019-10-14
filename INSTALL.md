@@ -40,3 +40,19 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-384/libGL
 ```
 
    Run `source ~/.bashrc` or re-login to your shell.
+
+## Docker
+
+Alternatively, Docker can be used to run GPS.
+
+1. Build the docker file:
+
+```bash
+docker build . -t gps
+```
+
+1. Run the container
+
+```bash
+docker run --name gps -v GPS_DIR/experiments:/gps/experiments gps gym_fetchreach_lqr
+```
