@@ -213,8 +213,6 @@ class TrajOptLQRPython(TrajOpt):
             self.Cm_ext = fCm
             self.cv_ext = fcv
 
-            #if algorithm.inner_itr == 0:
-            #    print("Optimize without importance sampling")
             # Compute state-action-state function at each time step.
             for t in range(T - 1, -1, -1):
                 # Add in the cost.

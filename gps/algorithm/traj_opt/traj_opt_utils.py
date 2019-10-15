@@ -1,4 +1,4 @@
-""" This file defines utilities for trajectory optimization. """
+"""This file defines utilities for trajectory optimization."""
 import logging
 
 import numpy as np
@@ -11,19 +11,17 @@ DGD_MAX_ITER = 50
 
 
 def calc_traj_distr_kl(new_mu, new_sigma, new_traj_distr, prev_traj_distr):
-    """
-    Compute KL divergence between new and previous trajectory
-    distributions.
+    """Compute KL divergence between new and previous trajectory distributions.
+
     Args:
         new_mu: T x dX, mean of new trajectory distribution.
         new_sigma: T x dX x dX, variance of new trajectory distribution.
-        new_traj_distr: A linear Gaussian policy object, new
-            distribution.
-        prev_traj_distr: A linear Gaussian policy object, previous
-            distribution.
+        new_traj_distr: A linear Gaussian policy object, new distribution.
+        prev_traj_distr: A linear Gaussian policy object, previous distribution.
+
     Returns:
-        kl_div: The KL divergence between the new and previous
-            trajectories.
+        kl_div: The KL divergence between the new and previous trajectories.
+
     """
     # Constants.
     T = new_mu.shape[0]

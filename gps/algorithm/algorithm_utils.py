@@ -6,7 +6,7 @@ from gps.algorithm.policy.lin_gauss_policy import LinearGaussianPolicy
 
 
 class IterationData(BundleType):
-    """ Collection of iteration variables. """
+    """Collection of iteration variables."""
 
     def __init__(self):
         variables = {
@@ -24,7 +24,7 @@ class IterationData(BundleType):
 
 
 class TrajectoryInfo(BundleType):
-    """ Collection of trajectory-related variables. """
+    """Collection of trajectory-related variables."""
 
     def __init__(self):
         variables = {
@@ -32,8 +32,6 @@ class TrajectoryInfo(BundleType):
             'x0mu': None,  # Mean for the initial state, used by the dynamics.
             'x0sigma': None,  # Covariance for the initial state distribution.
             'xmu': None,  # Mean of real world trajectory distribution
-            'ref_x': None,  # Reference states
-            'ref_u': None,  # Reference actions
             'xmusigma': None,  # Covariance of real world trajectory distribution
             'cc': None,  # Cost estimate constant term.
             'cv': None,  # Cost estimate vector term.
@@ -45,41 +43,33 @@ class TrajectoryInfo(BundleType):
 
 
 class PolicyInfo(BundleType):
-    """ Collection of policy-related variables. """
+    """Collection of policy-related variables."""
 
     def __init__(self, hyperparams):
         T, dU, dX = hyperparams['T'], hyperparams['dU'], hyperparams['dX']
         variables = {
-            'lambda_k': np.zeros((T, dU)),  # Dual variables.
-            'lambda_K': np.zeros((T, dU, dX)),  # Dual variables.
-            'pol_wt': hyperparams['init_pol_wt'] * np.ones(T),  # Policy weight.
             'pol_mu': None,  # Mean of the current policy output.
             'pol_sig': None,  # Covariance of the current policy output.
             'pol_K': np.zeros((T, dU, dX)),  # Policy linearization.
             'pol_k': np.zeros((T, dU)),  # Policy linearization.
             'pol_S': np.zeros((T, dU, dU)),  # Policy linearization covariance.
             'chol_pol_S': np.zeros((T, dU, dU)),  # Cholesky decomp of covar.
-            'prev_kl': None,  # Previous KL divergence.
-            'init_kl': None,  # The initial KL divergence, before the iteration.
-            'policy_samples': [],  # List of current policy samples.
             'policy_prior': None,  # Current prior for policy linearization.
         }
         BundleType.__init__(self, variables)
 
     def traj_distr(self):
-        """ Create a trajectory distribution object from policy info. """
+        """Create a trajectory distribution object from policy info."""
         T, dU, dX = self.pol_K.shape
         # Compute inverse policy covariances.
         inv_pol_S = np.empty_like(self.chol_pol_S)
         for t in range(T):
-            inv_pol_S[t, :, :] = np.linalg.solve(
-                self.chol_pol_S[t, :, :], np.linalg.solve(self.chol_pol_S[t, :, :].T, np.eye(dU))
-            )
+            inv_pol_S[t] = np.linalg.solve(self.chol_pol_S[t], np.linalg.solve(self.chol_pol_S[t].T, np.eye(dU)))
         return LinearGaussianPolicy(self.pol_K, self.pol_k, self.pol_S, self.chol_pol_S, inv_pol_S)
 
 
 def gauss_fit_joint_prior(pts, mu0, Phi, m, n0, dwts, dX, dU, sig_reg):
-    """ Perform Gaussian fit to data with a prior. """
+    """Perform Gaussian fit to data with a prior."""
     # Build weights matrix.
     D = np.diag(dwts)
     # Compute empirical mean and covariance.

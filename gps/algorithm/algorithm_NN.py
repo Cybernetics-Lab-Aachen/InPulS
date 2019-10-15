@@ -1,18 +1,16 @@
-from gps.algorithm.algorithm import Algorithm
+from abc import abstractmethod
 import copy
 import logging
 import numpy as np
 import scipy as sp
+from gps.algorithm.algorithm import Algorithm
 from gps.algorithm.traj_opt.traj_opt_utils import calc_traj_distr_kl, DGD_MAX_ITER
 from gps.algorithm.traj_opt.config import TRAJ_OPT_LQR
-import abc
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Algorithm_NN(Algorithm):
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, hyperparams):
         super(Algorithm_NN, self).__init__(hyperparams)
         traj_opt_config = copy.deepcopy(TRAJ_OPT_LQR)
@@ -20,24 +18,22 @@ class Algorithm_NN(Algorithm):
         self.itr = None
         self.init_step_mult = []
 
-    @abc.abstractmethod
+    @abstractmethod
     def _update_trajectories(self):
-        """
-        Compute new linear Gaussian controllers.
-        """
-        raise NotImplementedError("Must be implemented in subclass")
+        """Compute new linear Gaussian controllers."""
+        pass
 
     def backward(self, prev_traj_distr, traj_info, eta):
-        """
-        Perform LQR backward pass. This computes a new linear Gaussian
-        policy object.
+        """Perform LQR backward pass. This computes a new linear Gaussian policy object.
+
         Args:
-            prev_traj_distr: A linear Gaussian policy object from
-                previous iteration.
+            prev_traj_distr: A linear Gaussian policy object from previous iteration.
             traj_info: A TrajectoryInfo object.
             eta: Lagrange dual variable.
+
         Returns:
             traj_distr: A new linear Gaussian policy.
+
         """
         # Constants.
         T = prev_traj_distr.T
@@ -107,15 +103,16 @@ class Algorithm_NN(Algorithm):
         return traj_distr
 
     def forward(self, traj_distr, traj_info):
-        """
-        Perform LQR forward pass. Computes state-action marginals from
-        dynamics and policy.
+        """Perform LQR forward pass. Computes state-action marginals from dynamics and policy.
+
         Args:
             traj_distr: A linear Gaussian policy object.
             traj_info: A TrajectoryInfo object.
+
         Returns:
             mu: T x (dX + dU) mean state + action vector.
             sigma: T x (dX + dU) x (dX + dU) state + action covariance matrix.
+
         """
         # Constants.
         T = traj_distr.T
@@ -161,10 +158,11 @@ class Algorithm_NN(Algorithm):
         return mu, sigma
 
     def iteration(self, sample_lists, itr):
-        """
-        Run iteration of LQR.
+        """Run iteration of LQR.
+
         Args:
             sample_lists: List of SampleList objects for each condition.
+
         """
         self.itr = itr
         for m in range(self.M):
@@ -189,18 +187,17 @@ class Algorithm_NN(Algorithm):
         self._advance_iteration_variables()
 
     def _stepadjust(self, m):
-        """
-        Calculate new step sizes.
+        """Calculate new step sizes.
+
         Args:
             m: Condition
+
         """
-        # Compute values under Laplace approximation. This is the policy
-        # that the previous samples were actually drawn from under the
-        # dynamics that were estimated from the previous samples.
+        # Compute values under Laplace approximation. This is the policy that the previous samples were actually drawn
+        # from under the dynamics that were estimated from the previous samples.
         previous_laplace_obj = self.estimate_cost(self.prev[m].traj_distr, self.prev[m].traj_info)
-        # This is the policy that we just used under the dynamics that
-        # were estimated from the previous samples (so this is the cost
-        # we thought we would have).
+        # This is the policy that we just used under the dynamics that were estimated from the previous samples (so
+        # this is the cost we thought we would have).
         new_predicted_laplace_obj = self.estimate_cost(self.cur[m].traj_distr, self.prev[m].traj_info)
 
         # This is the actual cost we have under the current trajectory
@@ -229,13 +226,12 @@ class Algorithm_NN(Algorithm):
         self._set_new_mult(predicted_impr, actual_impr, m)
 
     def estimate_cost(self, traj_distr, traj_info):
-        """ Compute Laplace approximation to expected cost. """
+        """Compute Laplace approximation to expected cost."""
         # Constants.
         T = traj_distr.T
 
-        # Perform forward pass (note that we repeat this here, because
-        # traj_info may have different dynamics from the ones that were
-        # used to compute the distribution already saved in traj).
+        # Perform forward pass (note that we repeat this here, because traj_info may have different dynamics from the
+        # ones that were used to compute the distribution already saved in traj).
         mu, sigma = self.forward(traj_distr, traj_info)
 
         # Compute cost.
@@ -247,13 +243,11 @@ class Algorithm_NN(Algorithm):
         return predicted_cost
 
     def traj_opt_update(self, m):
-        """ Run dual gradient decent to optimize trajectories. """
+        """Run dual gradient decent to optimize trajectories."""
         T = self.T
         eta = self.cur[m].eta
-        # print("eta_0: ", eta)
         step_mult = self.cur[m].step_mult
         traj_info = self.cur[m].traj_info
-        # print("step_mult: ", step_mult)
 
         prev_traj_distr = self.cur[m].traj_distr
 
@@ -280,7 +274,6 @@ class Algorithm_NN(Algorithm):
             kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
-            # print("kl_div - kl_step: ", con)
             # Convergence check - constraint satisfaction.
             if (abs(con) < 0.1 * kl_step):
                 LOGGER.debug("KL: %f / %f, converged iteration %i", kl_div, kl_step, itr)
@@ -301,9 +294,6 @@ class Algorithm_NN(Algorithm):
             # Logarithmic mean: log_mean(x,y) = (y - x)/(log(y) - log(x))
             eta = new_eta
 
-            # print("eta_1: ", eta)
-            # print("kl_step: ", kl_step)
-
         if kl_div > kl_step and abs(kl_div - kl_step) > 0.1 * kl_step:
             LOGGER.warning("Final KL divergence after DGD convergence is too high.")
 
@@ -318,10 +308,11 @@ class Algorithm_NN(Algorithm):
         return traj_distr, eta, new_mu, new_sigma, kl_div_t
 
     def compute_extended_costs(self, eta, traj_info, traj_distr):
-        """ Compute expansion of extended cost used in the LQR backward pass.
-            The extended cost function is 1/eta * c(x, u) - log p(u | x)
-            with eta being the lagrange dual variable and
-            p being the previous trajectory distribution
+        """Compute expansion of extended cost used in the LQR backward pass.
+
+        The extended cost function is 1/eta * c(x, u) - log p(u | x) with eta being the lagrange dual variable and p
+        being the previous trajectory distribution.
+
         """
         Cm_ext, cv_ext = traj_info.Cm / eta, traj_info.cv / eta
         K, ipc, k = traj_distr.K, traj_distr.inv_pol_covar, traj_distr.k

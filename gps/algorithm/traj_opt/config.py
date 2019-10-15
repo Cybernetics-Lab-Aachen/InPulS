@@ -1,4 +1,4 @@
-""" Default configuration for trajectory optimization. """
+"""Default configuration for trajectory optimization."""
 
 # TrajOptLQRPython
 TRAJ_OPT_LQR = {

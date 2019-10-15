@@ -1,15 +1,12 @@
-""" This file defines the base trajectory optimization class. """
-import abc
+"""This file defines the base trajectory optimization class."""
+from abc import ABC, abstractmethod
 
 
-class TrajOpt(object):
-    """ Trajectory optimization superclass. """
-    __metaclass__ = abc.ABCMeta
-
+class TrajOpt(ABC):
     def __init__(self, hyperparams):
         self._hyperparams = hyperparams
 
-    @abc.abstractmethod
+    @abstractmethod
     def update(self):
-        """ Update trajectory distributions. """
-        raise NotImplementedError("Must be implemented in subclass.")
+        """Update trajectory distributions."""
+        pass

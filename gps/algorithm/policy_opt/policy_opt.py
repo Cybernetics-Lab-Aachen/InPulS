@@ -1,17 +1,14 @@
-""" This file defines the base policy optimization class. """
-import abc
+"""This file defines the base policy optimization class."""
+from abc import ABC, abstractmethod
 
 
-class PolicyOpt(object):
-    """ Policy optimization superclass. """
-    __metaclass__ = abc.ABCMeta
-
+class PolicyOpt(ABC):
     def __init__(self, hyperparams, dO, dU):
         self._hyperparams = hyperparams
         self._dO = dO
         self._dU = dU
 
-    @abc.abstractmethod
+    @abstractmethod
     def update(self):
-        """ Update policy. """
-        raise NotImplementedError("Must be implemented in subclass.")
+        """Update policy."""
+        pass
