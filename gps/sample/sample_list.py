@@ -6,7 +6,7 @@ import numpy as np
 LOGGER = logging.getLogger(__name__)
 
 
-class SampleList(object):
+class SampleList:
     """Class that handles writes and reads to sample data."""
 
     def __init__(self, samples):

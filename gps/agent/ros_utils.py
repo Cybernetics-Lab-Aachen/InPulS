@@ -21,7 +21,7 @@ class TimeoutException(Exception):
         Exception.__init__(self, "Timed out after %f seconds", sec_waited)
 
 
-class ServiceEmulator(object):
+class ServiceEmulator:
     """Emulates a ROS service (request-response) from a publisher-subscriber pair."""
 
     def __init__(self, pub_topic, pub_type, sub_topic, sub_type, pub_url, sub_url):

@@ -11,7 +11,7 @@ from gps.algorithm.algorithm_utils import gauss_fit_joint_prior
 LOGGER = logging.getLogger(__name__)
 
 
-class PolicyPriorGMM(object):
+class PolicyPriorGMM:
     """A policy prior encoded as a GMM over [x_t, u_t] points.
 
     This prior is used when computing the linearization of the policy.

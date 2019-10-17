@@ -27,7 +27,7 @@ class AlgorithmTrajOpt(Algorithm_NN):
             for cond in range(self.M):
                 self.new_traj_distr[cond], self.cur[cond].eta, self.new_mu[cond], self.new_sigma[
                     cond
-                ], _ = self.traj_opt_update(cond)
+                ] = self.traj_opt_update(cond)
 
         self.visualize_local_policy(0)
 

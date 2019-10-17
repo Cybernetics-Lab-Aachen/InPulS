@@ -57,7 +57,7 @@ class TrajOptLQRPython(TrajOpt):
             mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
-            kl_div, _ = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
+            kl_div = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
             # Convergence check - constraint satisfaction.

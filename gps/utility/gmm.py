@@ -14,7 +14,7 @@ def logsum(vec, axis=0, keepdims=True):
     return np.log(np.sum(np.exp(vec - maxv), axis=axis, keepdims=keepdims)) + maxv
 
 
-class GMM(object):
+class GMM:
     """Gaussian Mixture Model."""
 
     def __init__(self, warmstart=True):

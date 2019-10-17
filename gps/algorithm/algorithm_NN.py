@@ -271,7 +271,7 @@ class Algorithm_NN(Algorithm):
             mus.append(new_mu)
 
             # Compute KL divergence constraint violation.
-            kl_div, kl_div_t = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
+            kl_div = calc_traj_distr_kl(new_mu, new_sigma, traj_distr, prev_traj_distr)
             con = kl_div - kl_step
 
             # Convergence check - constraint satisfaction.
@@ -305,7 +305,7 @@ class Algorithm_NN(Algorithm):
             dU=traj_distr.dU
         )
 
-        return traj_distr, eta, new_mu, new_sigma, kl_div_t
+        return traj_distr, eta, new_mu, new_sigma
 
     def compute_extended_costs(self, eta, traj_info, traj_distr):
         """Compute expansion of extended cost used in the LQR backward pass.

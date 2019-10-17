@@ -10,7 +10,7 @@ from gps.utility.gmm import GMM
 LOGGER = logging.getLogger(__name__)
 
 
-class DynamicsPriorGMM(object):
+class DynamicsPriorGMM:
     """A dynamics prior encoded as a GMM over [x_t, u_t, x_t+1] points.
 
     See:

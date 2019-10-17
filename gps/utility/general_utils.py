@@ -1,7 +1,7 @@
 """This file defines general utility functions and classes."""
 
 
-class BundleType(object):
+class BundleType:
     """This class bundles many fields, similar to a record or a mutable namedtuple."""
 
     def __init__(self, variables):

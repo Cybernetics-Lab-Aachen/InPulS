@@ -4,7 +4,7 @@ import numpy as np
 from gps.proto.gps_pb2 import ACTION
 
 
-class Sample(object):
+class Sample:
     """Representation of a trajectory sample.
 
     TODO: Replace with pandas
