@@ -257,9 +257,6 @@ class TrajOptLQRPython(TrajOpt):
                 Vx[t, :] = Qt[idx_x] + Qtt[idx_x, idx_u].dot(traj_distr.k[t, :])
                 Vxx[t, :, :] = 0.5 * (Vxx[t, :, :] + Vxx[t, :, :].T)
 
-                traj_distr.Qm[t, :, :] = Qtt
-                traj_distr.qv[t, :] = Qt
-
             # Increment eta on non-SPD Q-function.
             if fail:
                 old_eta = eta

@@ -26,13 +26,9 @@ class LinearGaussianPolicy(Policy):
 
         self.K = K
         self.k = k
-        self.jac_K = np.ones((self.T, self.dU * self.dX, self.dX))
-        self.jac_k = np.ones((self.T, self.dU, self.dX))
         self.pol_covar = pol_covar
         self.chol_pol_covar = chol_pol_covar
         self.inv_pol_covar = inv_pol_covar
-        self.Qm = np.zeros((self.T, self.dU + self.dX, self.dU + self.dX))
-        self.qv = np.zeros((self.T, self.dU + self.dX))
 
     def act(self, x, obs, t, noise=None):
         """Decides an action for the given state/observation at the current timestep.

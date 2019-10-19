@@ -144,7 +144,10 @@ class Algorithm(ABC):
 
             # Assemble matrix and vector.
             cv[n, :, :] = np.c_[lx, lu]
-            Cm[n, :, :, :] = np.concatenate((np.c_[lxx, np.transpose(lux, [0, 2, 1])], np.c_[lux, luu]), axis=1)
+            Cm[n, :, :, :] = np.block([
+                [lxx, np.transpose(lux, [0, 2, 1])],
+                [lux, luu],
+            ])
 
             # Adjust for expanding cost around a sample.
             X = sample.get_X()

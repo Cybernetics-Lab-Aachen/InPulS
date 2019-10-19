@@ -104,9 +104,6 @@ class AlgorithmTrajOpt(Algorithm_NN):
             Vm[t, :, :] = 0.5 * (Vm[t, :, :] + Vm[t, :, :].T)
             vv[t, :] = qv[index_x] + Qm[index_x, index_u].dot(traj_distr.k[t, :])
 
-            traj_distr.Qm[t, :, :] = Qm
-            traj_distr.qv[t, :] = qv
-
         return traj_distr
 
     def forward(self, traj_distr, traj_info):
