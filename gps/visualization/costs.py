@@ -25,6 +25,7 @@ def __plot_costs(ax, samples, cf, weight=1.0):
 
 
 def visualize_costs(file_name, samples, cost_function, show=False):
+    """Visualize individual cost components."""
     fig = plt.figure(figsize=(16, 9))
     ax1 = fig.add_subplot(111)
     ax1.set_xlabel('$t$')

@@ -1,3 +1,4 @@
+"""This file defines policy optimization for a DDPG policy."""
 import numpy as np
 from baselines.common import set_global_seeds
 from baselines.common.tf_util import get_session
@@ -11,7 +12,17 @@ from gps.algorithm.policy_opt.policy_opt import PolicyOpt
 
 
 class DDPG_Policy(PolicyOpt):
+    """Policy optimization via DDPG."""
+
     def __init__(self, hyperparams, dX, dU):
+        """Initializes the policy.
+
+        Args:
+            hyperparams: Dictionary of hyperparameters.
+            dX: Dimension of state space.
+            dU: Dimension of action space.
+
+        """
         PolicyOpt.__init__(self, hyperparams, dX, dU)
         self.dX = dX
         self.dU = dU
@@ -38,6 +49,7 @@ class DDPG_Policy(PolicyOpt):
         self.policy = self  # Act method is contained in this class
 
     def update(self, X, U, cs, **kwargs):
+        """Perform DDPG update step."""
         M, N, T, _ = X.shape
 
         # Store samples in memory

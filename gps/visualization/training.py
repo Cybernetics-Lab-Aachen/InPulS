@@ -6,9 +6,7 @@ from os.path import isfile
 
 
 def eval_samples(experiment, metric, sample_type='samples_pol-random', cond=None):
-    """
-    Finds pol samples files and evaluate trajectories
-    """
+    """Finds pol samples files and evaluate trajectories."""
     itr = 0
     pol_samples = []
 
@@ -48,12 +46,13 @@ def visualize_training(
     show=False,
     figsize=(16, 9),
 ):
-    """
-    Visualizes training iterations.
+    """Visualizes training iterations.
+
     Args:
         file_name: File name without extension.
         losses: ndarray (N_epochs, N_losses) with losses.
         labels: list (N_losses, ) with labels for each loss.
+
     """
     fig = plt.figure(figsize=figsize)
     ax1 = fig.add_subplot(111)

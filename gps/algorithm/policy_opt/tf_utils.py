@@ -8,8 +8,11 @@ def check_list_and_convert(the_object):
 
 
 class TfMap:
-    """ a container for inputs, outputs, and loss in a tf graph. This object exists only
-    to make well-defined the tf inputs, outputs, and losses used in the policy_opt_tf class."""
+    """A container for inputs, outputs, and loss in a tf graph.
+
+    This object exists only to make well-defined the tf inputs, outputs, and losses used in the policy_opt_tf class.
+
+    """
 
     def __init__(self, input_tensor, target_output_tensor, precision_tensor, output_op, loss_op):
         self.input_tensor = input_tensor
@@ -59,7 +62,7 @@ class TfMap:
 
 
 class TfSolver:
-    """ A container for holding solver hyperparams in tensorflow. Used to execute backwards pass. """
+    """A container for holding solver hyperparams in tensorflow. Used to execute backwards pass."""
 
     def __init__(self, loss_scalar, solver_name='adam', base_lr=None, lr_policy=None, momentum=None, weight_decay=None):
         self.base_lr = base_lr

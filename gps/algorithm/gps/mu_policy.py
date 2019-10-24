@@ -17,7 +17,7 @@ class MU_Policy(PolicyOpt):
     """
 
     def __init__(self, hyperparams, dX, dU):
-        """Initializes the agent.
+        """Initializes the policy.
 
         Args:
             hyperparams: Dictionary of hyperparameters.

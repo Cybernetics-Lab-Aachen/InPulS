@@ -1,3 +1,4 @@
+"""Tools for visualizing the latent state of an autoencoder."""
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
@@ -7,6 +8,7 @@ from sklearn.cluster import KMeans
 
 
 def export_latent_space_data(file_name, x_train, z_mean_train, z_std_train, x_test, z_mean_test, z_std_test):
+    """Export samples from a latent space."""
     np.savez_compressed(
         file_name,
         x_train=x_train,
@@ -19,14 +21,16 @@ def export_latent_space_data(file_name, x_train, z_mean_train, z_std_train, x_te
 
 
 def visualize_latent_space(file_name, z_mean, z_std, x_label='$\\mathbf{z}$', y_label='pdf', show=False):
-    """
-    Visualizes approximation ability.
+    """Visualizes approximation ability.
+
     Args:
         file_name: File name without extension.
-        Z: ndarray (N, dZ) with latent states.
+        z_mean: ndarray (N, dZ) with latent states.
+        z_std: ndarray (N, dZ, dZ) with std of latent states.
+        x_label: ALbel of the x-axis.
+        y_label: ALbel of the y-axis.
         show: Display generated plot. This is a blocking operation.
-        export_data: Writes a npz file containing the plotted data points.
-                     This is useful for later recreation of the plot.
+
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
@@ -67,16 +71,17 @@ def visualize_latent_space_tsne(
     show=False,
     export_data=True
 ):
-    """
-    Visualizes latent space via tsne.
+    """Visualizes latent space via tsne.
+
     Args:
         file_name: File name without extension.
-        x ndarray (N, dX) of states.
+        x_train: ndarray (N, dX) of states.
         z_train: ndarray (N, S, dZ) with latent states were N is the number of input states and S the number of latent
-                 space sample of each state.
+            space sample of each state.
         show: Display generated plot. This is a blocking operation.
-        export_data: Writes a npz file containing the plotted data points.
-                     This is useful for later recreation of the plot.
+        export_data: Writes a npz file containing the plotted data points. This is useful for later recreation of the
+            plot.
+
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)

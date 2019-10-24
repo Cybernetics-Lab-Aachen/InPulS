@@ -15,12 +15,13 @@ def visualize_loss(
     show=False,
     export_data=True
 ):
-    """
-    Visualizes training losses.
+    """Visualizes training losses.
+
     Args:
         file_name: File name without extension.
         losses: ndarray (N_epochs, N_losses) with losses.
         labels: list (N_losses, ) with labels for each loss.
+
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)

@@ -1,4 +1,4 @@
-""" This file defines the iLQG-based trajectory optimization method. """
+"""This file defines the iLQG-based trajectory optimization method."""
 
 import logging
 
@@ -12,15 +12,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class AlgorithmTrajOpt(Algorithm_NN):
-    """ Sample-based trajectory optimization. """
+    """Sample-based trajectory optimization."""
 
     def __init__(self, hyperparams):
         super(AlgorithmTrajOpt, self).__init__(hyperparams)
 
     def _update_trajectories(self):
-        """
-        Compute new linear Gaussian controllers.
-        """
+        """Compute new linear Gaussian controllers."""
         if not hasattr(self, 'new_traj_distr'):
             self.new_traj_distr = [self.cur[cond].traj_distr for cond in range(self.M)]
         with Timer(self.timers, 'traj_opt'):
@@ -32,16 +30,19 @@ class AlgorithmTrajOpt(Algorithm_NN):
         self.visualize_local_policy(0)
 
     def backward(self, prev_traj_distr, traj_info, eta):
-        """
-        Perform LQR backward pass. This computes a new linear Gaussian
-        policy object.
+        """Perform LQR backward pass.
+
+        This computes a new linear Gaussian policy object.
+
         Args:
             prev_traj_distr: A linear Gaussian policy object from
                 previous iteration.
             traj_info: A TrajectoryInfo object.
             eta: Lagrange dual variable.
+
         Returns:
             traj_distr: A new linear Gaussian policy.
+
         """
         # Constants.
         T = prev_traj_distr.T
@@ -107,15 +108,18 @@ class AlgorithmTrajOpt(Algorithm_NN):
         return traj_distr
 
     def forward(self, traj_distr, traj_info):
-        """
-        Perform LQR forward pass. Computes state-action marginals from
-        dynamics and policy.
+        """Perform LQR forward pass.
+
+        Computes state-action marginals from dynamics and policy.
+
         Args:
             traj_distr: A linear Gaussian policy object.
             traj_info: A TrajectoryInfo object.
+
         Returns:
             mu: T x (dX + dU) mean state + action vector.
             sigma: T x (dX + dU) x (dX + dU) state + action covariance matrix.
+
         """
         # Constants.
         T = traj_distr.T

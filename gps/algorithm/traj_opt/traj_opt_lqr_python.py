@@ -1,4 +1,4 @@
-""" This file defines code for iLQG-based trajectory optimization. """
+"""This file defines code for iLQG-based trajectory optimization."""
 import logging
 import copy
 
@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TrajOptLQRPython(TrajOpt):
-    """ LQR trajectory optimization, Python implementation. """
+    """LQR trajectory optimization, Python implementation."""
 
     def __init__(self, hyperparams):
         config = copy.deepcopy(TRAJ_OPT_LQR)
@@ -25,7 +25,7 @@ class TrajOptLQRPython(TrajOpt):
         TrajOpt.__init__(self, config)
 
     def update(self, m, algorithm, initial_update=False):
-        """ Run dual gradient decent to optimize trajectories. """
+        """Run dual gradient decent to optimize trajectories."""
         T = algorithm.T
         eta = algorithm.cur[m].eta
         step_mult = algorithm.cur[m].step_mult
@@ -94,7 +94,7 @@ class TrajOptLQRPython(TrajOpt):
         return traj_distr, eta, new_mu, new_sigma
 
     def estimate_cost(self, traj_distr, traj_info):
-        """ Compute Laplace approximation to expected cost. """
+        """Compute Laplace approximation to expected cost."""
         # Constants.
         T = traj_distr.T
 
@@ -112,15 +112,18 @@ class TrajOptLQRPython(TrajOpt):
         return predicted_cost
 
     def forward(self, traj_distr, traj_info):
-        """
-        Perform LQR forward pass. Computes state-action marginals from
-        dynamics and policy.
+        """Perform LQR forward pass.
+
+        Computes state-action marginals from dynamics and policy.
+
         Args:
             traj_distr: A linear Gaussian policy object.
             traj_info: A TrajectoryInfo object.
+
         Returns:
             mu: A T x dX mean action vector.
             sigma: A T x dX x dX covariance matrix.
+
         """
         # Compute state-action marginals from specified conditional
         # parameters and current traj_info.
@@ -167,20 +170,21 @@ class TrajOptLQRPython(TrajOpt):
         return mu, sigma
 
     def backward(self, prev_traj_distr, traj_info, eta, algorithm, m):
-        """
-        Perform LQR backward pass. This computes a new linear Gaussian
-        policy object.
+        """Perform LQR backward pass.
+
+        This computes a new linear Gaussian policy object.
+
         Args:
-            prev_traj_distr: A linear Gaussian policy object from
-                previous iteration.
+            prev_traj_distr: A linear Gaussian policy object from previous iteration.
             traj_info: A TrajectoryInfo object.
             eta: Dual variable.
             algorithm: Algorithm object needed to compute costs.
             m: Condition number.
+
         Returns:
             traj_distr: A new linear Gaussian policy.
-            new_eta: The updated dual variable. Updates happen if the
-                Q-function is not PD.
+            new_eta: The updated dual variable. Updates happen if the Q-function is not PD.
+
         """
         # Constants.
         T = prev_traj_distr.T

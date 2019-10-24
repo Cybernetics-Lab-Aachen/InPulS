@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 
 def visualize_traj_opt(file_name, mu, dX, dU, alpha_discount=0.75, show=False):
+    """Visualizes traj_opt progress."""
     fig = plt.figure(figsize=(16, 9))
     ax1 = fig.add_subplot(111)
     ax1.set_xlabel('$t$')

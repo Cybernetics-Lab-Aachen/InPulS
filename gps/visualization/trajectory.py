@@ -4,6 +4,7 @@ from itertools import cycle
 
 
 def visualize_trajectories(file_name, X, U, X_labels=None, U_labels=None, show=False):
+    """Visualizes states and actions of a set of trajectory samples."""
     N, T, dX = X.shape
     _, _, dU = U.shape
 

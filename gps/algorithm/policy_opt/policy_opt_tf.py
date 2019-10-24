@@ -1,4 +1,4 @@
-""" This file defines policy optimization for a tensorflow policy. """
+"""This file defines policy optimization for a tensorflow policy."""
 import copy
 import logging
 
@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PolicyOptTf(PolicyOpt):
-    """ Policy optimization using tensor flow for DAG computations/nonlinear function approximation. """
+    """Policy optimization using tensor flow for DAG computations/nonlinear function approximation."""
 
     def __init__(self, hyperparams, dO, dU):
         config = copy.deepcopy(POLICY_OPT_TF)
@@ -64,7 +64,7 @@ class PolicyOptTf(PolicyOpt):
         self.sess.run(init_op)
 
     def init_network(self):
-        """ Helper method to initialize the tf networks used """
+        """Helper method to initialize the tf networks used."""
         tf_map_generator = self._hyperparams['network_model']
         tf_map = tf_map_generator(
             dim_input=self._dO,
@@ -79,7 +79,7 @@ class PolicyOptTf(PolicyOpt):
         self.loss_scalar = tf_map.get_loss_op()
 
     def init_solver(self):
-        """ Helper method to initialize the solver. """
+        """Helper method to initialize the solver."""
         self.solver = TfSolver(
             loss_scalar=self.loss_scalar,
             solver_name=self._hyperparams['solver_type'],
@@ -90,14 +90,16 @@ class PolicyOptTf(PolicyOpt):
         )
 
     def update(self, X, mu, prc, **kwargs):
-        """
-        Update policy.
+        """Update policy.
+
         Args:
             obs: Numpy array of observations, N x T x dO.
             tgt_mu: Numpy array of mean controller outputs, N x T x dU.
             tgt_prc: Numpy array of precision matrices, N x T x dU x dU.
+
         Returns:
             A tensorflow object with updated weights.
+
         """
         M, N, T = X.shape[:3]
         N_train = M * N * T
@@ -157,10 +159,11 @@ class PolicyOptTf(PolicyOpt):
         return self.policy
 
     def prob(self, obs):
-        """
-        Run policy forward.
+        """Run policy forward.
+
         Args:
             obs: Numpy array of observations that is N x T x dO.
+
         """
         dU = self._dU
         N, T = obs.shape[:2]
@@ -187,9 +190,11 @@ class PolicyOptTf(PolicyOpt):
         return output, pol_sigma, pol_prec, pol_det_sigma
 
     def restore_model(self, data_files_dir, iteration_count):
+        """Loads the network weighs from a file."""
         self._data_files_dir = data_files_dir
         self.iteration_count = iteration_count
         self.saver.restore(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))
 
     def store_model(self):
+        """Saves the network weighs in a file."""
         self.saver.save(self.sess, self._data_files_dir + 'model-%02d' % (self.iteration_count))

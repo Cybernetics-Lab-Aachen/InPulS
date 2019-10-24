@@ -20,8 +20,7 @@ def visualize_linear_model(
     show=False,
     export_data=True
 ):
-    """
-    Creates a figure visualizing a timeseries of linear Gausian models.
+    """Creates a figure visualizing a timeseries of linear Gausian models.
 
     Args:
         file: File to write figure to.
@@ -31,6 +30,7 @@ def visualize_linear_model(
         x: Shape (T, dX)
         y: Optional. Shape (T, dY)
         N: Number of random samples drawn to visualize variance.
+
     """
     fig = plt.figure(figsize=(16, 12))
 

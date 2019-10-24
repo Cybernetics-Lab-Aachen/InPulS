@@ -2,6 +2,14 @@ import numpy as np
 
 
 def aggregate(data, axis=0, mode='auto'):
+    """Aggregates data of multiple samples.
+
+    Args:
+        axis: Axis to aggregate.
+        mode: Aggregation mode. Spported are `span'`, `'quartiles'`, `'std'` and `'auto'`, which chooses one for the
+            former modes based on  the number of available samples.
+
+    """
     N = data.shape[axis]
 
     if '=' in mode:

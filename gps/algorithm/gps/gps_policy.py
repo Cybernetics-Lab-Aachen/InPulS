@@ -12,7 +12,7 @@ class GPS_Policy(PolicyOpt):
     """Refactored implementation of GPS."""
 
     def __init__(self, hyperparams, dX, dU):
-        """Initializes the agent.
+        """Initializes the policy.
 
         Args:
             hyperparams: Dictionary of hyperparameters.

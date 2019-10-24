@@ -13,15 +13,17 @@ def visualize_approximation(
     show=False,
     export_data=True
 ):
-    """
-    Visualizes approximation ability.
+    """Visualizes approximation ability.
+
     Args:
         file_name: File name without extension.
-        losses: ndarray (N_epochs, N_losses) with losses.
+        target: ndarray (N_epochs, N_losses) with targets.
+        approx: ndarray (N_epochs, N_losses) with approximations.
         labels: list (N_losses, ) with labels for each loss.
         show: Display generated plot. This is a blocking operation.
-        export_data: Writes a npz file containing the plotted data points.
-                     This is useful for later recreation of the plot.
+        export_data: Writes a npz file containing the plotted data points. This is useful for later recreation of the
+            plot.
+
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)

@@ -1,4 +1,4 @@
-""" This file defines the MD-based GPS algorithm. """
+"""This file defines the MD-based GPS algorithm."""
 import copy
 import logging
 
@@ -15,9 +15,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 class AlgorithmMDGPS(Algorithm):
-    """
-    Sample-based joint policy learning and trajectory optimization with
-    (approximate) mirror descent guided policy search algorithm.
+    """Sample-based joint policy learning and trajectory optimization with (approximate) mirror descent guided policy
+    search algorithm.
+
     """
 
     def __init__(self, hyperparams):
@@ -35,11 +35,11 @@ class AlgorithmMDGPS(Algorithm):
         self.traj_opt = hyperparams['traj_opt']['type'](hyperparams['traj_opt'])
 
     def iteration(self, sample_lists, itr):
-        """
-        Run iteration of MDGPS-based guided policy search.
+        """Run iteration of MDGPS-based guided policy search.
 
         Args:
             sample_lists: List of SampleList objects for each condition.
+
         """
         # Store the samples and evaluate the costs.
         for m in range(self.M):
@@ -72,7 +72,7 @@ class AlgorithmMDGPS(Algorithm):
         self._advance_iteration_variables()
 
     def _update_policy(self, initial_policy=False):
-        """ Compute the new policy. """
+        """Compute the new policy."""
         dU, dO, T = self.dU, self.dO, self.T
         N = len(self.cur[0].sample_list)
 
@@ -119,12 +119,12 @@ class AlgorithmMDGPS(Algorithm):
         )
 
     def _update_policy_fit(self, m):
-        """
-        Re-estimate the local policy values in the neighborhood of the
-        trajectory.
+        """Re-estimate the local policy values in the neighborhood of the trajectory.
+
         Args:
             m: Condition
             init: Whether this is the initial fitting of the policy.
+
         """
         # Choose samples to use.
         samples = self.cur[m].sample_list
@@ -150,19 +150,16 @@ class AlgorithmMDGPS(Algorithm):
             self.visualize_policy_linearization(m, 'pol_lin')
 
     def _advance_iteration_variables(self):
-        """
-        Move all 'cur' variables to 'prev', reinitialize 'cur'
-        variables, and advance iteration counter.
-        """
+        """Move all 'cur' variables to 'prev', reinitialize 'cur' variables, and advance iteration counter."""
         Algorithm._advance_iteration_variables(self)
         for m in range(self.M):
             self.cur[m].traj_info.last_kl_step = self.prev[m].traj_info.last_kl_step
             self.cur[m].pol_info = copy.deepcopy(self.prev[m].pol_info)
 
     def _stepadjust(self):
-        """
-        Calculate new step sizes. This version uses the same step size
-        for all conditions.
+        """Calculate new step sizes.
+
+        This version uses the same step size for all conditions.
         """
         # Compute previous cost and previous expected cost.
         prev_M = len(self.prev)  # May be different in future.
@@ -214,7 +211,7 @@ class AlgorithmMDGPS(Algorithm):
             self._set_new_mult(predicted_impr, actual_impr, m)
 
     def compute_costs(self, m, eta):
-        """ Compute cost estimates used in the LQR backward pass. """
+        """Compute cost estimates used in the LQR backward pass."""
         traj_info, traj_distr = self.cur[m].traj_info, self.cur[m].traj_distr
         pol_info = self.cur[m].pol_info
         T, dU, dX = traj_distr.T, traj_distr.dU, traj_distr.dX

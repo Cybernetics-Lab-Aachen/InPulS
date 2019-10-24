@@ -1,4 +1,4 @@
-""" This file defines utility classes and functions for algorithms. """
+"""This file defines utility classes and functions for algorithms."""
 import numpy as np
 
 from gps.utility.general_utils import BundleType

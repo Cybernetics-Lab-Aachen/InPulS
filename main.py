@@ -17,7 +17,7 @@ from gps.visualization import visualize_trajectories
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Make tensorflow less chatty
 
 
-class GPSMain(object):
+class GPSMain:
     """Logic to run an RL experiment."""
 
     def __init__(self, config):
