@@ -21,7 +21,12 @@ def batched_matrix_vector_multiply(vector, matrix):
 
 
 def euclidean_loss_layer(a, b, precision, batch_size):
-    """Math:  out = (action - mlp_out)'*precision*(action-mlp_out) = (u-uhat)'*A*(u-uhat)."""
+    r"""Layer computing euclidean loss.
+
+    .. math::
+        out = (action - mlp\_out)^T \cdot precision \cdot (action-mlp\_out) = (u-uhat)^T \cdot A \cdot (u-uhat)
+
+    """
     scale_factor = tf.constant(2 * batch_size, dtype='float')
     uP = batched_matrix_vector_multiply(a - b, precision)
     uPu = tf.reduce_sum(uP * (a - b))  # this last dot product is then summed, so we just the sum all at once.
@@ -44,9 +49,11 @@ def get_input_layer(dim_input, dim_output):
 
 
 def get_mlp_layers(mlp_input, number_layers, dimension_hidden):
-    """Compute MLP with specified number of layers.
+    r"""Compute MLP with specified number of layers.
 
-    math: sigma(Wx + b)
+    .. math::
+        sigma(W \cdot x + b)
+
     for each layer, where sigma is by default relu
 
     """
