@@ -1,5 +1,4 @@
-GPS
-======
+# GPS
 
 This code is a reimplementation of the guided policy search algorithm and LQG-based trajectory optimization.
 
@@ -7,4 +6,16 @@ This implementation is loosely based on a code provided by [rll.berkeley.edu/gps
 
 This project is funded by VDMA germany. For further information please visit [i40-inpuls.de](http://i40-inpuls.de)
 
+## Installation
+
 See INSTALL.md for installation instructions.
+
+## Run Experiment
+
+```bash
+python .\main.py gym_fetchreach_lqr
+```
+
+What to see what the robot is doing?
+
+Set `'render'` to `True` in the agent block in `experiments\gym_fetchreach_lqr\hyperparams.py`.
